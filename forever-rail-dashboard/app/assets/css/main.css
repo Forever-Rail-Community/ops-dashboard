@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+
+  /* Placeholder brand palette: replace these with the Forever Rail colors. */
+  --color-brand-50: #eef6fb;
+  --color-brand-100: #d6e9f4;
+  --color-brand-200: #b0d3e8;
+  --color-brand-300: #7db5d5;
+  --color-brand-400: #4d94bf;
+  --color-brand-500: #2f77a5;
+  --color-brand-600: #245f88;
+  --color-brand-700: #1f4c6d;
+  --color-brand-800: #1d4059;
+  --color-brand-900: #1c364c;
+  --color-brand-950: #10222f;
+}

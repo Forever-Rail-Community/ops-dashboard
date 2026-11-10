@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Forever Rail placeholder logo">
+  <rect width="64" height="64" rx="14" fill="#1f4c6d"/>
+  <path d="M22 10 14 54M42 10l8 44" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M19 22h26M16.5 34h31M14.5 46h35" stroke="#f2b134" stroke-width="4" stroke-linecap="round"/>
+</svg>
