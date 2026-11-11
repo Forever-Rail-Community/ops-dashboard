@@ -5,7 +5,9 @@ let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => { timer = setInterval(refresh, 15_000) })
 onBeforeUnmount(() => clearInterval(timer))
 
-const detailed = computed(() => data.value?.role !== 'member')
+const { t } = useSite()
+const detailed = computed(() => data.value?.detailed ?? false)
+const forbidden = computed(() => error.value?.statusCode === 403)
 const agents = computed(() => data.value?.agents ?? [])
 const allRoutes = computed(() => agents.value.flatMap((a) => a.routes))
 const onlineCount = computed(() => allRoutes.value.filter((r) => r.status === 'online').length)
@@ -15,15 +17,23 @@ const anyStale = computed(() => agents.value.some((a) => a.stale))
 <template>
   <div class="space-y-8">
     <div class="space-y-1">
-      <h1 class="text-3xl font-semibold">Route status</h1>
+      <h1 class="text-3xl font-semibold">{{ t('pageTitle') }}</h1>
       <p v-if="agents.length" class="text-muted">
-        {{ onlineCount }} of {{ allRoutes.length }} routes running
+        {{ onlineCount }} of {{ allRoutes.length }} {{ t('routes').toLowerCase() }} running
         <template v-if="anyStale"> (data may be out of date)</template>
       </p>
     </div>
 
     <UAlert
-      v-if="error"
+      v-if="forbidden"
+      color="neutral"
+      variant="subtle"
+      title="Your role can't view this page"
+      description="Ask an admin to update your access."
+    />
+
+    <UAlert
+      v-else-if="error"
       color="error"
       variant="subtle"
       title="Can't load route status"
@@ -48,7 +58,7 @@ const anyStale = computed(() => agents.value.some((a) => a.stale))
       />
 
       <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-sm text-muted">
-        <h2 class="text-base font-semibold text-default">Server: {{ agent.agentId }}</h2>
+        <h2 class="text-base font-semibold text-default">{{ t('server') }}: {{ agent.agentId }}</h2>
         <span>
           Updated {{ formatAge(agent.ageSec) }}
           <template v-if="agent.system">

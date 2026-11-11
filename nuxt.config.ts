@@ -19,9 +19,12 @@ export default defineNuxtConfig({
   // Every key here can be overridden with an env var named NUXT_<KEY> (see .env.example).
   runtimeConfig: {
     ingestKey: '',
+    // Discord user IDs (comma-separated) that are always admins. Set this to your own ID.
+    bootstrapAdminIds: '',
     staleAfterSec: 90,
     discord: {
       guildId: '',
+      // The three role-ID lists below are only used once, to fill in the starting Access settings.
       adminRoleIds: '',
       dispatcherRoleIds: '',
       memberRoleIds: ''

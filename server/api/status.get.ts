@@ -1,9 +1,9 @@
 type Stored = Snapshot & { receivedAt: number }
 
 export default defineEventHandler(async (event): Promise<StatusResponse> => {
-  const user = await requireRole(event, 'member')
+  const { user, permissions } = await requirePermission(event, 'status.view')
   const { staleAfterSec } = useRuntimeConfig(event)
-  const detailed = hasRole(user.role, 'dispatcher')
+  const detailed = permissions.includes('status.detail')
 
   const storage = useStorage('data')
   const keys = await storage.getKeys('agent')
@@ -30,5 +30,5 @@ export default defineEventHandler(async (event): Promise<StatusResponse> => {
   }
 
   agents.sort((a, b) => a.agentId.localeCompare(b.agentId))
-  return { role: user.role, staleAfterSec: Number(staleAfterSec), agents }
+  return { detailed, staleAfterSec: Number(staleAfterSec), agents }
 })

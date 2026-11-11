@@ -3,16 +3,20 @@
 Nuxt 4 + Nuxt UI. Discord login only. Built for Vercel. Shows the status of each Run8 route
 instance, fed by the `forever-rail-agent` program running on the game server.
 
-## Who can see what
+## Who can see and change what
 
-| Dashboard role | Gets it from | Sees |
-| --- | --- | --- |
-| member | Any server member, or the roles in `NUXT_DISCORD_MEMBER_ROLE_IDS` | Route name, port, online/offline, running time |
-| dispatcher | A role in `NUXT_DISCORD_DISPATCHER_ROLE_IDS` | Everything above, plus CPU, memory, process ID, server stats, unmapped-port warnings |
-| admin | A role in `NUXT_DISCORD_ADMIN_ROLE_IDS` | Same as dispatcher for now (reserved for future controls) |
+Everything below is edited from the **Admin** page on the site, not in code.
 
-Roles are read from Discord at sign-in and last 12 hours. People who aren't in the server, or have no
-matching role when member roles are set, are turned away with a message.
+- **Roles** are named sets of permissions (view route status, see CPU and memory, change appearance, manage access, view activity).
+  Three roles are created at the start: Member, Dispatcher, and Admin. You can rename them, change what they can do, and add more.
+- **Discord roles** are linked to dashboard roles on the Access tab. "Any server member" gives a role to everyone in your server.
+  A person can match several roles and gets everything from all of them.
+- **Bootstrap admins**: the Discord user IDs in `NUXT_BOOTSTRAP_ADMIN_IDS` are always admins, so a wrong setting on the
+  Access page can never lock you out.
+- Changes to roles take effect on the person's next page load. Their Discord roles are re-read when they sign in again
+  (sessions last 12 hours).
+- **Appearance** covers the site name, subtitle, logo, main color, and the wording used on the site.
+- **Activity** lists recent admin changes, with who made them.
 
 ## 1. Create the Discord application
 
@@ -32,7 +36,7 @@ npm install
 npm run dev
 ```
 
-Fill in `.env` first. Locally, data is stored in `./.data`, so no database is needed.
+Fill in `.env` first. Set `DATABASE_URL` to a Postgres database (a free Neon database works for development too). Route status data is kept in `./.data` locally.
 Test without the real agent:
 
 ```
@@ -46,9 +50,12 @@ curl -X POST http://localhost:3000/api/ingest -H "Authorization: Bearer YOUR_ING
 1. Push this folder to a GitHub repository and import it in Vercel. Nuxt is detected automatically.
 2. In Vercel, open **Storage** (or the Marketplace) and add **Upstash Redis** to the project. It sets
    the storage variables for you.
-3. Add the environment variables from `.env.example` in **Settings > Environment Variables**.
+3. Also add **Neon Postgres** from the Marketplace. It sets `DATABASE_URL` for you. The tables are created
+   automatically the first time the site runs.
+4. Add the environment variables from `.env.example` in **Settings > Environment Variables**. The ones you must set are the
+   Discord client ID and secret, `NUXT_APP_SECRET`, `NUXT_INGEST_KEY`, `NUXT_DISCORD_GUILD_ID`, and `NUXT_BOOTSTRAP_ADMIN_IDS`.
    Generate secrets with `openssl rand -base64 32`.
-4. Deploy, then add the live `/auth/discord` redirect URL in the Discord portal.
+5. Deploy, then add the live `/auth/discord` redirect URL in the Discord portal. Everyone has to sign in again after this update.
 
 ## 4. Connect the agent
 
@@ -57,8 +64,7 @@ same value as `NUXT_INGEST_KEY` into the agent's `.env` as `INGEST_KEY`.
 
 ## Customizing
 
-- Name, subtitle, logo: `app/utils/site.ts` (put the logo file in `public/`).
-- Colors: the `--color-brand-*` values in `app/assets/css/main.css`.
+- Name, subtitle, logo, color, and wording: Admin > Appearance. No redeploy needed.
 - How long before "agent has gone quiet" shows: `NUXT_STALE_AFTER_SEC` (default 90).
 
 ## Not included yet

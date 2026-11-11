@@ -1,5 +1,3 @@
-export type Role = 'member' | 'dispatcher' | 'admin'
-
 export interface RouteReport {
   name: string
   port: number
@@ -37,7 +35,7 @@ export interface AgentStatus {
 }
 
 export interface StatusResponse {
-  role: Role
+  detailed: boolean
   staleAfterSec: number
   agents: AgentStatus[]
 }

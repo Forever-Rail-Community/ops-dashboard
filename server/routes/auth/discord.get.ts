@@ -17,8 +17,8 @@ export default defineOAuthDiscordEventHandler({
       return sendRedirect(event, '/login?error=not-member')
     }
 
-    const role = roleFromDiscordRoles(member.roles ?? [], cfg)
-    if (!role) return sendRedirect(event, '/login?error=no-role')
+    const access = await resolveAccess(user.id, member.roles ?? [])
+    if (!access) return sendRedirect(event, '/login?error=no-role')
 
     await setUserSession(event, {
       user: {
@@ -28,7 +28,8 @@ export default defineOAuthDiscordEventHandler({
         avatar: user.avatar
           ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
           : null,
-        role
+        roles: access.roles,
+        permissions: access.permissions
       }
     })
     return sendRedirect(event, '/')

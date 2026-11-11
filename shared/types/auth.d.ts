@@ -4,7 +4,8 @@ declare module '#auth-utils' {
     username: string
     name: string
     avatar: string | null
-    role: 'member' | 'dispatcher' | 'admin'
+    roles: string[]
+    permissions: string[] // a snapshot taken at sign-in, used only to decide what to show; the server re-checks
   }
 }
 
