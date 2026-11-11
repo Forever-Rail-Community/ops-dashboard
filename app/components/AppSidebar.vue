@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ChevronsUpDown, LogOut, ShieldCheck, TrainFront } from '@lucide/vue'
+import { ChevronsUpDown, LogOut, Map as MapIcon, ShieldCheck, TrainFront } from '@lucide/vue'
 
 const { user, clear } = useUserSession()
 const { site, t } = useSite()
 const route = useRoute()
 
 const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith('admin.')) ?? false)
+const canSeeMap = computed(() => user.value?.permissions?.includes('map.view') ?? false)
 const initials = computed(() => (user.value?.name ?? '?').slice(0, 2).toUpperCase())
 
 async function signOut() {
@@ -44,6 +45,14 @@ async function signOut() {
                 <NuxtLink to="/">
                   <TrainFront />
                   <span>{{ t('pageTitle') }}</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem v-if="canSeeMap">
+              <SidebarMenuButton as-child :is-active="route.path === '/map'" tooltip="Map">
+                <NuxtLink to="/map">
+                  <MapIcon />
+                  <span>Map</span>
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -2,6 +2,7 @@
 export const PERMISSIONS = [
   { key: 'status.view', label: 'View route status', group: 'Status' },
   { key: 'status.detail', label: 'See CPU, memory, process IDs, and server stats', group: 'Status' },
+  { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
   { key: 'admin.settings', label: 'Change appearance and wording', group: 'Admin' },
   { key: 'admin.roles', label: 'Manage roles and Discord access', group: 'Admin' },
   { key: 'admin.activity', label: 'View the activity log', group: 'Admin' }
@@ -21,7 +22,7 @@ export interface RoleMapping {
 }
 
 export const DEFAULT_ROLES: RoleDef[] = [
-  { key: 'member', label: 'Member', permissions: ['status.view'] },
-  { key: 'dispatcher', label: 'Dispatcher', permissions: ['status.view', 'status.detail'] },
+  { key: 'member', label: 'Member', permissions: ['status.view', 'map.view'] },
+  { key: 'dispatcher', label: 'Dispatcher', permissions: ['status.view', 'status.detail', 'map.view'] },
   { key: 'admin', label: 'Admin', permissions: [...ALL_PERMISSION_KEYS] }
 ]

@@ -5,6 +5,35 @@ const num = (v: unknown): number | null =>
 
 const bad = (message: string) => createError({ statusCode: 400, statusMessage: message })
 
+const STATES = ['menu', 'loading', 'active', 'unloading']
+const text = (v: unknown, max = 60): string | null =>
+  typeof v === 'string' && v.length > 0 ? v.slice(0, max) : null
+
+function parseRailroader(raw: any): RailroaderReport | null {
+  if (!raw || typeof raw !== 'object') return null
+  const proc = raw.process ?? {}
+  const report: RailroaderReport = {
+    process: {
+      status: proc.status === 'online' ? 'online' : 'offline',
+      pid: num(proc.pid),
+      uptimeSec: num(proc.uptimeSec),
+      cpuPct: num(proc.cpuPct),
+      memMb: num(proc.memMb)
+    }
+  }
+  if (raw.api && typeof raw.api === 'object') {
+    report.api = {
+      reachable: raw.api.reachable === true,
+      error: text(raw.api.error, 120),
+      gameVersion: text(raw.api.gameVersion, 30),
+      sessionState: STATES.includes(raw.api.sessionState) ? raw.api.sessionState : null,
+      railroadName: text(raw.api.railroadName),
+      gameMode: text(raw.api.gameMode)
+    }
+  }
+  return report
+}
+
 // Validates what the agent sends. Anything unexpected is dropped, and nothing is trusted as markup.
 export function parseSnapshot(body: unknown): Snapshot {
   if (!body || typeof body !== 'object') throw bad('Body must be a JSON object')
@@ -46,6 +75,7 @@ export function parseSnapshot(body: unknown): Snapshot {
       memTotalMb: num(b.system?.memTotalMb) ?? 0
     },
     routes,
-    unmapped
+    unmapped,
+    railroader: parseRailroader(b.railroader)
   }
 }

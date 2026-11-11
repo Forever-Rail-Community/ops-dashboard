@@ -77,3 +77,12 @@ The components live in `app/components/ui` and are yours to edit. To add another
 Dark mode (the dark theme variables are not defined yet),
 
 Rate limiting on `/api/ingest`, update history, and Discord alerts when a route goes down.
+
+## Railroader map
+
+The Map page (sidebar > Map) draws the Railroader track layout: track colored by speed limit, switches, towns, industries, passenger stops and turntables, with search, zoom and layer toggles.
+
+- **Who can see it:** the "View the Railroader map" permission (Admin > Access). The data is only sent to signed-in people who have it.
+- **Where the data comes from:** the game's own `Map.json`. To refresh it after a game update, run `node scripts/build-map.mjs "path/to/Map.json"` and redeploy. This writes `server/assets/map.json`.
+- **Layout of the code:** `app/utils/map*.ts` (styling, drawing, hit testing, coordinates), `app/composables/useMap*.ts` (camera, input), `app/components/map/*` (the page's parts).
+- **Assumptions:** units are meters, speed limits are mph, and a switch is a track point where three pieces meet. The map data doesn't say, so these come from reading the file.

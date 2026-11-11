@@ -2,7 +2,9 @@
 const route = useRoute()
 const { t } = useSite()
 
-const title = computed(() => (route.path.startsWith('/admin') ? 'Admin' : t('pageTitle')))
+const title = computed(() =>
+  route.path.startsWith('/admin') ? 'Admin' : route.path === '/map' ? 'Map' : t('pageTitle')
+)
 </script>
 
 <template>

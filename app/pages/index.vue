@@ -15,6 +15,13 @@ const onlineCount = computed(() => allRoutes.value.filter((r) => r.status === 'o
 const anyStale = computed(() => agents.value.some((a) => a.stale))
 const forbidden = computed(() => error.value?.statusCode === 403)
 const freshest = computed(() => (agents.value.length ? Math.min(...agents.value.map((a) => a.ageSec)) : null))
+const SESSION_TEXT: Record<string, string> = {
+  menu: 'At the main menu (no save loaded)',
+  loading: 'Loading a save',
+  active: 'Session running',
+  unloading: 'Closing the session'
+}
+const railroaders = computed(() => agents.value.filter((a) => a.railroader))
 const firstSystem = computed(() => agents.value.find((a) => a.system)?.system ?? null)
 </script>
 
@@ -42,7 +49,7 @@ const firstSystem = computed(() => agents.value.find((a) => a.system)?.system ??
 
     <template v-else>
       <div class="grid gap-4 sm:grid-cols-2" :class="firstSystem ? 'xl:grid-cols-4' : 'xl:grid-cols-3'">
-        <Card>
+        <Card v-if="allRoutes.length">
           <CardHeader>
             <CardDescription>{{ t('routes') }} running</CardDescription>
             <CardTitle class="text-3xl tabular-nums">
@@ -75,7 +82,7 @@ const firstSystem = computed(() => agents.value.find((a) => a.system)?.system ??
         </Card>
       </div>
 
-      <Card v-for="agent in agents" :key="agent.agentId">
+      <Card v-for="agent in agents.filter((a) => a.routes.length)" :key="agent.agentId">
         <CardHeader>
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -130,6 +137,82 @@ const firstSystem = computed(() => agents.value.find((a) => a.system)?.system ??
               </TableRow>
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card v-for="agent in railroaders" :key="agent.agentId + '-railroader'">
+        <CardHeader>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle>Railroader</CardTitle>
+              <CardDescription>{{ t('server') }}: {{ agent.agentId }} · Updated {{ formatAge(agent.ageSec) }}</CardDescription>
+            </div>
+            <div class="flex items-center gap-2">
+              <Badge v-if="agent.stale" variant="outline" class="border-amber-600/40 text-amber-800">
+                <TriangleAlert />
+                Agent has gone quiet
+              </Badge>
+              <Badge
+                v-if="agent.railroader!.process.status === 'online'"
+                variant="outline"
+                class="gap-1.5 border-emerald-600/30 bg-emerald-50 text-emerald-800"
+              >
+                <span class="size-1.5 rounded-full bg-emerald-600" />
+                {{ agent.stale ? 'Last known: running' : 'Game running' }}
+              </Badge>
+              <Badge v-else variant="secondary" class="gap-1.5">
+                <span class="size-1.5 rounded-full bg-muted-foreground" />
+                {{ agent.stale ? 'Last known: not running' : 'Not running' }}
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <template v-if="agent.railroader!.process.status === 'online'">
+            <div>
+              <div class="text-muted-foreground">Running for</div>
+              <div class="font-medium">{{ formatDuration(agent.railroader!.process.uptimeSec) }}</div>
+            </div>
+            <template v-if="agent.railroader!.api?.reachable">
+              <div>
+                <div class="text-muted-foreground">Session</div>
+                <div class="font-medium">
+                  {{ SESSION_TEXT[agent.railroader!.api.sessionState ?? ''] ?? 'Unknown' }}
+                </div>
+              </div>
+              <div v-if="agent.railroader!.api.railroadName">
+                <div class="text-muted-foreground">Railroad</div>
+                <div class="font-medium">{{ agent.railroader!.api.railroadName }}</div>
+              </div>
+              <div v-if="agent.railroader!.api.gameMode">
+                <div class="text-muted-foreground">Game mode</div>
+                <div class="font-medium">{{ agent.railroader!.api.gameMode }}</div>
+              </div>
+              <div v-if="agent.railroader!.api.gameVersion">
+                <div class="text-muted-foreground">Game version</div>
+                <div class="font-medium">{{ agent.railroader!.api.gameVersion }}</div>
+              </div>
+            </template>
+            <div v-else class="sm:col-span-2 lg:col-span-3">
+              <div class="text-muted-foreground">Session</div>
+              <div class="font-medium">Not available</div>
+              <div class="text-muted-foreground">
+                The game is running but its local API isn't answering. Turn on HTTP Server in the game's Experimental preferences.
+                <template v-if="detailed && agent.railroader!.api?.error"> ({{ agent.railroader!.api.error }})</template>
+              </div>
+            </div>
+            <template v-if="detailed">
+              <div>
+                <div class="text-muted-foreground">CPU</div>
+                <div class="font-medium tabular-nums">{{ agent.railroader!.process.cpuPct != null ? `${agent.railroader!.process.cpuPct}%` : '—' }}</div>
+              </div>
+              <div>
+                <div class="text-muted-foreground">Memory</div>
+                <div class="font-medium tabular-nums">{{ agent.railroader!.process.memMb != null ? `${agent.railroader!.process.memMb} MB` : '—' }}</div>
+              </div>
+            </template>
+          </template>
+          <div v-else class="text-muted-foreground sm:col-span-2 lg:col-span-4">The Railroader game isn't running on this server.</div>
         </CardContent>
       </Card>
 

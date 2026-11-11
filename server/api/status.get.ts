@@ -23,6 +23,17 @@ export default defineEventHandler(async (event): Promise<StatusResponse> => {
       stale: ageSec > Number(staleAfterSec),
       system: detailed ? s.system : null,
       unmapped: detailed ? s.unmapped : [],
+      // Members see only whether the game is up and what session is loaded; process figures and error text are for staff.
+      railroader: s.railroader
+        ? {
+            process: detailed
+              ? s.railroader.process
+              : { status: s.railroader.process.status, uptimeSec: s.railroader.process.uptimeSec },
+            api: s.railroader.api
+              ? { ...s.railroader.api, error: detailed ? s.railroader.api.error : null }
+              : undefined
+          }
+        : null,
       routes: s.routes.map((r) =>
         detailed ? r : { name: r.name, port: r.port, status: r.status, uptimeSec: r.uptimeSec }
       )

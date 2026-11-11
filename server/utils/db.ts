@@ -27,7 +27,10 @@ const MIGRATIONS: string[] = [
      actor_name text,
      action text NOT NULL,
      detail jsonb
-   )`
+   )`,
+  // The map page needs its own permission. Give it to the three starting roles; roles you made yourself are left alone.
+  `UPDATE roles SET permissions = permissions || '["map.view"]'::jsonb
+   WHERE key IN ('member', 'dispatcher', 'admin') AND NOT (permissions @> '["map.view"]'::jsonb)`
 ]
 
 type Sql = ReturnType<typeof postgres>
