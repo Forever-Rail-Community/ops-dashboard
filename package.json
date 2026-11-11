@@ -28,6 +28,7 @@
     "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.5"
+    "@tailwindcss/vite": "^4.3.5",
+    "typescript": "^5.9.3"
   }
 }
