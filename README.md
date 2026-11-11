@@ -1,6 +1,6 @@
 # Forever Rail Operations Dashboard
 
-Nuxt 4 + Nuxt UI. Discord login only. Built for Vercel. Shows the status of each Run8 route
+Nuxt 4 + shadcn-vue (shadcn/ui for Vue) + Tailwind CSS 4. Discord login only. Built for Vercel. Shows the status of each Run8 route
 instance, fed by the `forever-rail-agent` program running on the game server.
 
 ## Who can see and change what
@@ -67,6 +67,13 @@ same value as `NUXT_INGEST_KEY` into the agent's `.env` as `INGEST_KEY`.
 - Name, subtitle, logo, color, and wording: Admin > Appearance. No redeploy needed.
 - How long before "agent has gone quiet" shows: `NUXT_STALE_AFTER_SEC` (default 90).
 
+## Adding more shadcn components
+
+The components live in `app/components/ui` and are yours to edit. To add another one (for example a dialog or a switch), run
+`npx shadcn-vue@latest add dialog` in this folder. `components.json` is already set up for it. Components are auto-imported by name.
+
 ## Not included yet
+
+Dark mode (the dark theme variables are not defined yet),
 
 Rate limiting on `/api/ingest`, update history, and Discord alerts when a route goes down.

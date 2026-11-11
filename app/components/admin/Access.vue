@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { toast } from 'vue-sonner'
+
 interface AccessData { roles: RoleDef[]; mappings: RoleMapping[] }
 
-const toast = useToast()
 const { data } = await useFetch<AccessData>('/api/admin/access', { key: 'admin-access' })
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
@@ -9,12 +10,10 @@ const state = reactive<AccessData>(clone(data.value ?? { roles: [], mappings: []
 const saving = ref(false)
 
 const groups = computed(() => {
-  const out: Record<string, typeof PERMISSIONS[number][]> = {}
+  const out: Record<string, (typeof PERMISSIONS)[number][]> = {}
   for (const p of PERMISSIONS) (out[p.group] ??= []).push(p)
   return out
 })
-
-const roleItems = computed(() => state.roles.map((r) => ({ label: r.label, value: r.key })))
 
 function toggle(role: RoleDef, key: string, on: boolean | 'indeterminate') {
   const has = role.permissions.includes(key)
@@ -40,9 +39,9 @@ async function save() {
   try {
     const result = await $fetch<AccessData>('/api/admin/access', { method: 'PUT', body: state })
     Object.assign(state, clone(result))
-    toast.add({ title: 'Saved', color: 'success' })
+    toast.success('Saved')
   } catch (err: any) {
-    toast.add({ title: 'Could not save', description: err?.data?.statusMessage ?? 'Try again.', color: 'error' })
+    toast.error('Could not save', { description: err?.data?.statusMessage ?? 'Try again.' })
   } finally {
     saving.value = false
   }
@@ -50,54 +49,50 @@ async function save() {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <UCard>
-      <template #header>
-        <div>
-          <h2 class="font-semibold">Roles</h2>
-          <p class="text-sm text-muted">A role is a named set of things a person can do. People can hold several roles and get everything from all of them.</p>
-        </div>
-      </template>
-
-      <div class="space-y-6">
-        <div v-for="role in state.roles" :key="role.key" class="space-y-3 rounded-lg border border-default p-4">
+  <div class="flex flex-col gap-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>Roles</CardTitle>
+        <CardDescription>
+          A role is a named set of things a person can do. People can hold several roles and get everything from all of them.
+        </CardDescription>
+      </CardHeader>
+      <CardContent class="flex flex-col gap-4">
+        <div v-for="role in state.roles" :key="role.key" class="flex flex-col gap-4 rounded-lg border p-4">
           <div class="flex items-center justify-between gap-3">
-            <UInput v-model="role.label" class="w-64" aria-label="Role name" />
-            <UButton label="Remove" color="error" variant="ghost" size="sm" @click="removeRole(role.key)" />
+            <Input v-model="role.label" class="max-w-64" aria-label="Role name" />
+            <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="removeRole(role.key)">Remove</Button>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div v-for="(perms, group) in groups" :key="group" class="space-y-2">
-              <p class="text-sm font-medium text-muted">{{ group }}</p>
-              <UCheckbox
-                v-for="p in perms"
-                :key="p.key"
-                :model-value="role.permissions.includes(p.key)"
-                :label="p.label"
-                @update:model-value="toggle(role, p.key, $event)"
-              />
+          <div class="grid gap-6 sm:grid-cols-2">
+            <div v-for="(perms, group) in groups" :key="group" class="flex flex-col gap-3">
+              <p class="text-sm font-medium text-muted-foreground">{{ group }}</p>
+              <div v-for="p in perms" :key="p.key" class="flex items-center gap-2">
+                <Checkbox
+                  :id="`${role.key}-${p.key}`"
+                  :model-value="role.permissions.includes(p.key)"
+                  @update:model-value="toggle(role, p.key, $event)"
+                />
+                <Label :for="`${role.key}-${p.key}`" class="font-normal">{{ p.label }}</Label>
+              </div>
             </div>
           </div>
         </div>
+        <div><Button variant="outline" @click="addRole">Add a role</Button></div>
+      </CardContent>
+    </Card>
 
-        <UButton label="Add a role" color="neutral" variant="subtle" @click="addRole" />
-      </div>
-    </UCard>
-
-    <UCard>
-      <template #header>
-        <div>
-          <h2 class="font-semibold">Discord roles</h2>
-          <p class="text-sm text-muted">
-            Choose which Discord roles get which dashboard role. To find a Discord role ID, turn on Developer Mode in Discord,
-            then right-click the role under Server Settings and choose Copy Role ID. Anyone who isn't in the server, or matches
-            no line here, can't sign in.
-          </p>
-        </div>
-      </template>
-
-      <div class="space-y-3">
+    <Card>
+      <CardHeader>
+        <CardTitle>Discord roles</CardTitle>
+        <CardDescription>
+          Choose which Discord roles get which dashboard role. To find a Discord role ID, turn on Developer Mode in Discord, then
+          right-click the role under Server Settings and choose Copy Role ID. Anyone who isn't in the server, or matches no line
+          here, can't sign in.
+        </CardDescription>
+      </CardHeader>
+      <CardContent class="flex flex-col gap-3">
         <div v-for="(m, i) in state.mappings" :key="i" class="flex flex-wrap items-center gap-3">
-          <UInput
+          <Input
             v-if="m.discordRoleId !== '*'"
             v-model="m.discordRoleId"
             placeholder="Discord role ID"
@@ -105,21 +100,22 @@ async function save() {
             aria-label="Discord role ID"
           />
           <span v-else class="w-64 text-sm">Any server member</span>
-          <UButton
-            :label="m.discordRoleId === '*' ? 'Use a role ID' : 'Any member'"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            @click="m.discordRoleId = m.discordRoleId === '*' ? '' : '*'"
-          />
-          <span class="text-muted">gets</span>
-          <USelect v-model="m.roleKey" :items="roleItems" class="w-48" aria-label="Dashboard role" />
-          <UButton label="Remove" color="error" variant="ghost" size="sm" @click="state.mappings.splice(i, 1)" />
+          <Button variant="ghost" size="sm" @click="m.discordRoleId = m.discordRoleId === '*' ? '' : '*'">
+            {{ m.discordRoleId === '*' ? 'Use a role ID' : 'Any member' }}
+          </Button>
+          <span class="text-sm text-muted-foreground">gets</span>
+          <Select v-model="m.roleKey">
+            <SelectTrigger class="w-48" aria-label="Dashboard role"><SelectValue placeholder="Choose a role" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="r in state.roles" :key="r.key" :value="r.key">{{ r.label }}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="state.mappings.splice(i, 1)">Remove</Button>
         </div>
-        <UButton label="Add a line" color="neutral" variant="subtle" @click="addMapping" />
-      </div>
-    </UCard>
+        <div><Button variant="outline" @click="addMapping">Add a line</Button></div>
+      </CardContent>
+    </Card>
 
-    <UButton label="Save access settings" :loading="saving" @click="save" />
+    <div><Button :disabled="saving" @click="save">{{ saving ? 'Saving…' : 'Save access settings' }}</Button></div>
   </div>
 </template>

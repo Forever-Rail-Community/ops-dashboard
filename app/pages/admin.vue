@@ -2,32 +2,35 @@
 const { user } = useUserSession()
 const can = (p: string) => user.value?.permissions?.includes(p) ?? false
 
-const items = computed(() =>
+const tabs = computed(() =>
   [
-    can('admin.settings') && { label: 'Appearance', slot: 'appearance' },
-    can('admin.roles') && { label: 'Access', slot: 'access' },
-    can('admin.activity') && { label: 'Activity', slot: 'activity' }
-  ].filter(Boolean) as { label: string; slot: string }[]
+    can('admin.settings') && { value: 'appearance', label: 'Appearance' },
+    can('admin.roles') && { value: 'access', label: 'Access' },
+    can('admin.activity') && { value: 'activity', label: 'Activity' }
+  ].filter(Boolean) as { value: string; label: string }[]
 )
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="space-y-1">
-      <h1 class="text-3xl font-semibold">Admin</h1>
-      <p class="text-muted">Change how the site looks and who can do what. Changes apply as soon as you save.</p>
+  <div class="flex flex-col gap-6">
+    <div>
+      <h2 class="text-2xl font-semibold tracking-tight">Admin</h2>
+      <p class="text-sm text-muted-foreground">Change how the site looks and who can do what. Changes apply as soon as you save.</p>
     </div>
 
-    <UTabs :items="items" class="w-full">
-      <template #appearance>
-        <AdminAppearance class="pt-4" />
-      </template>
-      <template #access>
-        <AdminAccess class="pt-4" />
-      </template>
-      <template #activity>
-        <AdminActivity class="pt-4" />
-      </template>
-    </UTabs>
+    <Tabs :default-value="tabs[0]?.value">
+      <TabsList>
+        <TabsTrigger v-for="t in tabs" :key="t.value" :value="t.value">{{ t.label }}</TabsTrigger>
+      </TabsList>
+      <TabsContent v-if="can('admin.settings')" value="appearance" class="pt-4">
+        <AdminAppearance />
+      </TabsContent>
+      <TabsContent v-if="can('admin.roles')" value="access" class="pt-4">
+        <AdminAccess />
+      </TabsContent>
+      <TabsContent v-if="can('admin.activity')" value="activity" class="pt-4">
+        <AdminActivity />
+      </TabsContent>
+    </Tabs>
   </div>
 </template>

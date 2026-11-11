@@ -11,33 +11,34 @@ const when = (iso: string) => new Date(iso).toLocaleString()
 </script>
 
 <template>
-  <UCard>
-    <template #header>
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold">Recent activity</h2>
-        <UButton label="Refresh" color="neutral" variant="ghost" size="sm" @click="refresh()" />
+  <Card>
+    <CardHeader>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <CardTitle>Recent activity</CardTitle>
+          <CardDescription>The last 100 admin changes.</CardDescription>
+        </div>
+        <Button variant="outline" size="sm" @click="refresh()">Refresh</Button>
       </div>
-    </template>
-
-    <p v-if="!data?.length" class="text-sm text-muted">Nothing has been recorded yet.</p>
-
-    <div v-else class="overflow-x-auto">
-      <table class="w-full text-left text-sm">
-        <thead class="text-muted">
-          <tr>
-            <th class="py-2 pr-4 font-medium">When</th>
-            <th class="py-2 pr-4 font-medium">Who</th>
-            <th class="py-2 font-medium">What</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="e in data" :key="e.id" class="border-t border-default">
-            <td class="whitespace-nowrap py-2 pr-4">{{ when(e.at) }}</td>
-            <td class="py-2 pr-4">{{ e.actorName ?? 'Unknown' }}</td>
-            <td class="py-2">{{ names[e.action] ?? e.action }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </UCard>
+    </CardHeader>
+    <CardContent>
+      <p v-if="!data?.length" class="text-sm text-muted-foreground">Nothing has been recorded yet.</p>
+      <Table v-else>
+        <TableHeader>
+          <TableRow>
+            <TableHead>When</TableHead>
+            <TableHead>Who</TableHead>
+            <TableHead>What</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="e in data" :key="e.id">
+            <TableCell class="whitespace-nowrap">{{ when(e.at) }}</TableCell>
+            <TableCell>{{ e.actorName ?? 'Unknown' }}</TableCell>
+            <TableCell>{{ names[e.action] ?? e.action }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
 </template>

@@ -1,21 +1,20 @@
-// Turns one chosen color into the 11-shade scale the interface uses (50 lightest, 950 darkest).
-// The chosen color itself is shade 500, which is what buttons and highlights use.
-type RGB = [number, number, number]
+// Turns the brand color chosen in Admin > Appearance into the shadcn theme variables that
+// buttons, focus rings, and the active sidebar item use. Text on the color is picked for contrast.
+const channel = (v: number) => {
+  const s = v / 255
+  return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+}
 
-const toRgb = (hex: string): RGB => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as RGB
-const toHex = (c: RGB) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')
-const mix = (a: RGB, b: RGB, t: number): RGB => a.map((v, i) => v + (b[i]! - v) * t) as RGB
-
-const TOWARD_WHITE: Record<number, number> = { 50: 0.95, 100: 0.88, 200: 0.74, 300: 0.56, 400: 0.3 }
-const TOWARD_BLACK: Record<number, number> = { 600: 0.15, 700: 0.3, 800: 0.45, 900: 0.6, 950: 0.76 }
+const luminance = (hex: string) =>
+  0.2126 * channel(parseInt(hex.slice(1, 3), 16)) +
+  0.7152 * channel(parseInt(hex.slice(3, 5), 16)) +
+  0.0722 * channel(parseInt(hex.slice(5, 7), 16))
 
 export function brandCss(hex: string): string {
   if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return ''
-  const base = toRgb(hex)
-  const shades: Record<number, string> = { 500: hex.toLowerCase() }
-  for (const [k, t] of Object.entries(TOWARD_WHITE)) shades[+k] = toHex(mix(base, [255, 255, 255], t))
-  for (const [k, t] of Object.entries(TOWARD_BLACK)) shades[+k] = toHex(mix(base, [0, 0, 0], t))
-  const vars = Object.entries(shades).map(([k, v]) => `--color-brand-${k}:${v}`).join(';')
-  // ":root:root" outranks the default palette no matter which stylesheet loads first.
-  return `:root:root{${vars}}`
+  const l = luminance(hex)
+  const onWhite = 1.05 / (l + 0.05)
+  const onDark = (l + 0.05) / (luminance('#0a0a0a') + 0.05)
+  const fg = onWhite >= onDark ? '#ffffff' : '#0a0a0a'
+  return `:root:root{--primary:${hex};--primary-foreground:${fg};--ring:${hex};--sidebar-primary:${hex};--sidebar-primary-foreground:${fg}}`
 }

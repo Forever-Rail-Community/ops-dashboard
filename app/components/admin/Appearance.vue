@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const toast = useToast()
+import { toast } from 'vue-sonner'
+
 const { data } = await useFetch<SiteSettings>('/api/admin/settings', { key: 'admin-settings' })
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
@@ -10,11 +11,11 @@ function onLogo(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) {
-    toast.add({ title: 'Use a PNG, JPG, WebP, or SVG image', color: 'error' })
+    toast.error('Use a PNG, JPG, WebP, or SVG image')
     return
   }
   if (file.size > 250_000) {
-    toast.add({ title: 'That image is over 250 KB. Use a smaller one.', color: 'error' })
+    toast.error('That image is over 250 KB. Use a smaller one.')
     return
   }
   const reader = new FileReader()
@@ -31,9 +32,9 @@ async function save() {
   try {
     await $fetch('/api/admin/settings', { method: 'PUT', body: form })
     await refreshNuxtData('site')
-    toast.add({ title: 'Saved', color: 'success' })
+    toast.success('Saved')
   } catch (err: any) {
-    toast.add({ title: 'Could not save', description: err?.data?.statusMessage ?? 'Try again.', color: 'error' })
+    toast.error('Could not save', { description: err?.data?.statusMessage ?? 'Try again.' })
   } finally {
     saving.value = false
   }
@@ -41,53 +42,63 @@ async function save() {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <UCard>
-      <template #header><h2 class="font-semibold">Name and logo</h2></template>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <UFormField label="Site name">
-          <UInput v-model="form.name" class="w-full" />
-        </UFormField>
-        <UFormField label="Subtitle" description="Shown under the name. Can be empty.">
-          <UInput v-model="form.subtitle" class="w-full" />
-        </UFormField>
-        <UFormField label="Logo" description="PNG, JPG, WebP, or SVG, up to 250 KB." class="sm:col-span-2">
-          <div class="flex items-center gap-4">
-            <img :src="form.logo" alt="Logo preview" class="size-16 rounded-lg border border-default object-contain" />
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="text-sm" @change="onLogo" />
-            <UButton label="Use default logo" color="neutral" variant="ghost" size="sm" @click="form.logo = '/logo.svg'" />
+  <div class="flex flex-col gap-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>Name and logo</CardTitle>
+        <CardDescription>Shown in the sidebar and on the sign-in page.</CardDescription>
+      </CardHeader>
+      <CardContent class="grid gap-6 sm:grid-cols-2">
+        <div class="grid gap-2">
+          <Label for="site-name">Site name</Label>
+          <Input id="site-name" v-model="form.name" />
+        </div>
+        <div class="grid gap-2">
+          <Label for="site-subtitle">Subtitle</Label>
+          <Input id="site-subtitle" v-model="form.subtitle" />
+          <p class="text-xs text-muted-foreground">Shown under the name. Can be empty.</p>
+        </div>
+        <div class="grid gap-2 sm:col-span-2">
+          <Label for="site-logo">Logo</Label>
+          <div class="flex flex-wrap items-center gap-4">
+            <img :src="form.logo" alt="Logo preview" class="size-16 rounded-lg border object-contain" />
+            <Input id="site-logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="max-w-xs" @change="onLogo" />
+            <Button type="button" variant="ghost" size="sm" @click="form.logo = '/logo.svg'">Use default logo</Button>
           </div>
-        </UFormField>
-      </div>
-    </UCard>
+          <p class="text-xs text-muted-foreground">PNG, JPG, WebP, or SVG, up to 250 KB.</p>
+        </div>
+      </CardContent>
+    </Card>
 
-    <UCard>
-      <template #header><h2 class="font-semibold">Color</h2></template>
-      <UFormField label="Main color" description="Used for buttons and highlights. Pick a medium or dark color so white text stays readable.">
+    <Card>
+      <CardHeader>
+        <CardTitle>Color</CardTitle>
+        <CardDescription>Used for buttons, highlights, and the active menu item. Pick a medium or dark color so text on it stays readable.</CardDescription>
+      </CardHeader>
+      <CardContent>
         <div class="flex items-center gap-3">
-          <input v-model="form.brandColor" type="color" class="h-10 w-14 cursor-pointer rounded border border-default" aria-label="Main color" />
-          <UInput v-model="form.brandColor" class="w-32" />
+          <input v-model="form.brandColor" type="color" class="h-9 w-14 cursor-pointer rounded-md border bg-transparent p-1" aria-label="Main color" />
+          <Input v-model="form.brandColor" class="w-32" aria-label="Main color hex value" />
         </div>
-      </UFormField>
-    </UCard>
+      </CardContent>
+    </Card>
 
-    <UCard>
-      <template #header>
-        <div>
-          <h2 class="font-semibold">Wording</h2>
-          <p class="text-sm text-muted">Rename the words the site uses. For example, change "Train" to "Job".</p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Wording</CardTitle>
+        <CardDescription>Rename the words the site uses. For example, change "Train" to "Job".</CardDescription>
+      </CardHeader>
+      <CardContent class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-for="f in LABEL_FIELDS" :key="f.key" class="grid gap-2">
+          <Label :for="`label-${f.key}`">{{ f.title }}</Label>
+          <Input :id="`label-${f.key}`" v-model="form.labels[f.key]" />
         </div>
-      </template>
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <UFormField v-for="f in LABEL_FIELDS" :key="f.key" :label="f.title">
-          <UInput v-model="form.labels[f.key]" class="w-full" />
-        </UFormField>
-      </div>
-    </UCard>
+      </CardContent>
+    </Card>
 
     <div class="flex items-center gap-3">
-      <UButton label="Save changes" :loading="saving" @click="save" />
-      <UButton label="Reset to defaults" color="neutral" variant="ghost" @click="resetDefaults" />
+      <Button :disabled="saving" @click="save">{{ saving ? 'Saving…' : 'Save changes' }}</Button>
+      <Button variant="ghost" @click="resetDefaults">Reset to defaults</Button>
     </div>
   </div>
 </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'auth' })
+
 const route = useRoute()
 const { site } = useSite()
 
@@ -12,22 +14,19 @@ const error = computed(() => messages[String(route.query.error ?? '')])
 </script>
 
 <template>
-  <div class="mx-auto mt-16 max-w-sm space-y-6 text-center">
-    <img :src="site.logo" :alt="`${site.name} logo`" class="mx-auto size-20 rounded-xl object-contain" />
-    <div class="space-y-1">
-      <h1 class="text-2xl font-semibold">{{ site.name }} {{ site.subtitle }}</h1>
-      <p class="text-muted">Sign in with the Discord account you use in the community.</p>
-    </div>
-
-    <UAlert v-if="error" color="error" variant="subtle" :description="error" class="text-left" />
-
-    <UButton
-      to="/auth/discord"
-      external
-      icon="i-simple-icons-discord"
-      label="Sign in with Discord"
-      size="xl"
-      block
-    />
-  </div>
+  <Card>
+    <CardHeader class="items-center text-center">
+      <img :src="site.logo" :alt="`${site.name} logo`" class="mb-2 size-14 rounded-xl object-contain" />
+      <CardTitle class="text-xl">{{ site.name }} {{ site.subtitle }}</CardTitle>
+      <CardDescription>Sign in with the Discord account you use in the community.</CardDescription>
+    </CardHeader>
+    <CardContent class="flex flex-col gap-4">
+      <Alert v-if="error" variant="destructive">
+        <AlertDescription>{{ error }}</AlertDescription>
+      </Alert>
+      <Button as-child size="lg" class="w-full">
+        <a href="/auth/discord">Continue with Discord</a>
+      </Button>
+    </CardContent>
+  </Card>
 </template>
