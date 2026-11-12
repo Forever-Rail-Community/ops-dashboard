@@ -6,7 +6,12 @@ const { site, t } = useSite()
 const route = useRoute()
 
 const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith('admin.')) ?? false)
-const canSeeMap = computed(() => user.value?.permissions?.includes('map.view') ?? false)
+const can = (permission: string) => user.value?.permissions?.includes(permission) ?? false
+const pages = computed(() =>
+  [
+    { to: '/map', label: 'Map', icon: MapIcon, show: can('map.view') }
+  ].filter((p) => p.show)
+)
 const initials = computed(() => (user.value?.name ?? '?').slice(0, 2).toUpperCase())
 
 async function signOut() {
@@ -48,11 +53,11 @@ async function signOut() {
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem v-if="canSeeMap">
-              <SidebarMenuButton as-child :is-active="route.path === '/map'" tooltip="Map">
-                <NuxtLink to="/map">
-                  <MapIcon />
-                  <span>Map</span>
+            <SidebarMenuItem v-for="page in pages" :key="page.to">
+              <SidebarMenuButton as-child :is-active="route.path === page.to" :tooltip="page.label">
+                <NuxtLink :to="page.to">
+                  <component :is="page.icon" />
+                  <span>{{ page.label }}</span>
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

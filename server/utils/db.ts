@@ -2,6 +2,11 @@ import postgres from 'postgres'
 
 // The schema lives here as an ordered list. Each entry runs once, so later phases just add entries.
 // Everything is written to be safe to run twice, in case two cold starts race.
+// SQL that adds one permission to the named roles. Roles you made yourself are left alone.
+const grantPermission = (permission: string, roleKeys: string[]) =>
+  `UPDATE roles SET permissions = permissions || '["${permission}"]'::jsonb
+   WHERE key IN (${roleKeys.map((k) => `'${k}'`).join(', ')}) AND NOT (permissions @> '["${permission}"]'::jsonb)`
+
 const MIGRATIONS: string[] = [
   `CREATE TABLE IF NOT EXISTS settings (
      key text PRIMARY KEY,
@@ -29,8 +34,7 @@ const MIGRATIONS: string[] = [
      detail jsonb
    )`,
   // The map page needs its own permission. Give it to the three starting roles; roles you made yourself are left alone.
-  `UPDATE roles SET permissions = permissions || '["map.view"]'::jsonb
-   WHERE key IN ('member', 'dispatcher', 'admin') AND NOT (permissions @> '["map.view"]'::jsonb)`
+  grantPermission('map.view', ['member', 'dispatcher', 'admin'])
 ]
 
 type Sql = ReturnType<typeof postgres>

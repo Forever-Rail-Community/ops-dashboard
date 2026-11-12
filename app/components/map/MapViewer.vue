@@ -14,6 +14,7 @@ let dpr = 1
 const camera = useMapView(props.map.bounds)
 const { view } = camera
 const { areaById } = useMapIndex(props.map)
+const palette = useMapPalette()
 const speeds = computed(() => speedLimitsIn(props.map))
 
 // Keep the hover label inside the map when the pointer is near the right edge.
@@ -37,10 +38,10 @@ function redraw() {
   requestAnimationFrame(() => {
     queued = false
     const ctx = canvas.value?.getContext('2d')
-    if (ctx && view.w) drawMap(ctx, props.map, view, layers.value, selected.value, dpr)
+    if (ctx && view.w) drawMap(ctx, props.map, view, layers.value, selected.value, palette.value, dpr)
   })
 }
-watch([view, layers, selected], redraw, { deep: true })
+watch([view, layers, selected, palette], redraw, { deep: true })
 
 // ---- Size: keep the canvas sharp on high-density screens ----
 function fitCanvasToBox() {

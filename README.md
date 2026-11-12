@@ -86,3 +86,7 @@ The Map page (sidebar > Map) draws the Railroader track layout: track colored by
 - **Where the data comes from:** the game's own `Map.json`. To refresh it after a game update, run `node scripts/build-map.mjs "path/to/Map.json"` and redeploy. This writes `server/assets/map.json`.
 - **Layout of the code:** `app/utils/map*.ts` (styling, drawing, hit testing, coordinates), `app/composables/useMap*.ts` (camera, input), `app/components/map/*` (the page's parts).
 - **Assumptions:** units are meters, speed limits are mph, and a switch is a track point where three pieces meet. The map data doesn't say, so these come from reading the file.
+
+## Light and dark mode
+
+The sun/moon button in the top bar (and on the sign-in page) switches between Light, Dark, and System, which follows the device setting. The choice is remembered in that browser only. The dark colors are the `.dark` block in `app/assets/css/main.css`; the logic is `app/composables/useTheme.ts`. The brand color from Admin > Appearance is used in both themes. The map has its own dark colors: both palettes are in `app/utils/mapStyle.ts`.

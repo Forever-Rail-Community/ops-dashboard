@@ -1,5 +1,6 @@
 <script setup lang="ts">
 defineProps<{ speeds: number[] }>()
+const palette = useMapPalette()
 const layers = defineModel<MapLayers>({ required: true })
 
 const setLayer = (key: keyof MapLayers, on: boolean | 'indeterminate') => {
@@ -22,7 +23,7 @@ const setLayer = (key: keyof MapLayers, on: boolean | 'indeterminate') => {
     <CardHeader><CardTitle class="text-base">Speed limits</CardTitle></CardHeader>
     <CardContent class="grid gap-1.5 text-sm">
       <div v-for="limit in speeds" :key="limit" class="flex items-center gap-2">
-        <span class="h-1 w-6 rounded-full" :style="{ background: speedColor(limit) }" />
+        <span class="h-1 w-6 rounded-full" :style="{ background: speedColor(palette, limit) }" />
         {{ limit ? `${limit} mph` : 'None set in the map data' }}
       </div>
     </CardContent>

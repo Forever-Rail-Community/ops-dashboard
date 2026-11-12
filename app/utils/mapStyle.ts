@@ -1,7 +1,47 @@
 // Everything about how the map is styled and labeled, in one place.
 
-export const SPEED_COLORS: Record<number, string> = { 0: '#71717a', 15: '#dc2626', 25: '#ea580c', 30: '#ca8a04', 45: '#16a34a' }
-export const speedColor = (limit: number) => SPEED_COLORS[limit] ?? SPEED_COLORS[0]!
+// Every color the map uses, once for a light page and once for a dark one.
+export interface MapPalette {
+  ink: string // small labels, scale bar
+  strong: string // town names
+  halo: string // outline behind text so it stays readable over track
+  track: string // track with no speed limit set
+  turntable: string
+  switch: string
+  stop: string // passenger stop diamonds
+  marker: string // industry dots (and the ring on town dots)
+  outline: string // ring around markers (and the fill of town dots)
+  speeds: Record<number, string> // by speed limit; 0 is the fallback
+}
+
+const LIGHT_PALETTE: MapPalette = {
+  ink: '#27272a',
+  strong: '#09090b',
+  halo: 'rgba(255,255,255,0.92)',
+  track: '#52525b',
+  turntable: '#3f3f46',
+  switch: '#2563eb',
+  stop: '#1d4ed8',
+  marker: '#18181b',
+  outline: '#ffffff',
+  speeds: { 0: '#71717a', 15: '#dc2626', 25: '#ea580c', 30: '#ca8a04', 45: '#16a34a' }
+}
+
+const DARK_PALETTE: MapPalette = {
+  ink: '#e4e4e7',
+  strong: '#fafafa',
+  halo: 'rgba(10,10,10,0.9)',
+  track: '#a1a1aa',
+  turntable: '#a1a1aa',
+  switch: '#60a5fa',
+  stop: '#60a5fa',
+  marker: '#e4e4e7',
+  outline: '#18181b',
+  speeds: { 0: '#a1a1aa', 15: '#f87171', 25: '#fb923c', 30: '#facc15', 45: '#4ade80' }
+}
+
+export const mapPalette = (dark: boolean): MapPalette => (dark ? DARK_PALETTE : LIGHT_PALETTE)
+export const speedColor = (palette: MapPalette, limit: number) => palette.speeds[limit] ?? palette.speeds[0]!
 
 // The distinct speed limits used on the map, lowest first (0 means none set).
 export const speedLimitsIn = (map: MapData) =>

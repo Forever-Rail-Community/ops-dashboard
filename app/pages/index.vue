@@ -89,7 +89,7 @@ const firstSystem = computed(() => agents.value.find((a) => a.system)?.system ??
               <CardTitle>{{ t('server') }}: {{ agent.agentId }}</CardTitle>
               <CardDescription>Updated {{ formatAge(agent.ageSec) }}</CardDescription>
             </div>
-            <Badge v-if="agent.stale" variant="outline" class="border-amber-600/40 text-amber-800">
+            <Badge v-if="agent.stale" variant="outline" class="border-amber-600/40 text-amber-800 dark:text-amber-400">
               <TriangleAlert />
               Agent has gone quiet
             </Badge>
@@ -118,7 +118,7 @@ const firstSystem = computed(() => agents.value.find((a) => a.system)?.system ??
                   <Badge
                     v-if="r.status === 'online'"
                     variant="outline"
-                    class="gap-1.5 border-emerald-600/30 bg-emerald-50 text-emerald-800"
+                    class="gap-1.5 border-emerald-600/30 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                   >
                     <span class="size-1.5 rounded-full bg-emerald-600" />
                     {{ agent.stale ? 'Last known: online' : 'Online' }}
@@ -148,14 +148,14 @@ const firstSystem = computed(() => agents.value.find((a) => a.system)?.system ??
               <CardDescription>{{ t('server') }}: {{ agent.agentId }} · Updated {{ formatAge(agent.ageSec) }}</CardDescription>
             </div>
             <div class="flex items-center gap-2">
-              <Badge v-if="agent.stale" variant="outline" class="border-amber-600/40 text-amber-800">
+              <Badge v-if="agent.stale" variant="outline" class="border-amber-600/40 text-amber-800 dark:text-amber-400">
                 <TriangleAlert />
                 Agent has gone quiet
               </Badge>
               <Badge
                 v-if="agent.railroader!.process.status === 'online'"
                 variant="outline"
-                class="gap-1.5 border-emerald-600/30 bg-emerald-50 text-emerald-800"
+                class="gap-1.5 border-emerald-600/30 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
               >
                 <span class="size-1.5 rounded-full bg-emerald-600" />
                 {{ agent.stale ? 'Last known: running' : 'Game running' }}

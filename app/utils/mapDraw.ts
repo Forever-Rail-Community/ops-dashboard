@@ -9,13 +9,13 @@ interface Scene {
   view: MapViewState
   layers: MapLayers
   selected: MapHit | null
+  palette: MapPalette
   accent: string // the brand color, used for the selection ring
   p: Projector
   zoom: number // how far in we are relative to the whole-railroad view
 }
 
 const FONT = 'Inter Variable, system-ui, sans-serif'
-const INK = '#27272a'
 const SWITCH_ZOOM = 4 // how far in (relative to the whole-railroad view) before switches and names appear
 const STOP_LABEL_ZOOM = 3
 const INDUSTRY_LABEL_ZOOM = 6
@@ -23,10 +23,11 @@ const INDUSTRY_LABEL_ZOOM = 6
 const onScreen = (s: Scene, x: number, y: number, margin = 20) =>
   x > -margin && x < s.view.w + margin && y > -margin && y < s.view.h + margin
 
-// Text with a white outline so it stays readable over track.
-function label(ctx: Ctx, text: string, x: number, y: number, color = INK) {
+// Text with an outline so it stays readable over track.
+function label(s: Scene, text: string, x: number, y: number, color = s.palette.ink) {
+  const { ctx } = s
   ctx.lineWidth = 3
-  ctx.strokeStyle = 'rgba(255,255,255,0.92)'
+  ctx.strokeStyle = s.palette.halo
   ctx.strokeText(text, x, y)
   ctx.fillStyle = color
   ctx.fillText(text, x, y)
@@ -42,9 +43,10 @@ function dot(ctx: Ctx, x: number, y: number, radius: number, fill: string, strok
   ctx.stroke()
 }
 
-function diamond(ctx: Ctx, x: number, y: number, r: number) {
-  ctx.fillStyle = '#1d4ed8'
-  ctx.strokeStyle = '#fff'
+function diamond(s: Scene, x: number, y: number, r: number) {
+  const { ctx, palette } = s
+  ctx.fillStyle = palette.stop
+  ctx.strokeStyle = palette.outline
   ctx.lineWidth = 1.5
   ctx.beginPath()
   ctx.moveTo(x, y - r)
@@ -57,14 +59,14 @@ function diamond(ctx: Ctx, x: number, y: number, r: number) {
 }
 
 function drawTrack(s: Scene) {
-  const { ctx, map, layers, p, view } = s
+  const { ctx, map, layers, p, view, palette } = s
   ctx.lineCap = 'round'
   ctx.lineWidth = Math.min(4, Math.max(1.2, 1.2 + Math.log2(s.zoom) * 0.7))
 
   // One pass per speed limit, so each color is a single path.
   const limits = layers.speed ? speedLimitsIn(map) : [null]
   for (const limit of limits) {
-    ctx.strokeStyle = limit === null ? '#52525b' : speedColor(limit)
+    ctx.strokeStyle = limit === null ? palette.track : speedColor(palette, limit)
     ctx.beginPath()
     for (const [a, b, speed] of map.segments) {
       if (limit !== null && speed !== limit) continue
@@ -85,7 +87,7 @@ function drawTrack(s: Scene) {
 
 function drawTurntables(s: Scene) {
   const { ctx, map, p, view } = s
-  ctx.strokeStyle = '#3f3f46'
+  ctx.strokeStyle = s.palette.turntable
   ctx.lineWidth = 1.5
   for (const t of map.turntables) {
     ctx.beginPath()
@@ -99,26 +101,26 @@ function drawSwitches(s: Scene) {
   const { ctx, map, p } = s
   for (const i of map.switches) {
     const [x, z] = map.nodes[i]!
-    if (onScreen(s, p.x(x), p.y(z), 5)) dot(ctx, p.x(x), p.y(z), 2.3, '#2563eb', '#fff', 1)
+    if (onScreen(s, p.x(x), p.y(z), 5)) dot(ctx, p.x(x), p.y(z), 2.3, s.palette.switch, s.palette.outline, 1)
   }
 }
 
 function drawIndustryMarkers(s: Scene) {
-  const { ctx, map, layers, p } = s
+  const { ctx, map, layers, p, palette } = s
   for (const ind of map.industries) {
     if (!industryVisible(ind, layers)) continue
     const x = p.x(ind.x), y = p.y(ind.z)
     if (!onScreen(s, x, y, 10)) continue
-    if (isPassengerStop(ind)) diamond(ctx, x, y, 6)
-    else dot(ctx, x, y, 4, '#18181b', '#fff', 1.5)
+    if (isPassengerStop(ind)) diamond(s, x, y, 6)
+    else dot(ctx, x, y, 4, palette.marker, palette.outline, 1.5)
   }
 }
 
 function drawPlaceMarkers(s: Scene) {
-  const { ctx, map, p } = s
+  const { ctx, map, p, palette } = s
   for (const area of map.areas) {
     const x = p.x(area.x), y = p.y(area.z)
-    if (onScreen(s, x, y, 10)) dot(ctx, x, y, 4.5, '#fff', '#18181b', 2)
+    if (onScreen(s, x, y, 10)) dot(ctx, x, y, 4.5, palette.outline, palette.marker, 2)
   }
 }
 
@@ -133,19 +135,19 @@ interface Label {
 // Labels are listed most important first. A label that would overlap one already drawn is skipped,
 // so zooming in reveals more names instead of piling them on top of each other.
 function labelsFor(s: Scene): Label[] {
-  const { map, layers, p, zoom } = s
+  const { map, layers, p, zoom, palette } = s
   const labels: Label[] = []
 
   if (layers.places) {
     for (const area of [...map.areas].sort((a, b) => b.r - a.r)) {
-      labels.push({ text: area.name, x: p.x(area.x) + 8, y: p.y(area.z), font: `600 12.5px ${FONT}`, color: '#09090b' })
+      labels.push({ text: area.name, x: p.x(area.x) + 8, y: p.y(area.z), font: `600 12.5px ${FONT}`, color: palette.strong })
     }
   }
   const industries = map.industries.filter((i) => industryVisible(i, layers))
   const stops = industries.filter(isPassengerStop)
   const others = industries.filter((i) => !isPassengerStop(i))
   const small = (list: MapIndustry[]) =>
-    list.map((i) => ({ text: i.name, x: p.x(i.x) + 9, y: p.y(i.z), font: `11px ${FONT}`, color: INK }))
+    list.map((i) => ({ text: i.name, x: p.x(i.x) + 9, y: p.y(i.z), font: `11px ${FONT}`, color: palette.ink }))
   if (zoom > STOP_LABEL_ZOOM) labels.push(...small(stops))
   if (zoom > INDUSTRY_LABEL_ZOOM) labels.push(...small(others))
   return labels
@@ -161,7 +163,7 @@ function drawLabels(s: Scene) {
     const overlaps = taken.some((t) => box[0]! < t[2]! && box[2]! > t[0]! && box[1]! < t[3]! && box[3]! > t[1]!)
     if (overlaps) continue
     taken.push(box)
-    label(ctx, l.text, l.x, l.y, l.color)
+    label(s, l.text, l.x, l.y, l.color)
   }
 }
 
@@ -182,7 +184,7 @@ function drawScaleBar(s: Scene) {
   const meters = [...steps].reverse().find((m) => m <= 140 / view.s) ?? steps[0]!
   const px = meters * view.s
   const y = view.h - 16
-  ctx.strokeStyle = INK
+  ctx.strokeStyle = s.palette.ink
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.moveTo(16, y); ctx.lineTo(16 + px, y)
@@ -190,7 +192,7 @@ function drawScaleBar(s: Scene) {
   ctx.moveTo(16 + px, y - 5); ctx.lineTo(16 + px, y + 5)
   ctx.stroke()
   ctx.font = `11px ${FONT}`
-  label(ctx, meters >= 1000 ? `${meters / 1000} km` : `${meters} m`, 16, y - 13)
+  label(s, meters >= 1000 ? `${meters / 1000} km` : `${meters} m`, 16, y - 13)
 }
 
 export function drawMap(
@@ -199,6 +201,7 @@ export function drawMap(
   view: MapViewState,
   layers: MapLayers,
   selected: MapHit | null,
+  palette: MapPalette,
   dpr: number
 ) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -207,7 +210,7 @@ export function drawMap(
   ctx.textAlign = 'left'
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111'
-  const scene: Scene = { ctx, map, view, layers, selected, accent, p: projector(view), zoom: view.s / view.fit }
+  const scene: Scene = { ctx, map, view, layers, selected, palette, accent, p: projector(view), zoom: view.s / view.fit }
 
   drawTrack(scene)
   if (layers.turntables) drawTurntables(scene)
