@@ -5,7 +5,7 @@ declare module '#auth-utils' {
     name: string
     avatar: string | null
     roles: string[]
-    permissions: string[] // a snapshot taken at sign-in, used only to decide what to show; the server re-checks
+    permissions: string[] // refreshed from the database whenever the session is fetched, and used only to decide what to show; the server re-checks on every request
   }
 }
 
