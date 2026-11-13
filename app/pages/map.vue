@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CircleAlert } from '@lucide/vue'
 
-const { data, error } = useFetch<MapData>('/api/map', { server: false, lazy: true })
+const { data, error } = useFetch<MapData>(`/api/map?v=${MAP_DATA_VERSION}`, { server: false, lazy: true })
 const forbidden = computed(() => error.value?.statusCode === 403)
 </script>
 

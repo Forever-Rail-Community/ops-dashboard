@@ -72,7 +72,7 @@ const turntables = Object.entries(src.graph.turntables ?? {}).map(([id, t]) => {
 const xs = nodes.map((n) => n[0])
 const zs = nodes.map((n) => n[1])
 const out = {
-  version: 1,
+  version: 2, // keep equal to MAP_DATA_VERSION in shared/utils/mapData.ts
   bounds: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)],
   nodes, segments, switches, areas, industries, turntables
 }
