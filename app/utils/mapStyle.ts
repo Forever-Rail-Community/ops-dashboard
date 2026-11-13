@@ -80,5 +80,11 @@ export const isPassengerStop = (industry: MapIndustry) => industry.kinds.include
 export const industryVisible = (industry: MapIndustry, layers: MapLayers) =>
   isPassengerStop(industry) ? layers.stops : layers.industries
 
+// Switches only appear once you are zoomed in this far (relative to the whole-railroad view).
+const SWITCH_ZOOM = 4
+export const switchesVisible = (view: MapViewState, layers: MapLayers) =>
+  layers.switches && view.s / view.fit > SWITCH_ZOOM
+
+export const switchHit = (id: number, x: number, z: number): MapHit => ({ type: 'switch', id: String(id), name: 'Switch', x, z })
 export const placeHit = (a: MapArea): MapHit => ({ type: 'place', id: a.id, name: a.name, x: a.x, z: a.z })
 export const industryHit = (i: MapIndustry): MapHit => ({ type: 'industry', id: i.id, name: i.name, x: i.x, z: i.z })

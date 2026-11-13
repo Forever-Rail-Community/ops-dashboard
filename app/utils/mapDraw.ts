@@ -16,8 +16,8 @@ interface Scene {
 }
 
 const FONT = 'Inter Variable, system-ui, sans-serif'
-const SWITCH_ZOOM = 4 // how far in (relative to the whole-railroad view) before switches and names appear
 const STOP_LABEL_ZOOM = 3
+const SWITCH_RADIUS = 3.2 // drawn size of a switch dot, in pixels
 const INDUSTRY_LABEL_ZOOM = 6
 
 const onScreen = (s: Scene, x: number, y: number, margin = 20) =>
@@ -58,10 +58,22 @@ function diamond(s: Scene, x: number, y: number, r: number) {
   ctx.stroke()
 }
 
+// True when a piece lies completely off one side of the screen, judged by its curve's four points.
+function offScreen(s: Scene, points: Point[], margin = 20) {
+  const { view } = s
+  const xs = points.map((q) => q[0])
+  const ys = points.map((q) => q[1])
+  return (
+    Math.max(...xs) < -margin || Math.min(...xs) > view.w + margin ||
+    Math.max(...ys) < -margin || Math.min(...ys) > view.h + margin
+  )
+}
+
 function drawTrack(s: Scene) {
-  const { ctx, map, layers, p, view, palette } = s
+  const { ctx, map, layers, p, palette } = s
   ctx.lineCap = 'round'
-  ctx.lineWidth = Math.min(4, Math.max(1.2, 1.2 + Math.log2(s.zoom) * 0.7))
+  // Thin enough that neighboring yard tracks, a few meters apart, stay separate lines.
+  ctx.lineWidth = Math.min(2.6, Math.max(1.1, 1.1 + Math.log2(s.zoom) * 0.35))
 
   // One pass per speed limit, so each color is a single path.
   const limits = layers.speed ? speedLimitsIn(map) : [null]
@@ -70,28 +82,30 @@ function drawTrack(s: Scene) {
     ctx.beginPath()
     for (const [a, b, speed] of map.segments) {
       if (limit !== null && speed !== limit) continue
-      const [ax, az] = map.nodes[a]!
-      const [bx, bz] = map.nodes[b]!
-      const x1 = p.x(ax), y1 = p.y(az), x2 = p.x(bx), y2 = p.y(bz)
-      const offLeft = x1 < -20 && x2 < -20
-      const offRight = x1 > view.w + 20 && x2 > view.w + 20
-      const offTop = y1 < -20 && y2 < -20
-      const offBottom = y1 > view.h + 20 && y2 > view.h + 20
-      if (offLeft || offRight || offTop || offBottom) continue
-      ctx.moveTo(x1, y1)
-      ctx.lineTo(x2, y2)
+      const { from, handle1, handle2, to } = curveBetween(map, a, b)
+      const [start, c1, c2, end] = [from, handle1, handle2, to].map(([x, z]): Point => [p.x(x), p.y(z)])
+      if (offScreen(s, [start!, c1!, c2!, end!])) continue
+      ctx.moveTo(start![0], start![1])
+      ctx.bezierCurveTo(c1![0], c1![1], c2![0], c2![1], end![0], end![1])
     }
     ctx.stroke()
   }
 }
 
+// The pit is a ring, with the bridge drawn across it from the default stall to the one opposite.
 function drawTurntables(s: Scene) {
   const { ctx, map, p, view } = s
   ctx.strokeStyle = s.palette.turntable
-  ctx.lineWidth = 1.5
   for (const t of map.turntables) {
+    ctx.lineWidth = 1.5
     ctx.beginPath()
     ctx.arc(p.x(t.x), p.y(t.z), Math.max(4, t.r * view.s), 0, Math.PI * 2)
+    ctx.stroke()
+
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(p.x(t.bridge[0]), p.y(t.bridge[1]))
+    ctx.lineTo(p.x(t.bridge[2]), p.y(t.bridge[3]))
     ctx.stroke()
   }
 }
@@ -101,7 +115,7 @@ function drawSwitches(s: Scene) {
   const { ctx, map, p } = s
   for (const i of map.switches) {
     const [x, z] = map.nodes[i]!
-    if (onScreen(s, p.x(x), p.y(z), 5)) dot(ctx, p.x(x), p.y(z), 2.3, s.palette.switch, s.palette.outline, 1)
+    if (onScreen(s, p.x(x), p.y(z), 5)) dot(ctx, p.x(x), p.y(z), SWITCH_RADIUS, s.palette.switch, s.palette.outline, 1)
   }
 }
 
@@ -214,7 +228,7 @@ export function drawMap(
 
   drawTrack(scene)
   if (layers.turntables) drawTurntables(scene)
-  if (layers.switches && scene.zoom > SWITCH_ZOOM) drawSwitches(scene)
+  if (switchesVisible(view, layers)) drawSwitches(scene)
   drawIndustryMarkers(scene)
   if (layers.places) drawPlaceMarkers(scene)
   drawLabels(scene)

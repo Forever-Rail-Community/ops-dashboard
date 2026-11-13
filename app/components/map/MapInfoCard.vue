@@ -17,6 +17,9 @@ const info = computed(() => {
       lines: (industry?.kinds ?? []).map((k) => KIND_TEXT[k])
     }
   }
+  if (hit.type === 'switch') {
+    return { title: 'Switch', sub: 'Where one track splits into two', lines: [] }
+  }
   return {
     title: 'Track',
     sub: hit.speed ? `Posted speed limit: ${hit.speed} mph` : 'No speed limit set in the map data',
