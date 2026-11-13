@@ -118,7 +118,8 @@ function focusOn(hit: MapHit) {
 
     <div class="flex flex-col gap-4">
       <MapInfoCard v-if="selected" :map="map" :hit="selected" />
-      <MapLayerPanel v-model="layers" :speeds="speeds" />
+      <MapLegend :layers="layers" :speeds="speeds" />
+      <MapLayerPanel v-model="layers" />
       <MapPlaceList :map="map" @pick="focusOn" />
     </div>
   </div>

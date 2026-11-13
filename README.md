@@ -84,6 +84,7 @@ The Map page (sidebar > Map) draws the Railroader track layout: track colored by
 
 - **Who can see it:** the "View the Railroader map" permission (Admin > Access). The data is only sent to signed-in people who have it.
 - **Where the data comes from:** the game's own `Map.json`. To refresh it after a game update, run `node scripts/build-map.mjs "path/to/Map.json"` and redeploy. This writes `server/assets/map.json`. If you change what that script writes, raise `MAP_DATA_VERSION` in `shared/utils/mapData.ts` and the `version` in the script together, so browsers fetch the new file instead of a cached one.
+- **Symbols and the map key:** every symbol is drawn by `app/utils/mapSymbols.ts`. The map and the Map key card both use it, so changing a symbol there changes both.
 - **Layout of the code:** `app/utils/map*.ts` (styling, drawing, hit testing, coordinates), `app/composables/useMap*.ts` (camera, input), `app/components/map/*` (the page's parts).
 - **Assumptions:** units are meters, speed limits are mph, and a switch is a track point where three pieces meet. The map data doesn't say, so these come from reading the file.
 - **Curves:** the file stores track pieces as two end points, not their shape. Each point also has a heading, so `app/utils/mapCurve.ts` draws each piece as a smooth curve between them. This is an approximation that looks right but has not been checked against the game's exact curves.

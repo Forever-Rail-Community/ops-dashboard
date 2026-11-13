@@ -17,7 +17,6 @@ interface Scene {
 
 const FONT = 'Inter Variable, system-ui, sans-serif'
 const STOP_LABEL_ZOOM = 3
-const SWITCH_RADIUS = 3.2 // drawn size of a switch dot, in pixels
 const INDUSTRY_LABEL_ZOOM = 6
 
 const onScreen = (s: Scene, x: number, y: number, margin = 20) =>
@@ -31,31 +30,6 @@ function label(s: Scene, text: string, x: number, y: number, color = s.palette.i
   ctx.strokeText(text, x, y)
   ctx.fillStyle = color
   ctx.fillText(text, x, y)
-}
-
-function dot(ctx: Ctx, x: number, y: number, radius: number, fill: string, stroke: string, lineWidth: number) {
-  ctx.fillStyle = fill
-  ctx.strokeStyle = stroke
-  ctx.lineWidth = lineWidth
-  ctx.beginPath()
-  ctx.arc(x, y, radius, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.stroke()
-}
-
-function diamond(s: Scene, x: number, y: number, r: number) {
-  const { ctx, palette } = s
-  ctx.fillStyle = palette.stop
-  ctx.strokeStyle = palette.outline
-  ctx.lineWidth = 1.5
-  ctx.beginPath()
-  ctx.moveTo(x, y - r)
-  ctx.lineTo(x + r, y)
-  ctx.lineTo(x, y + r)
-  ctx.lineTo(x - r, y)
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
 }
 
 // True when a piece lies completely off one side of the screen, judged by its curve's four points.
@@ -94,19 +68,10 @@ function drawTrack(s: Scene) {
 
 // The pit is a ring, with the bridge drawn across it from the default stall to the one opposite.
 function drawTurntables(s: Scene) {
-  const { ctx, map, p, view } = s
-  ctx.strokeStyle = s.palette.turntable
+  const { ctx, map, p, view, palette } = s
   for (const t of map.turntables) {
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.arc(p.x(t.x), p.y(t.z), Math.max(4, t.r * view.s), 0, Math.PI * 2)
-    ctx.stroke()
-
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.moveTo(p.x(t.bridge[0]), p.y(t.bridge[1]))
-    ctx.lineTo(p.x(t.bridge[2]), p.y(t.bridge[3]))
-    ctx.stroke()
+    const bridge: [number, number, number, number] = [p.x(t.bridge[0]), p.y(t.bridge[1]), p.x(t.bridge[2]), p.y(t.bridge[3])]
+    drawTurntableShape(ctx, p.x(t.x), p.y(t.z), Math.max(4, t.r * view.s), bridge, palette)
   }
 }
 
@@ -115,7 +80,7 @@ function drawSwitches(s: Scene) {
   const { ctx, map, p } = s
   for (const i of map.switches) {
     const [x, z] = map.nodes[i]!
-    if (onScreen(s, p.x(x), p.y(z), 5)) dot(ctx, p.x(x), p.y(z), SWITCH_RADIUS, s.palette.switch, s.palette.outline, 1)
+    if (onScreen(s, p.x(x), p.y(z), 5)) drawSymbol(ctx, 'switch', p.x(x), p.y(z), s.palette)
   }
 }
 
@@ -125,8 +90,7 @@ function drawIndustryMarkers(s: Scene) {
     if (!industryVisible(ind, layers)) continue
     const x = p.x(ind.x), y = p.y(ind.z)
     if (!onScreen(s, x, y, 10)) continue
-    if (isPassengerStop(ind)) diamond(s, x, y, 6)
-    else dot(ctx, x, y, 4, palette.marker, palette.outline, 1.5)
+    drawSymbol(ctx, isPassengerStop(ind) ? 'stop' : 'industry', x, y, palette)
   }
 }
 
@@ -134,7 +98,7 @@ function drawPlaceMarkers(s: Scene) {
   const { ctx, map, p, palette } = s
   for (const area of map.areas) {
     const x = p.x(area.x), y = p.y(area.z)
-    if (onScreen(s, x, y, 10)) dot(ctx, x, y, 4.5, palette.outline, palette.marker, 2)
+    if (onScreen(s, x, y, 10)) drawSymbol(ctx, 'place', x, y, palette)
   }
 }
 
@@ -154,14 +118,14 @@ function labelsFor(s: Scene): Label[] {
 
   if (layers.places) {
     for (const area of [...map.areas].sort((a, b) => b.r - a.r)) {
-      labels.push({ text: area.name, x: p.x(area.x) + 8, y: p.y(area.z), font: `600 12.5px ${FONT}`, color: palette.strong })
+      labels.push({ text: area.name, x: p.x(area.x) + SYMBOL_RADIUS.place + 4, y: p.y(area.z), font: `600 12.5px ${FONT}`, color: palette.strong })
     }
   }
   const industries = map.industries.filter((i) => industryVisible(i, layers))
   const stops = industries.filter(isPassengerStop)
   const others = industries.filter((i) => !isPassengerStop(i))
   const small = (list: MapIndustry[]) =>
-    list.map((i) => ({ text: i.name, x: p.x(i.x) + 9, y: p.y(i.z), font: `11px ${FONT}`, color: palette.ink }))
+    list.map((i) => ({ text: i.name, x: p.x(i.x) + SYMBOL_RADIUS.stop + 3, y: p.y(i.z), font: `11px ${FONT}`, color: palette.ink }))
   if (zoom > STOP_LABEL_ZOOM) labels.push(...small(stops))
   if (zoom > INDUSTRY_LABEL_ZOOM) labels.push(...small(others))
   return labels
@@ -187,7 +151,7 @@ function drawSelection(s: Scene) {
   ctx.strokeStyle = s.accent
   ctx.lineWidth = 2.5
   ctx.beginPath()
-  ctx.arc(p.x(s.selected.x), p.y(s.selected.z), 11, 0, Math.PI * 2)
+  ctx.arc(p.x(s.selected.x), p.y(s.selected.z), 13, 0, Math.PI * 2)
   ctx.stroke()
 }
 
