@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{ map: MapData; hit: MapHit }>()
+const props = defineProps<{ map: MapData; hit: MapHit; live: LiveMapData }>()
 
 const { areaById, industryById, industriesIn } = useMapIndex(props.map)
 
@@ -15,6 +15,16 @@ const info = computed(() => {
       title: hit.name,
       sub: areaById.get(industry?.area ?? '')?.name ?? '',
       lines: (industry?.kinds ?? []).map((k) => KIND_TEXT[k])
+    }
+  }
+  if (hit.type === 'train') {
+    // Read the train from the latest positions, so the card stays current while it moves.
+    const train = props.live.trains.find((t) => t.id === hit.id)
+    if (!train) return { title: hit.name, sub: 'No longer reported by the game server', lines: [] }
+    return {
+      title: train.name,
+      sub: props.live.stale ? `Last known: ${trainMotion(train.speedMph).toLowerCase()}` : trainMotion(train.speedMph),
+      lines: [`${train.cars} ${train.cars === 1 ? 'car' : 'cars'}, locomotives included`]
     }
   }
   if (hit.type === 'switch') {

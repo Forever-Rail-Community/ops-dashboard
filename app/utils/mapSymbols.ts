@@ -3,7 +3,7 @@
 
 type Ctx = CanvasRenderingContext2D
 
-export type MapSymbol = 'place' | 'industry' | 'stop' | 'switch' | 'turntable'
+export type MapSymbol = 'place' | 'industry' | 'stop' | 'switch' | 'turntable' | 'trainMoving' | 'trainStopped'
 
 // Size of each symbol in pixels: the distance from its center to its edge.
 export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
@@ -11,7 +11,9 @@ export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
   industry: 4.5,
   stop: 7.5,
   switch: 3.5,
-  turntable: 7 // used by the key only; on the map a turntable is drawn at its real size
+  turntable: 7, // used by the key only; on the map a turntable is drawn at its real size
+  trainMoving: 9,
+  trainStopped: 9
 }
 
 function paint(ctx: Ctx, fill: string, stroke: string, lineWidth: number) {
@@ -37,6 +39,28 @@ export function drawTurntableShape(ctx: Ctx, x: number, y: number, r: number, br
   ctx.stroke()
 }
 
+// An arrow pointing the way the train is going (degrees clockwise from north, which is up on the map).
+// Filled while moving, outlined while stopped, so the two differ by shape and not only by color.
+export function drawTrainShape(ctx: Ctx, x: number, y: number, heading: number, moving: boolean, palette: MapPalette) {
+  const r = SYMBOL_RADIUS.trainMoving
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate((heading * Math.PI) / 180)
+  ctx.beginPath()
+  ctx.moveTo(0, -r * 1.15)
+  ctx.lineTo(r * 0.8, r * 0.85)
+  ctx.lineTo(0, r * 0.4)
+  ctx.lineTo(-r * 0.8, r * 0.85)
+  ctx.closePath()
+  ctx.lineJoin = 'round'
+  if (moving) {
+    paint(ctx, palette.train, palette.outline, 1.5)
+  } else {
+    paint(ctx, palette.outline, palette.train, 2)
+  }
+  ctx.restore()
+}
+
 export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, palette: MapPalette) {
   const r = SYMBOL_RADIUS[symbol]
   ctx.beginPath()
@@ -59,5 +83,9 @@ export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, pa
       return paint(ctx, palette.switch, palette.outline, 1)
     case 'turntable':
       return drawTurntableShape(ctx, x, y, r, [x - r, y, x + r, y], palette)
+    case 'trainMoving':
+      return drawTrainShape(ctx, x, y, 90, true, palette)
+    case 'trainStopped':
+      return drawTrainShape(ctx, x, y, 90, false, palette)
   }
 }

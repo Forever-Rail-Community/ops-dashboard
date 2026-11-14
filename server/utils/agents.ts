@@ -1,0 +1,107 @@
+// Game servers that run the agent, and their keys. A key is shown once when made; only its hash is kept.
+import { createHash, randomBytes } from 'node:crypto'
+
+export interface RegisteredAgent {
+  id: string
+  game: GameKey
+}
+
+const NAME = /^[a-z0-9][a-z0-9-]{1,39}$/
+
+const hashKey = (key: string) => createHash('sha256').update(key).digest('hex')
+const newKey = () => `fra_${randomBytes(24).toString('base64url')}`
+// The latest report of each kind is kept per server, under "<kind>:<server>".
+const REPORT_KINDS = ['status', 'trains'] as const
+type ReportKind = (typeof REPORT_KINDS)[number]
+const reportKey = (kind: ReportKind, id: string) => `${kind}:${id}`
+
+export function parseAgentInput(body: unknown): RegisteredAgent {
+  const b = (body ?? {}) as Record<string, unknown>
+  const id = typeof b.id === 'string' ? b.id.trim() : ''
+  if (!NAME.test(id)) {
+    throw createError({ statusCode: 400, statusMessage: 'Use 2 to 40 lowercase letters, numbers, and dashes for the name.' })
+  }
+  if (!isGameKey(b.game)) throw createError({ statusCode: 400, statusMessage: 'Pick a game.' })
+  return { id, game: b.game }
+}
+
+// Which server a key belongs to, or null if no server has it (wrong, or removed).
+export async function agentForKey(key: string): Promise<RegisteredAgent | null> {
+  if (!key) return null
+  const sql = await db()
+  const [row] = await sql<RegisteredAgent[]>`SELECT id, game FROM agents WHERE key_hash = ${hashKey(key)}`
+  return row ?? null
+}
+
+export async function listAgents(): Promise<AgentInfo[]> {
+  const sql = await db()
+  const rows = await sql<{ id: string; game: GameKey; created_at: Date; created_by_name: string }[]>`
+    SELECT id, game, created_at, created_by_name FROM agents ORDER BY game, id`
+  const storage = useStorage('data')
+  return Promise.all(
+    rows.map(async (r) => ({
+      id: r.id,
+      game: r.game,
+      createdAt: r.created_at.toISOString(),
+      createdByName: r.created_by_name,
+      lastReportAt: await lastReportAt(r.id)
+    }))
+  )
+}
+
+// Returns the new server's key. This is the only time it can be read.
+export async function createAgent(agent: RegisteredAgent, actor: { id: string; name: string }): Promise<string> {
+  const sql = await db()
+  const key = newKey()
+  const [created] = await sql`
+    INSERT INTO agents (id, game, key_hash, created_by, created_by_name)
+    VALUES (${agent.id}, ${agent.game}, ${hashKey(key)}, ${actor.id}, ${actor.name})
+    ON CONFLICT (id) DO NOTHING RETURNING id`
+  if (!created) throw createError({ statusCode: 409, statusMessage: 'A server with that name already exists.' })
+  return key
+}
+
+// Swaps a server's key for a new one; the old key stops working at once.
+export async function replaceAgentKey(id: string): Promise<string> {
+  const sql = await db()
+  const key = newKey()
+  const [updated] = await sql`UPDATE agents SET key_hash = ${hashKey(key)} WHERE id = ${id} RETURNING id`
+  if (!updated) throw createError({ statusCode: 404, statusMessage: 'Server not found' })
+  return key
+}
+
+// Removes a server: its key stops working and its last reports are deleted.
+export async function deleteAgent(id: string): Promise<void> {
+  const sql = await db()
+  const [removed] = await sql`DELETE FROM agents WHERE id = ${id} RETURNING id`
+  if (!removed) throw createError({ statusCode: 404, statusMessage: 'Server not found' })
+  await Promise.all(REPORT_KINDS.map((kind) => useStorage('data').removeItem(reportKey(kind, id))))
+}
+
+export async function saveReport<Data>(kind: ReportKind, agent: RegisteredAgent, sentAt: string, data: Data) {
+  const stored: StoredReport<Data> = { agentId: agent.id, game: agent.game, sentAt, receivedAt: Date.now(), data }
+  await useStorage('data').setItem(reportKey(kind, agent.id), stored)
+}
+
+export async function readReport<Data>(kind: ReportKind, id: string): Promise<StoredReport<Data> | null> {
+  return useStorage('data').getItem<StoredReport<Data>>(reportKey(kind, id))
+}
+
+// When a server last sent anything, of any kind.
+async function lastReportAt(id: string): Promise<number | null> {
+  const times = await Promise.all(REPORT_KINDS.map(async (kind) => (await readReport(kind, id))?.receivedAt ?? 0))
+  return Math.max(...times) || null
+}
+
+// The latest report of one kind from every server registered for a game, with how old each is.
+export async function latestReports<Data>(game: GameKey, kind: ReportKind, staleAfterSec: number) {
+  const sql = await db()
+  const servers = await sql<{ id: string }[]>`SELECT id FROM agents WHERE game = ${game} ORDER BY id`
+  const now = Date.now()
+  const found = await Promise.all(servers.map(({ id }) => readReport<Data>(kind, id)))
+  return found.flatMap((stored) => {
+    if (!stored) return [] // registered, but hasn't sent this kind yet
+    const ageSec = Math.max(0, Math.round((now - stored.receivedAt) / 1000))
+    return [{ stored, ageSec, stale: ageSec > staleAfterSec }]
+  })
+}

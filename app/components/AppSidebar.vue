@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { ChevronsUpDown, LogOut, Map as MapIcon, ShieldCheck, TrainFront } from '@lucide/vue'
+import { Check, ChevronsUpDown, Gamepad2, LogOut, ShieldCheck } from '@lucide/vue'
 
 const { user, clear } = useUserSession()
-const { site, t } = useSite()
+const { site } = useSite()
 const route = useRoute()
+const { current, labelOf } = useGame()
 
 const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith('admin.')) ?? false)
-const can = (permission: string) => user.value?.permissions?.includes(permission) ?? false
-const pages = computed(() =>
-  [
-    { to: '/map', label: 'Map', icon: MapIcon, show: can('map.view') }
-  ].filter((p) => p.show)
-)
+const features = computed(() => (current.value ? visibleFeatures(current.value, user.value?.permissions) : []))
 const initials = computed(() => (user.value?.name ?? '?').slice(0, 2).toUpperCase())
 
 async function signOut() {
@@ -41,23 +37,40 @@ async function signOut() {
     </SidebarHeader>
 
     <SidebarContent>
+      <!-- Which game you're operating. Picking one opens its section, which also remembers the choice. -->
       <SidebarGroup>
-        <SidebarGroupLabel>Operations</SidebarGroupLabel>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <SidebarMenuButton class="border data-[state=open]:bg-sidebar-accent" tooltip="Change game">
+                  <Gamepad2 />
+                  <span class="truncate font-medium">{{ current?.name ?? 'Choose a game' }}</span>
+                  <ChevronsUpDown class="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent class="w-56" align="start">
+                <DropdownMenuItem v-for="game in GAMES" :key="game.key" as-child>
+                  <NuxtLink :to="`/${game.key}`">
+                    {{ game.name }}
+                    <Check v-if="current?.key === game.key" class="ml-auto" />
+                  </NuxtLink>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroup>
+
+      <SidebarGroup v-if="current && features.length">
+        <SidebarGroupLabel>{{ current.name }}</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton as-child :is-active="route.path === '/'" :tooltip="t('pageTitle')">
-                <NuxtLink to="/">
-                  <TrainFront />
-                  <span>{{ t('pageTitle') }}</span>
-                </NuxtLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem v-for="page in pages" :key="page.to">
-              <SidebarMenuButton as-child :is-active="route.path === page.to" :tooltip="page.label">
-                <NuxtLink :to="page.to">
-                  <component :is="page.icon" />
-                  <span>{{ page.label }}</span>
+            <SidebarMenuItem v-for="feature in features" :key="feature.to">
+              <SidebarMenuButton as-child :is-active="route.path === feature.to" :tooltip="labelOf(feature)">
+                <NuxtLink :to="feature.to">
+                  <component :is="feature.icon" />
+                  <span>{{ labelOf(feature) }}</span>
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -1,4 +1,4 @@
-// Finding what is under the pointer. Towns and industries win over switches, and switches win over plain track.
+// Finding what is under the pointer. Trains win over towns and industries, those over switches, and switches over plain track.
 
 const POINT_RADIUS = 14 // pixels around a town or industry that count as pointing at it
 const SWITCH_RADIUS = 9
@@ -44,8 +44,13 @@ function trackAt(px: number, py: number, map: MapData, p: Projector): MapHit | n
   return best
 }
 
-export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers): MapHit | null {
+export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers, trains: LiveTrain[]): MapHit | null {
   const p = projector(view)
+
+  if (layers.trains) {
+    const train = nearest(trains.map(trainHit), px, py, p, POINT_RADIUS)
+    if (train) return train
+  }
 
   const places = layers.places ? map.areas.map(placeHit) : []
   const industries = map.industries.filter((i) => industryVisible(i, layers)).map(industryHit)

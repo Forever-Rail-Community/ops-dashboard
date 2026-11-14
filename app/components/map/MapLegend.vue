@@ -10,6 +10,11 @@ const SYMBOLS: { symbol: MapSymbol; label: string }[] = [
   { symbol: 'switch', label: 'Switch (shown when zoomed in)' },
   { symbol: 'turntable', label: 'Turntable' }
 ]
+
+const TRAIN_SYMBOLS: { symbol: MapSymbol; label: string }[] = [
+  { symbol: 'trainMoving', label: 'Train moving, pointing the way it goes' },
+  { symbol: 'trainStopped', label: 'Train stopped' }
+]
 </script>
 
 <template>
@@ -18,6 +23,13 @@ const SYMBOLS: { symbol: MapSymbol; label: string }[] = [
     <CardContent class="grid gap-4 text-sm">
       <ul class="grid gap-1.5">
         <li v-for="item in SYMBOLS" :key="item.symbol" class="flex items-center gap-2">
+          <MapSymbolIcon :symbol="item.symbol" />
+          {{ item.label }}
+        </li>
+      </ul>
+
+      <ul v-if="layers.trains" class="grid gap-1.5">
+        <li v-for="item in TRAIN_SYMBOLS" :key="item.symbol" class="flex items-center gap-2">
           <MapSymbolIcon :symbol="item.symbol" />
           {{ item.label }}
         </li>

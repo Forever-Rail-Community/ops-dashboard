@@ -1,3 +1,5 @@
+import type { GameKey } from '../utils/gameKeys'
+
 export interface RouteReport {
   name: string
   port: number
@@ -33,30 +35,60 @@ export interface RailroaderReport {
   }
 }
 
-export interface Snapshot {
-  agentId: string
-  sentAt: string
+// The "status" part of a server's report, one shape per game.
+export interface Run8Status {
   system: SystemReport
   routes: RouteReport[]
   unmapped: { port: number; pid: number }[]
-  railroader?: RailroaderReport | null
 }
 
-// What the dashboard receives. Members get a reduced view (no system stats, pids, cpu or memory).
-export interface AgentStatus {
+export interface RailroaderStatus {
+  system: SystemReport
+  railroader: RailroaderReport
+}
+
+export interface StatusByGame {
+  run8: Run8Status
+  railroader: RailroaderStatus
+}
+
+// The latest report of one kind (status, trains, ...) that the dashboard keeps for each server.
+export interface StoredReport<Data> {
   agentId: string
+  game: GameKey
   sentAt: string
-  receivedAt: number
+  receivedAt: number // the dashboard's clock, so a wrong clock on a game server can't hide an outage
+  data: Data
+}
+
+// A registered game server, as Admin > Servers lists it.
+export interface AgentInfo {
+  id: string
+  game: GameKey
+  createdAt: string
+  createdByName: string
+  lastReportAt: number | null
+}
+
+// What the dashboard receives. Each game has its own endpoint and only gets its own part of a report.
+// Members get a reduced view (no system stats, pids, cpu, memory or error text).
+export interface AgentBase {
+  agentId: string
   ageSec: number
   stale: boolean
-  system: SystemReport | null
-  routes: RouteReport[]
-  unmapped: { port: number; pid: number }[]
-  railroader: RailroaderReport | null
+  system: SystemReport | null // the server machine itself, shown to staff in every game
 }
 
-export interface StatusResponse {
+export interface Run8Agent extends AgentBase {
+  routes: RouteReport[]
+  unmapped: { port: number; pid: number }[]
+}
+
+export interface RailroaderAgent extends AgentBase {
+  railroader: RailroaderReport
+}
+
+export interface GameStatus<Agent extends AgentBase> {
   detailed: boolean
-  staleAfterSec: number
-  agents: AgentStatus[]
+  agents: Agent[]
 }

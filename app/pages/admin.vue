@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ title: 'Admin' })
+
 const { user } = useUserSession()
 const can = (p: string) => user.value?.permissions?.includes(p) ?? false
 
@@ -6,6 +8,7 @@ const tabs = computed(() =>
   [
     can('admin.settings') && { value: 'appearance', label: 'Appearance' },
     can('admin.roles') && { value: 'access', label: 'Access' },
+    can('admin.agents') && { value: 'servers', label: 'Servers' },
     can('admin.activity') && { value: 'activity', label: 'Activity' }
   ].filter(Boolean) as { value: string; label: string }[]
 )
@@ -27,6 +30,9 @@ const tabs = computed(() =>
       </TabsContent>
       <TabsContent v-if="can('admin.roles')" value="access" class="pt-4">
         <AdminAccess />
+      </TabsContent>
+      <TabsContent v-if="can('admin.agents')" value="servers" class="pt-4">
+        <AdminServers />
       </TabsContent>
       <TabsContent v-if="can('admin.activity')" value="activity" class="pt-4">
         <AdminActivity />

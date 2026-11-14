@@ -5,7 +5,8 @@ export const PERMISSIONS = [
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
   { key: 'admin.settings', label: 'Change appearance and wording', group: 'Admin' },
   { key: 'admin.roles', label: 'Manage roles and Discord access', group: 'Admin' },
-  { key: 'admin.activity', label: 'View the activity log', group: 'Admin' }
+  { key: 'admin.activity', label: 'View the activity log', group: 'Admin' },
+  { key: 'admin.agents', label: 'Manage game servers and their agent keys', group: 'Admin' }
 ] as const
 
 export const ALL_PERMISSION_KEYS: string[] = PERMISSIONS.map((p) => p.key)

@@ -9,10 +9,17 @@ interface Scene {
   view: MapViewState
   layers: MapLayers
   selected: MapHit | null
+  live: LiveMapData
   palette: MapPalette
   accent: string // the brand color, used for the selection ring
   p: Projector
   zoom: number // how far in we are relative to the whole-railroad view
+}
+
+// What changes while the map is open, as opposed to the railroad itself.
+export interface LiveMapData {
+  trains: LiveTrain[]
+  stale: boolean // the game server has stopped reporting, so these are last known positions
 }
 
 const FONT = 'Inter Variable, system-ui, sans-serif'
@@ -94,6 +101,17 @@ function drawIndustryMarkers(s: Scene) {
   }
 }
 
+// Faded when the positions are old, so nobody mistakes them for live ones.
+function drawTrains(s: Scene) {
+  const { ctx, p, palette, live } = s
+  ctx.globalAlpha = live.stale ? 0.4 : 1
+  for (const t of live.trains) {
+    const x = p.x(t.x), y = p.y(t.z)
+    if (onScreen(s, x, y, 20)) drawTrainShape(ctx, x, y, t.heading, isMoving(t), palette)
+  }
+  ctx.globalAlpha = 1
+}
+
 function drawPlaceMarkers(s: Scene) {
   const { ctx, map, p, palette } = s
   for (const area of map.areas) {
@@ -113,8 +131,14 @@ interface Label {
 // Labels are listed most important first. A label that would overlap one already drawn is skipped,
 // so zooming in reveals more names instead of piling them on top of each other.
 function labelsFor(s: Scene): Label[] {
-  const { map, layers, p, zoom, palette } = s
+  const { map, layers, p, zoom, palette, live } = s
   const labels: Label[] = []
+
+  if (layers.trains) {
+    for (const t of live.trains) {
+      labels.push({ text: t.name, x: p.x(t.x) + SYMBOL_RADIUS.trainMoving + 4, y: p.y(t.z), font: `600 11.5px ${FONT}`, color: palette.train })
+    }
+  }
 
   if (layers.places) {
     for (const area of [...map.areas].sort((a, b) => b.r - a.r)) {
@@ -148,10 +172,13 @@ function drawLabels(s: Scene) {
 function drawSelection(s: Scene) {
   if (!s.selected) return
   const { ctx, p } = s
+  // A selected train is followed as it moves.
+  const train = s.selected.type === 'train' ? s.live.trains.find((t) => t.id === s.selected!.id) : undefined
+  const at = train ?? s.selected
   ctx.strokeStyle = s.accent
   ctx.lineWidth = 2.5
   ctx.beginPath()
-  ctx.arc(p.x(s.selected.x), p.y(s.selected.z), 13, 0, Math.PI * 2)
+  ctx.arc(p.x(at.x), p.y(at.z), 13, 0, Math.PI * 2)
   ctx.stroke()
 }
 
@@ -179,6 +206,7 @@ export function drawMap(
   view: MapViewState,
   layers: MapLayers,
   selected: MapHit | null,
+  live: LiveMapData,
   palette: MapPalette,
   dpr: number
 ) {
@@ -188,13 +216,14 @@ export function drawMap(
   ctx.textAlign = 'left'
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111'
-  const scene: Scene = { ctx, map, view, layers, selected, palette, accent, p: projector(view), zoom: view.s / view.fit }
+  const scene: Scene = { ctx, map, view, layers, selected, live, palette, accent, p: projector(view), zoom: view.s / view.fit }
 
   drawTrack(scene)
   if (layers.turntables) drawTurntables(scene)
   if (switchesVisible(view, layers)) drawSwitches(scene)
   drawIndustryMarkers(scene)
   if (layers.places) drawPlaceMarkers(scene)
+  if (layers.trains) drawTrains(scene)
   drawLabels(scene)
   drawSelection(scene)
   drawScaleBar(scene)

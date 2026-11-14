@@ -5,7 +5,10 @@ const { data, refresh } = await useFetch<Entry[]>('/api/admin/activity', { key: 
 
 const names: Record<string, string> = {
   'settings.update': 'Changed appearance or wording',
-  'access.update': 'Changed roles or Discord access'
+  'access.update': 'Changed roles or Discord access',
+  'agents.create': 'Added a game server',
+  'agents.key': 'Made a new key for a game server',
+  'agents.delete': 'Removed a game server'
 }
 const when = (iso: string) => new Date(iso).toLocaleString()
 </script>

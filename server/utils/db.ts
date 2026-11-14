@@ -1,41 +1,72 @@
 import postgres from 'postgres'
 
-// The schema lives here as an ordered list. Each entry runs once, so later phases just add entries.
-// Everything is written to be safe to run twice, in case two cold starts race.
+// The schema is a list of named steps. Each runs once per database and is recorded by name, so steps
+// can be added (or removed) without shifting the others. Every step is written to be safe to run twice,
+// in case two cold starts race. A step's name must never change once it has shipped.
+
 // SQL that adds one permission to the named roles. Roles you made yourself are left alone.
 const grantPermission = (permission: string, roleKeys: string[]) =>
   `UPDATE roles SET permissions = permissions || '["${permission}"]'::jsonb
    WHERE key IN (${roleKeys.map((k) => `'${k}'`).join(', ')}) AND NOT (permissions @> '["${permission}"]'::jsonb)`
 
-const MIGRATIONS: string[] = [
-  `CREATE TABLE IF NOT EXISTS settings (
-     key text PRIMARY KEY,
-     value jsonb NOT NULL,
-     updated_at timestamptz NOT NULL DEFAULT now(),
-     updated_by text
-   )`,
-  `CREATE TABLE IF NOT EXISTS roles (
-     key text PRIMARY KEY,
-     label text NOT NULL,
-     permissions jsonb NOT NULL DEFAULT '[]'::jsonb,
-     sort_order int NOT NULL DEFAULT 0
-   )`,
-  `CREATE TABLE IF NOT EXISTS role_mappings (
-     discord_role_id text NOT NULL,
-     role_key text NOT NULL REFERENCES roles(key) ON DELETE CASCADE ON UPDATE CASCADE,
-     PRIMARY KEY (discord_role_id, role_key)
-   )`,
-  `CREATE TABLE IF NOT EXISTS audit_log (
-     id bigserial PRIMARY KEY,
-     at timestamptz NOT NULL DEFAULT now(),
-     actor_id text,
-     actor_name text,
-     action text NOT NULL,
-     detail jsonb
-   )`,
-  // The map page needs its own permission. Give it to the three starting roles; roles you made yourself are left alone.
-  grantPermission('map.view', ['member', 'dispatcher', 'admin'])
+const STEPS: { name: string; sql: string }[] = [
+  {
+    name: 'settings-table',
+    sql: `CREATE TABLE IF NOT EXISTS settings (
+      key text PRIMARY KEY,
+      value jsonb NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      updated_by text
+    )`
+  },
+  {
+    name: 'roles-table',
+    sql: `CREATE TABLE IF NOT EXISTS roles (
+      key text PRIMARY KEY,
+      label text NOT NULL,
+      permissions jsonb NOT NULL DEFAULT '[]'::jsonb,
+      sort_order int NOT NULL DEFAULT 0
+    )`
+  },
+  {
+    name: 'role-mappings-table',
+    sql: `CREATE TABLE IF NOT EXISTS role_mappings (
+      discord_role_id text NOT NULL,
+      role_key text NOT NULL REFERENCES roles(key) ON DELETE CASCADE ON UPDATE CASCADE,
+      PRIMARY KEY (discord_role_id, role_key)
+    )`
+  },
+  {
+    name: 'audit-log-table',
+    sql: `CREATE TABLE IF NOT EXISTS audit_log (
+      id bigserial PRIMARY KEY,
+      at timestamptz NOT NULL DEFAULT now(),
+      actor_id text,
+      actor_name text,
+      action text NOT NULL,
+      detail jsonb
+    )`
+  },
+  // The map page needs its own permission. Give it to the three starting roles.
+  { name: 'grant-map-view', sql: grantPermission('map.view', ['member', 'dispatcher', 'admin']) },
+  // One row per game server that runs the agent. Only a hash of its key is stored.
+  {
+    name: 'agents-table',
+    sql: `CREATE TABLE IF NOT EXISTS agents (
+      id text PRIMARY KEY,
+      game text NOT NULL,
+      key_hash text NOT NULL UNIQUE,
+      created_by text NOT NULL,
+      created_by_name text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )`
+  },
+  { name: 'grant-admin-agents', sql: grantPermission('admin.agents', ['admin']) }
 ]
+
+// Steps used to be tracked by position in the list. The first five positions always meant these steps,
+// so databases from then keep their history. Later positions were reused, so they are ignored.
+const NUMBERED_STEPS = ['settings-table', 'roles-table', 'role-mappings-table', 'audit-log-table', 'grant-map-view']
 
 type Sql = ReturnType<typeof postgres>
 
@@ -54,12 +85,21 @@ function connect(): Sql {
 }
 
 async function migrate(sql: Sql) {
-  await sql`CREATE TABLE IF NOT EXISTS _migrations (id int PRIMARY KEY)`
-  const done = new Set((await sql<{ id: number }[]>`SELECT id FROM _migrations`).map((r) => r.id))
-  for (const [i, statement] of MIGRATIONS.entries()) {
-    if (done.has(i)) continue
-    await sql.unsafe(statement)
-    await sql`INSERT INTO _migrations (id) VALUES (${i}) ON CONFLICT DO NOTHING`
+  await sql`CREATE TABLE IF NOT EXISTS _schema_steps (name text PRIMARY KEY, done_at timestamptz NOT NULL DEFAULT now())`
+
+  const [{ legacy }] = await sql<{ legacy: string | null }[]>`SELECT to_regclass('_migrations')::text AS legacy`
+  if (legacy) {
+    for (const { id } of await sql<{ id: number }[]>`SELECT id FROM _migrations`) {
+      const name = NUMBERED_STEPS[id]
+      if (name) await sql`INSERT INTO _schema_steps (name) VALUES (${name}) ON CONFLICT DO NOTHING`
+    }
+  }
+
+  const done = new Set((await sql<{ name: string }[]>`SELECT name FROM _schema_steps`).map((r) => r.name))
+  for (const step of STEPS) {
+    if (done.has(step.name)) continue
+    await sql.unsafe(step.sql)
+    await sql`INSERT INTO _schema_steps (name) VALUES (${step.name}) ON CONFLICT DO NOTHING`
   }
   await seedDefaults(sql)
 }

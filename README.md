@@ -37,13 +37,8 @@ npm run dev
 ```
 
 Fill in `.env` first. Set `DATABASE_URL` to a Postgres database (a free Neon database works for development too). Route status data is kept in `./.data` locally.
-Test without the real agent:
-
-```
-curl -X POST http://localhost:3000/api/ingest -H "Authorization: Bearer YOUR_INGEST_KEY" -H "Content-Type: application/json" -d @sample.json
-```
-
-(`npm run mock` in the agent folder prints a valid sample body.)
+Test without a game server: add a server in **Admin > Servers**, put its key in the agent's `.env`, set the
+agent's `ingestUrl` to `http://localhost:3000/api/ingest`, and run `node agent.mjs --mock --once` in the agent folder.
 
 ## 3. Deploy to Vercel
 
@@ -53,14 +48,27 @@ curl -X POST http://localhost:3000/api/ingest -H "Authorization: Bearer YOUR_ING
 3. Also add **Neon Postgres** from the Marketplace. It sets `DATABASE_URL` for you. The tables are created
    automatically the first time the site runs.
 4. Add the environment variables from `.env.example` in **Settings > Environment Variables**. The ones you must set are the
-   Discord client ID and secret, `NUXT_APP_SECRET`, `NUXT_INGEST_KEY`, `NUXT_DISCORD_GUILD_ID`, and `NUXT_BOOTSTRAP_ADMIN_IDS`.
+   Discord client ID and secret, `NUXT_APP_SECRET`, `NUXT_DISCORD_GUILD_ID`, and `NUXT_BOOTSTRAP_ADMIN_IDS`.
    Generate secrets with `openssl rand -base64 32`.
 5. Deploy, then add the live `/auth/discord` redirect URL in the Discord portal. Everyone has to sign in again after this update.
 
-## 4. Connect the agent
+## 4. Connect the game servers
 
-In the agent folder, set `ingestUrl` in `agent.config.json` to `https://YOUR-DOMAIN/api/ingest`, and put the
-same value as `NUXT_INGEST_KEY` into the agent's `.env` as `INGEST_KEY`.
+Each game server runs its own copy of the agent with its own key:
+
+1. In **Admin > Servers**, add the server: a name (like `run8-server`) and its game. Copy the key line it shows. It is shown once.
+   (Lost it? Press **New key** on that row; the old key stops working.)
+2. On that server, follow the agent's README: put the key line in its `.env`, set `game` and `ingestUrl` in
+   `agent.config.json`, then install it as a Windows service.
+
+**How reports work:** the key decides which server and game a report belongs to; the dashboard stores only a hash of it.
+A report carries one or more kinds of data (today only `status`). Each game's handlers are in `server/utils/ingest.ts`.
+To add a new kind later (live chat, a leaderboard), add a collector to the agent's `games/<game>/` folder and a handler
+there. Kinds the dashboard doesn't handle yet are skipped, not refused. Removing a server in Admin also removes it
+from the status pages.
+
+**Database steps** are listed by name in `server/utils/db.ts` and each runs once. Add new steps at the end, and never
+rename one that has shipped.
 
 ## Customizing
 
@@ -78,6 +86,15 @@ Dark mode (the dark theme variables are not defined yet),
 
 Rate limiting on `/api/ingest`, update history, and Discord alerts when a route goes down.
 
+## Games
+
+Run8 and Railroader each have their own section: `/run8` and `/railroader` (the map is at `/railroader/map`; the old `/map` address redirects there).
+
+- **Choosing a game:** the first visit to `/` asks "Which game are you operating today?". Opening a game's section remembers it in that browser, so later visits to `/` go straight there. The switcher at the top of the sidebar changes game.
+- **Separate data:** each game has its own status endpoint (`/api/status/run8`, `/api/status/railroader`) that only returns that game's part of the agent's report. The server machine's load is the one thing both show (to staff), since it's the same machine.
+- **Access:** roles work the same in both games for now.
+- **Adding a page to a game:** put it under `app/pages/<game>/` and add it to that game's `features` in `app/utils/games.ts`. That list drives the sidebar, the picker, and the page title.
+
 ## Railroader map
 
 The Map page (sidebar > Map) draws the Railroader track layout: track colored by speed limit, switches, towns, industries, passenger stops and turntables, with search, zoom and layer toggles.
@@ -88,6 +105,28 @@ The Map page (sidebar > Map) draws the Railroader track layout: track colored by
 - **Layout of the code:** `app/utils/map*.ts` (styling, drawing, hit testing, coordinates), `app/composables/useMap*.ts` (camera, input), `app/components/map/*` (the page's parts).
 - **Assumptions:** units are meters, speed limits are mph, and a switch is a track point where three pieces meet. The map data doesn't say, so these come from reading the file.
 - **Curves:** the file stores track pieces as two end points, not their shape. Each point also has a heading, so `app/utils/mapCurve.ts` draws each piece as a smooth curve between them. This is an approximation that looks right but has not been checked against the game's exact curves.
+
+## Live trains on the Railroader map (prototype)
+
+The map shows trains from the "trains" part of Railroader servers' reports: an arrow per train pointing the way it
+goes, filled when moving and outlined when stopped, with its name. Hover for its speed; click for a card that follows
+it. The map asks for positions every 5 seconds while the tab is open. When the server stops reporting for longer
+than `NUXT_STALE_AFTER_SEC`, trains fade and a line above the map says how old they are. Anyone who can view the map
+can see trains.
+
+**Where positions come from:** the Forever Rail Tracker pack, on the machine hosting the session, writes each
+locomotive's position to the game's log every 5 seconds; the agent reads the log and sends a "trains" report.
+Checked against the real game: its positions are the map's own coordinates, and its track ids match the map data.
+
+**Trying it without the game:** add a Railroader server in Admin > Servers, then run (Node.js 22.18 or newer):
+
+    AGENT_KEY=fra_... node scripts/simulate-trains.mjs http://localhost:3000 6
+
+It moves made-up trains along the real track and posts exactly what the agent will. Stop it with Ctrl+C.
+
+**Code:** `server/utils/trainReports.ts` checks reports, `server/api/railroader/trains.get.ts` serves them,
+`app/composables/useLiveTrains.ts` polls, and the drawing is in `app/utils/mapDraw.ts` (`drawTrains`) and
+`app/utils/mapSymbols.ts` (`drawTrainShape`).
 
 ## Light and dark mode
 

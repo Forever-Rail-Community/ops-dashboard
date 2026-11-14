@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { Maximize, Minus, Plus } from '@lucide/vue'
 
-const props = defineProps<{ map: MapData }>()
+// `live` is what moves while the map is open (trains). The railroad itself comes from `map`.
+const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData }>(), {
+  live: () => ({ trains: [], stale: false })
+})
 
 const layers = ref<MapLayers>({ ...DEFAULT_LAYERS })
 const selected = ref<MapHit | null>(null)
@@ -25,7 +28,7 @@ const hoverStyle = computed(() => {
 })
 
 const pointer = useMapPointer(canvas, camera, {
-  hitAt: (x, y) => hitAt(x, y, props.map, view, layers.value),
+  hitAt: (x, y) => hitAt(x, y, props.map, view, layers.value, props.live.trains),
   onHover: (hit) => (hovered.value = hit),
   onSelect: (hit) => (selected.value = hit)
 })
@@ -38,10 +41,10 @@ function redraw() {
   requestAnimationFrame(() => {
     queued = false
     const ctx = canvas.value?.getContext('2d')
-    if (ctx && view.w) drawMap(ctx, props.map, view, layers.value, selected.value, palette.value, dpr)
+    if (ctx && view.w) drawMap(ctx, props.map, view, layers.value, selected.value, props.live, palette.value, dpr)
   })
 }
-watch([view, layers, selected, palette], redraw, { deep: true })
+watch([view, layers, selected, palette, () => props.live], redraw, { deep: true })
 
 // ---- Size: keep the canvas sharp on high-density screens ----
 function fitCanvasToBox() {
@@ -106,6 +109,7 @@ function focusOn(hit: MapHit) {
           <div v-if="hovered.type === 'track'" class="text-muted-foreground">
             {{ hovered.speed ? `Speed limit ${hovered.speed} mph` : 'No speed limit set' }}
           </div>
+          <div v-else-if="hovered.type === 'train'" class="text-muted-foreground">{{ trainMotion(hovered.speed ?? 0) }}</div>
         </div>
 
         <div class="absolute bottom-3 right-3 flex flex-col gap-1.5">
@@ -117,7 +121,7 @@ function focusOn(hit: MapHit) {
     </div>
 
     <div class="flex flex-col gap-4">
-      <MapInfoCard v-if="selected" :map="map" :hit="selected" />
+      <MapInfoCard v-if="selected" :map="map" :hit="selected" :live="live" />
       <MapLegend :layers="layers" :speeds="speeds" />
       <MapLayerPanel v-model="layers" />
       <MapPlaceList :map="map" @pick="focusOn" />

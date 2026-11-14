@@ -6,6 +6,9 @@ const upstashUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API
 const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
 
 export default defineNuxtConfig({
+  // Old address of the map, from before each game had its own section.
+  routeRules: { '/map': { redirect: '/railroader/map' } },
+
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
   modules: ['shadcn-nuxt', 'nuxt-auth-utils'],
@@ -24,7 +27,6 @@ export default defineNuxtConfig({
 
   // Every key here can be overridden with an env var named NUXT_<KEY> (see .env.example).
   runtimeConfig: {
-    ingestKey: '',
     // Discord user IDs (comma-separated) that are always admins. Set this to your own ID.
     bootstrapAdminIds: '',
     staleAfterSec: 90,

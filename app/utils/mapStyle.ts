@@ -12,6 +12,7 @@ export interface MapPalette {
   marker: string // industry dots (and the ring on town dots)
   outline: string // ring around markers (and the fill of town dots)
   speeds: Record<number, string> // by speed limit; 0 is the fallback
+  train: string // live trains: filled when moving, outlined when stopped
 }
 
 const LIGHT_PALETTE: MapPalette = {
@@ -24,7 +25,8 @@ const LIGHT_PALETTE: MapPalette = {
   stop: '#1d4ed8',
   marker: '#18181b',
   outline: '#ffffff',
-  speeds: { 0: '#71717a', 15: '#dc2626', 25: '#ea580c', 30: '#ca8a04', 45: '#16a34a' }
+  speeds: { 0: '#71717a', 15: '#dc2626', 25: '#ea580c', 30: '#ca8a04', 45: '#16a34a' },
+  train: '#7c3aed'
 }
 
 const DARK_PALETTE: MapPalette = {
@@ -37,7 +39,8 @@ const DARK_PALETTE: MapPalette = {
   stop: '#60a5fa',
   marker: '#e4e4e7',
   outline: '#18181b',
-  speeds: { 0: '#a1a1aa', 15: '#f87171', 25: '#fb923c', 30: '#facc15', 45: '#4ade80' }
+  speeds: { 0: '#a1a1aa', 15: '#f87171', 25: '#fb923c', 30: '#facc15', 45: '#4ade80' },
+  train: '#a78bfa'
 }
 
 export const mapPalette = (dark: boolean): MapPalette => (dark ? DARK_PALETTE : LIGHT_PALETTE)
@@ -62,7 +65,8 @@ export const DEFAULT_LAYERS: MapLayers = {
   places: true,
   industries: true,
   stops: true,
-  turntables: true
+  turntables: true,
+  trains: true
 }
 
 export const LAYER_OPTIONS: { key: keyof MapLayers; label: string }[] = [
@@ -71,7 +75,8 @@ export const LAYER_OPTIONS: { key: keyof MapLayers; label: string }[] = [
   { key: 'places', label: 'Town names' },
   { key: 'industries', label: 'Industries' },
   { key: 'stops', label: 'Passenger stops' },
-  { key: 'turntables', label: 'Turntables' }
+  { key: 'turntables', label: 'Turntables' },
+  { key: 'trains', label: 'Live trains' }
 ]
 
 export const isPassengerStop = (industry: MapIndustry) => industry.kinds.includes('passenger')
@@ -86,5 +91,10 @@ export const switchesVisible = (view: MapViewState, layers: MapLayers) =>
   layers.switches && view.s / view.fit > SWITCH_ZOOM
 
 export const switchHit = (id: number, x: number, z: number): MapHit => ({ type: 'switch', id: String(id), name: 'Switch', x, z })
+// A train slower than this is shown as stopped (speeds drift a little while standing).
+const MOVING_MPH = 0.5
+export const isMoving = (train: TrainReport) => train.speedMph >= MOVING_MPH
+export const trainMotion = (speedMph: number) => (speedMph >= MOVING_MPH ? `Moving at ${Math.round(speedMph)} mph` : 'Stopped')
+export const trainHit = (t: TrainReport): MapHit => ({ type: 'train', id: t.id, name: t.name, x: t.x, z: t.z, speed: t.speedMph })
 export const placeHit = (a: MapArea): MapHit => ({ type: 'place', id: a.id, name: a.name, x: a.x, z: a.z })
 export const industryHit = (i: MapIndustry): MapHit => ({ type: 'industry', id: i.id, name: i.name, x: i.x, z: i.z })

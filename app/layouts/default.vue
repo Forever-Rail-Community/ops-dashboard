@@ -1,10 +1,11 @@
 <script setup lang="ts">
 const route = useRoute()
-const { t } = useSite()
+const { current, feature, labelOf } = useGame()
 
-const TITLES: Record<string, string> = { '/map': 'Map' }
+// A game's pages are named by their entry in GAMES (the same name the sidebar shows);
+// other pages name themselves with definePageMeta({ title }).
 const title = computed(() =>
-  route.path.startsWith('/admin') ? 'Admin' : TITLES[route.path] ?? t('pageTitle')
+  feature.value ? `${current.value!.name} · ${labelOf(feature.value)}` : String(route.meta.title ?? '')
 )
 </script>
 

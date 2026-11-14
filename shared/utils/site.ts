@@ -1,6 +1,6 @@
 // Words the interface uses. Admins can rename any of these on the Appearance page.
 export const LABEL_FIELDS = [
-  { key: 'pageTitle', title: 'Home page title', fallback: 'Route status' },
+  { key: 'pageTitle', title: 'Run8 status page title', fallback: 'Route status' },
   { key: 'route', title: 'One route', fallback: 'Route' },
   { key: 'routes', title: 'Several routes', fallback: 'Routes' },
   { key: 'server', title: 'Game server', fallback: 'Server' },
