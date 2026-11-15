@@ -3,7 +3,7 @@
 
 type Ctx = CanvasRenderingContext2D
 
-export type MapSymbol = 'place' | 'industry' | 'stop' | 'switch' | 'turntable' | 'trainMoving' | 'trainStopped'
+export type MapSymbol = 'place' | 'industry' | 'stop' | 'switch' | 'switchOpen' | 'switchClosed' | 'turntable' | 'trainMoving' | 'trainStopped'
 
 // Size of each symbol in pixels: the distance from its center to its edge.
 export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
@@ -11,6 +11,8 @@ export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
   industry: 4.5,
   stop: 7.5,
   switch: 3.5,
+  switchOpen: 3.5,
+  switchClosed: 3.5,
   turntable: 7, // used by the key only; on the map a turntable is drawn at its real size
   trainMoving: 9,
   trainStopped: 9
@@ -78,9 +80,11 @@ export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, pa
       ctx.lineTo(x - r, y)
       ctx.closePath()
       return paint(ctx, palette.stop, palette.outline, 1.5)
-    case 'switch': // small dot
+    case 'switch': // small dot, colored by position when the game reports it
+    case 'switchOpen':
+    case 'switchClosed':
       ctx.arc(x, y, r, 0, Math.PI * 2)
-      return paint(ctx, palette.switch, palette.outline, 1)
+      return paint(ctx, symbol === 'switchOpen' ? palette.switchOpen : symbol === 'switchClosed' ? palette.switchClosed : palette.switch, palette.outline, 1)
     case 'turntable':
       return drawTurntableShape(ctx, x, y, r, [x - r, y, x + r, y], palette)
     case 'trainMoving':

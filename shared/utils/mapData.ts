@@ -2,4 +2,5 @@
 // (and set the same number there). The map page asks for this version in its URL, so browsers never reuse
 // a cached copy in the old shape, and the server refuses to serve a file that wasn't rebuilt.
 // 1: first version. 2: node headings and turntable bridges, for curved track.
-export const MAP_DATA_VERSION = 2
+// 3: the game's ids for track pieces and switches, and the track pieces each industry covers (for live trains).
+export const MAP_DATA_VERSION = 3

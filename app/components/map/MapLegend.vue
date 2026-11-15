@@ -7,7 +7,9 @@ const SYMBOLS: { symbol: MapSymbol; label: string }[] = [
   { symbol: 'place', label: 'Town or area' },
   { symbol: 'industry', label: 'Industry' },
   { symbol: 'stop', label: 'Passenger stop' },
-  { symbol: 'switch', label: 'Switch (shown when zoomed in)' },
+  { symbol: 'switchOpen', label: 'Switch open, lined straight (zoom in)' },
+  { symbol: 'switchClosed', label: 'Switch closed, thrown to the diverging route' },
+  { symbol: 'switch', label: 'Switch, position not reported' },
   { symbol: 'turntable', label: 'Turntable' }
 ]
 

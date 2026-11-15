@@ -7,7 +7,9 @@ export interface MapPalette {
   halo: string // outline behind text so it stays readable over track
   track: string // track with no speed limit set
   turntable: string
-  switch: string
+  switch: string // position not reported
+  switchOpen: string // lined straight (normal)
+  switchClosed: string // thrown to the diverging route
   stop: string // passenger stop diamonds
   marker: string // industry dots (and the ring on town dots)
   outline: string // ring around markers (and the fill of town dots)
@@ -22,6 +24,8 @@ const LIGHT_PALETTE: MapPalette = {
   track: '#52525b',
   turntable: '#3f3f46',
   switch: '#2563eb',
+  switchOpen: '#16a34a',
+  switchClosed: '#dc2626',
   stop: '#1d4ed8',
   marker: '#18181b',
   outline: '#ffffff',
@@ -36,6 +40,8 @@ const DARK_PALETTE: MapPalette = {
   track: '#a1a1aa',
   turntable: '#a1a1aa',
   switch: '#60a5fa',
+  switchOpen: '#4ade80',
+  switchClosed: '#f87171',
   stop: '#60a5fa',
   marker: '#e4e4e7',
   outline: '#18181b',
@@ -90,7 +96,13 @@ const SWITCH_ZOOM = 4
 export const switchesVisible = (view: MapViewState, layers: MapLayers) =>
   layers.switches && view.s / view.fit > SWITCH_ZOOM
 
-export const switchHit = (id: number, x: number, z: number): MapHit => ({ type: 'switch', id: String(id), name: 'Switch', x, z })
+export const switchHit = (gameId: string, x: number, z: number): MapHit => ({ type: 'switch', id: gameId, name: 'Switch', x, z })
+
+// A switch's position in plain words, and its symbol. thrown is undefined when the game hasn't reported it.
+export const switchSymbol = (thrown: boolean | undefined): MapSymbol =>
+  thrown === undefined ? 'switch' : thrown ? 'switchClosed' : 'switchOpen'
+export const switchText = (thrown: boolean | undefined) =>
+  thrown === undefined ? 'Position not reported' : thrown ? 'Closed: thrown to the diverging route' : 'Open: lined straight'
 // A train slower than this is shown as stopped (speeds drift a little while standing).
 const MOVING_MPH = 0.5
 export const isMoving = (train: TrainReport) => train.speedMph >= MOVING_MPH

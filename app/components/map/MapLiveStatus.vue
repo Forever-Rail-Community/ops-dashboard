@@ -1,17 +1,18 @@
 <script setup lang="ts">
 // One line above the map saying whether train positions are live, old, or not coming in at all.
-const props = defineProps<{ response: TrainsResponse | null | undefined; failed: boolean }>()
+const props = defineProps<{ response: LiveResponse | null | undefined; failed: boolean }>()
 
 const text = computed(() => {
   const r = props.response
   if (props.failed) return "Can't load train positions right now."
   if (!r) return 'Loading train positions…'
-  if (r.ageSec === null) return 'No trains reported yet. Positions appear when the Railroader game server starts sending them.'
+  const { ageSec, stale } = r.trainsAge
+  if (ageSec === null) return 'No trains reported yet. Positions appear when the Railroader game server starts sending them.'
   const count = `${r.trains.length} ${r.trains.length === 1 ? 'train' : 'trains'}`
-  if (r.stale) return `The game server stopped reporting ${formatAge(r.ageSec)}. Showing the last known positions of ${count}.`
-  return `${count} live, updated ${formatAge(r.ageSec)}.`
+  if (stale) return `The game server stopped reporting ${formatAge(ageSec)}. Showing the last known positions of ${count}.`
+  return `${count} live, updated ${formatAge(ageSec)}.`
 })
-const warn = computed(() => props.failed || props.response?.stale)
+const warn = computed(() => props.failed || props.response?.trainsAge.stale)
 </script>
 
 <template>

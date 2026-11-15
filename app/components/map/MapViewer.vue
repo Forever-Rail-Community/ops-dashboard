@@ -3,7 +3,7 @@ import { Maximize, Minus, Plus } from '@lucide/vue'
 
 // `live` is what moves while the map is open (trains). The railroad itself comes from `map`.
 const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData }>(), {
-  live: () => ({ trains: [], stale: false })
+  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false })
 })
 
 const layers = ref<MapLayers>({ ...DEFAULT_LAYERS })
@@ -110,6 +110,7 @@ function focusOn(hit: MapHit) {
             {{ hovered.speed ? `Speed limit ${hovered.speed} mph` : 'No speed limit set' }}
           </div>
           <div v-else-if="hovered.type === 'train'" class="text-muted-foreground">{{ trainMotion(hovered.speed ?? 0) }}</div>
+          <div v-else-if="hovered.type === 'switch'" class="text-muted-foreground">{{ switchText(live.switches[hovered.id]) }}</div>
         </div>
 
         <div class="absolute bottom-3 right-3 flex flex-col gap-1.5">

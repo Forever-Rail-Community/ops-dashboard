@@ -1,3 +1,4 @@
+import type { H3Event } from 'h3'
 // Game servers that run the agent, and their keys. A key is shown once when made; only its hash is kept.
 import { createHash, randomBytes } from 'node:crypto'
 
@@ -11,7 +12,7 @@ const NAME = /^[a-z0-9][a-z0-9-]{1,39}$/
 const hashKey = (key: string) => createHash('sha256').update(key).digest('hex')
 const newKey = () => `fra_${randomBytes(24).toString('base64url')}`
 // The latest report of each kind is kept per server, under "<kind>:<server>".
-const REPORT_KINDS = ['status', 'trains'] as const
+const REPORT_KINDS = ['status', 'trains', 'switches'] as const
 type ReportKind = (typeof REPORT_KINDS)[number]
 const reportKey = (kind: ReportKind, id: string) => `${kind}:${id}`
 
@@ -23,6 +24,16 @@ export function parseAgentInput(body: unknown): RegisteredAgent {
   }
   if (!isGameKey(b.game)) throw createError({ statusCode: 400, statusMessage: 'Pick a game.' })
   return { id, game: b.game }
+}
+
+// The server whose key signs this request (Authorization: Bearer <key>). Refuses the request if there is none.
+export async function requireAgent(event: H3Event): Promise<RegisteredAgent> {
+  const header = getHeader(event, 'authorization') ?? ''
+  const agent = await agentForKey(header.startsWith('Bearer ') ? header.slice(7) : '')
+  if (!agent) {
+    throw createError({ statusCode: 401, statusMessage: 'Unknown key. Check the key, or make a new one in Admin > Servers.' })
+  }
+  return agent
 }
 
 // Which server a key belongs to, or null if no server has it (wrong, or removed).

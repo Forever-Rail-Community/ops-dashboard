@@ -3,7 +3,7 @@ import { CircleAlert } from '@lucide/vue'
 
 const { data, error } = useFetch<MapData>(`/api/map?v=${MAP_DATA_VERSION}`, { server: false, lazy: true })
 const forbidden = computed(() => error.value?.statusCode === 403)
-const trains = useLiveTrains()
+const live = useLiveMap(data)
 </script>
 
 <template>
@@ -20,8 +20,8 @@ const trains = useLiveTrains()
   </Alert>
 
   <div v-else-if="data" class="grid gap-3">
-    <MapLiveStatus :response="trains.response.value" :failed="!!trains.error.value" />
-    <MapViewer :map="data" :live="trains.live.value" />
+    <MapLiveStatus :response="live.response.value" :failed="!!live.error.value" />
+    <MapViewer :map="data" :live="live.live.value" />
   </div>
 
   <div v-else class="grid gap-4 lg:grid-cols-[1fr_300px]">

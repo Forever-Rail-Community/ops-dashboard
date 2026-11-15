@@ -15,6 +15,7 @@ export interface MapIndustry {
   x: number
   z: number
   kinds: IndustryKind[]
+  track: number[] // indexes into MapData.segments: the pieces of track that belong to this industry
 }
 
 export interface MapTurntable {
@@ -32,7 +33,9 @@ export interface MapData {
   bounds: [number, number, number, number]
   nodes: [number, number, number][]
   segments: [number, number, number][]
+  segmentIds: string[] // the game's id for each segment, same order
   switches: number[]
+  switchIds: string[] // the game's id for each switch, same order
   areas: MapArea[]
   industries: MapIndustry[]
   turntables: MapTurntable[]

@@ -58,7 +58,7 @@ export function hitAt(px: number, py: number, map: MapData, view: MapViewState, 
   if (point) return point
 
   if (switchesVisible(view, layers)) {
-    const switches = map.switches.map((i) => switchHit(i, map.nodes[i]![0], map.nodes[i]![1]))
+    const switches = map.switches.map((node, k) => switchHit(map.switchIds[k]!, map.nodes[node]![0], map.nodes[node]![1]))
     const found = nearest(switches, px, py, p, SWITCH_RADIUS)
     if (found) return found
   }

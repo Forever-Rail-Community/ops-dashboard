@@ -52,3 +52,26 @@ export function flatten(curve: Curve, steps = 8): Point[] {
   }
   return points
 }
+
+// Distance along a curve: its length, and the point and direction at any distance from its start.
+// Used to put a train on the line as drawn, from the game's "this many meters along this piece".
+export function measureCurve(curve: Curve, steps = 32) {
+  const points = flatten(curve, steps)
+  const along = [0]
+  for (let i = 1; i < points.length; i++) {
+    along.push(along[i - 1]! + Math.hypot(points[i]![0] - points[i - 1]![0], points[i]![1] - points[i - 1]![1]))
+  }
+  const length = along.at(-1)!
+
+  function at(distance: number): { point: Point; direction: Point } {
+    const d = Math.max(0, Math.min(length, distance))
+    let i = 1
+    while (i < points.length - 1 && along[i]! < d) i++
+    const [x1, z1] = points[i - 1]!
+    const [x2, z2] = points[i]!
+    const step = along[i]! - along[i - 1]! || 1
+    const t = (d - along[i - 1]!) / step
+    return { point: [x1 + (x2 - x1) * t, z1 + (z2 - z1) * t], direction: [(x2 - x1) / step, (z2 - z1) / step] }
+  }
+  return { length, at }
+}

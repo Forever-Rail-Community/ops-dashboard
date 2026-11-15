@@ -18,8 +18,10 @@ interface Scene {
 
 // What changes while the map is open, as opposed to the railroad itself.
 export interface LiveMapData {
-  trains: LiveTrain[]
-  stale: boolean // the game server has stopped reporting, so these are last known positions
+  trains: LiveTrain[] // already placed on the drawn track
+  stale: boolean // the game server has stopped reporting trains, so these are last known positions
+  switches: Record<string, boolean> // thrown, by the game's switch id
+  switchesStale: boolean
 }
 
 const FONT = 'Inter Variable, system-ui, sans-serif'
@@ -83,12 +85,15 @@ function drawTurntables(s: Scene) {
 }
 
 // Switches are the track points where three pieces meet. Too small to matter until zoomed in.
+// Green when open (lined straight), red when closed (thrown), blue when the game hasn't reported it.
 function drawSwitches(s: Scene) {
-  const { ctx, map, p } = s
-  for (const i of map.switches) {
-    const [x, z] = map.nodes[i]!
-    if (onScreen(s, p.x(x), p.y(z), 5)) drawSymbol(ctx, 'switch', p.x(x), p.y(z), s.palette)
-  }
+  const { ctx, map, p, live } = s
+  ctx.globalAlpha = live.switchesStale ? 0.4 : 1
+  map.switches.forEach((node, k) => {
+    const [x, z] = map.nodes[node]!
+    if (onScreen(s, p.x(x), p.y(z), 5)) drawSymbol(ctx, switchSymbol(live.switches[map.switchIds[k]!]), p.x(x), p.y(z), s.palette)
+  })
+  ctx.globalAlpha = 1
 }
 
 function drawIndustryMarkers(s: Scene) {

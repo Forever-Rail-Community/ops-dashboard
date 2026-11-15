@@ -1,5 +1,5 @@
-// Sends made-up Railroader trains to the dashboard, moving along the real track, so the live map can be
-// tried before the game sends real positions. It posts exactly what the agent will: a "trains" report.
+// Sends made-up Railroader trains and switch positions to the dashboard, with the trains moving along the real
+// track, so the live map can be tried without the game. It posts what the agent does: "trains" and "switches" reports.
 //
 //   AGENT_KEY=fra_... node scripts/simulate-trains.mjs [dashboard address] [number of trains]
 //   e.g. AGENT_KEY=fra_... node scripts/simulate-trains.mjs http://localhost:3000 6
@@ -48,7 +48,7 @@ function pointOn(piece, distance, forward) {
       const t = step ? Math.min(1, (along - walked) / step) : 0
       const dx = (x2 - x1) * (forward ? 1 : -1)
       const dz = (z2 - z1) * (forward ? 1 : -1)
-      return { x: x1 + (x2 - x1) * t, z: z1 + (z2 - z1) * t, heading: ((Math.atan2(dx, dz) * 180) / Math.PI + 360) % 360 }
+      return { x: x1 + (x2 - x1) * t, z: z1 + (z2 - z1) * t, heading: ((Math.atan2(dx, dz) * 180) / Math.PI + 360) % 360, fromA: along }
     }
     walked += step
   }
@@ -103,18 +103,25 @@ function advance(train, seconds) {
   }
 }
 
+// About a third of the switches start thrown; now and then one is thrown or put back.
+const switchThrown = Object.fromEntries(map.switchIds.map((id) => [id, Math.random() < 0.33]))
+
 async function send() {
   for (const t of trains) advance(t, SEND_EVERY_SEC)
+  const flip = pick(map.switchIds)
+  switchThrown[flip] = !switchThrown[flip]
   const report = {
     game: 'railroader',
     sentAt: new Date().toISOString(),
     reports: {
       trains: {
         trains: trains.map((t) => {
-          const { x, z, heading } = pointOn(pieces[t.piece], t.distance, t.forward)
-          return { id: t.id, name: t.name, x, z, heading, speedMph: t.speed ?? 0, cars: t.cars }
+          const { x, z, heading, fromA } = pointOn(pieces[t.piece], t.distance, t.forward)
+          const track = { segment: map.segmentIds[t.piece], end: 'A', distance: fromA }
+          return { id: t.id, name: t.name, x, z, heading, speedMph: t.speed ?? 0, cars: t.cars, track }
         })
-      }
+      },
+      switches: { thrown: switchThrown }
     }
   }
   try {
@@ -124,7 +131,7 @@ async function send() {
       body: JSON.stringify(report)
     })
     const reply = await res.json().catch(() => ({}))
-    console.log(res.ok ? `Sent ${trains.length} trains. Accepted: ${reply.accepted?.join(', ')}` : `Refused (${res.status}): ${reply.statusMessage ?? res.statusText}`)
+    console.log(res.ok ? `Sent ${trains.length} trains and ${map.switchIds.length} switches. Accepted: ${reply.accepted?.join(', ')}` : `Refused (${res.status}): ${reply.statusMessage ?? res.statusText}`)
   } catch (err) {
     console.error(`Can't reach ${base}: ${err.message}`)
   }

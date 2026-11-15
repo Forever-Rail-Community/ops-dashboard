@@ -11,7 +11,8 @@ const HANDLERS: Record<GameKey, Record<string, Handler>> = {
   },
   railroader: {
     status: (agent, data, sentAt) => saveReport('status', agent, sentAt, parseRailroaderStatus(data)),
-    trains: (agent, data, sentAt) => saveReport('trains', agent, sentAt, parseTrains(data))
+    trains: (agent, data, sentAt) => saveReport('trains', agent, sentAt, parseTrains(data)),
+    switches: (agent, data, sentAt) => saveReport('switches', agent, sentAt, parseSwitches(data))
   }
 }
 

@@ -24,11 +24,12 @@ const info = computed(() => {
     return {
       title: train.name,
       sub: props.live.stale ? `Last known: ${trainMotion(train.speedMph).toLowerCase()}` : trainMotion(train.speedMph),
-      lines: [`${train.cars} ${train.cars === 1 ? 'car' : 'cars'}, locomotives included`]
+      lines: [trainWhere(props.map, train), `${train.cars} ${train.cars === 1 ? 'car' : 'cars'}, locomotives included`]
     }
   }
   if (hit.type === 'switch') {
-    return { title: 'Switch', sub: 'Where one track splits into two', lines: [] }
+    const text = switchText(props.live.switches[hit.id])
+    return { title: 'Switch', sub: props.live.switchesStale ? `Last known: ${text}` : text, lines: [] }
   }
   return {
     title: 'Track',
