@@ -93,10 +93,22 @@ export const tileYToLat = (y: number, z: number) => Math.atan(Math.sinh(Math.PI 
 // Meters across one tile pixel (256 per tile) at this zoom, around the railroad.
 export const tileMetersPerPixel = (z: number) => (2 * Math.PI * EARTH_RADIUS * Math.cos(LAT0 * RAD)) / (256 * 2 ** z)
 
+// Tiles are offered this far (game meters) around the track: enough to fill the map even fully zoomed out
+// (wider at the far-out zooms, where a tall phone screen shows the most and tiles are few), while keeping the
+// tile route from being used as a general map server.
+const tileAreaMargin = (z: number) => (z <= 10 ? 150_000 : 40_000)
+
 // The tiles covering a game-coordinate box at zoom z, as inclusive column and row ranges.
 export function tilesCovering(box: [number, number, number, number], z: number) {
   const corners = [gameToGeo(box[0], box[1]), gameToGeo(box[0], box[3]), gameToGeo(box[2], box[1]), gameToGeo(box[2], box[3])]
   const xs = corners.map((c) => Math.floor(lonToTileX(c.lon, z)))
   const ys = corners.map((c) => Math.floor(latToTileY(c.lat, z)))
   return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }
+}
+
+// The tiles around the railroad at zoom z: the only ones the dashboard serves and the map asks for.
+export function railroadTiles(bounds: [number, number, number, number], z: number) {
+  const [x0, z0, x1, z1] = bounds
+  const m = tileAreaMargin(z)
+  return tilesCovering([x0 - m, z0 - m, x1 + m, z1 + m], z)
 }

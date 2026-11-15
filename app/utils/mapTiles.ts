@@ -48,10 +48,16 @@ function cornerOnScreen(p: Projector, x: number, y: number, z: number): Point {
   return [p.x(gx), p.y(gz)]
 }
 
-export function drawBackground(ctx: Ctx, view: MapViewState, p: Projector, style: TileStyle, tiles: TileCache) {
+export function drawBackground(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, style: TileStyle, tiles: TileCache) {
   const z = tileZoom(view)
   const box: [number, number, number, number] = [p.worldX(0), p.worldZ(view.h), p.worldX(view.w), p.worldZ(0)]
-  const { x0, x1, y0, y1 } = tilesCovering(box, z)
+  // Only the tiles the dashboard serves (around the railroad) are asked for.
+  const onScreen = tilesCovering(box, z)
+  const served = railroadTiles(map.bounds, z)
+  const x0 = Math.max(onScreen.x0, served.x0)
+  const x1 = Math.min(onScreen.x1, served.x1)
+  const y0 = Math.max(onScreen.y0, served.y0)
+  const y1 = Math.min(onScreen.y1, served.y1)
 
   ctx.save()
   ctx.imageSmoothingQuality = 'high'

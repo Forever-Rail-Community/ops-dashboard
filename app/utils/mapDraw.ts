@@ -186,7 +186,7 @@ export function drawMap(
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111'
   const scene: Scene = { ctx, map, view, layers, selected, live, palette, accent, p: projector(view), zoom: view.s / view.fit }
 
-  if (layers.background && tiles) drawBackground(ctx, view, scene.p, palette.tiles, tiles)
+  if (layers.background && tiles) drawBackground(ctx, map, view, scene.p, palette.tiles, tiles)
   drawTrack(ctx, map, view, scene.p, layers.speed, palette)
   if (layers.turntables) drawTurntables(scene)
   if (switchesVisible(view, layers)) drawSwitches(scene)
