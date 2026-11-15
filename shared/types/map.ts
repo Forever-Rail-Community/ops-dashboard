@@ -51,6 +51,7 @@ export interface MapLayers {
   stops: boolean
   turntables: boolean
   trains: boolean
+  signals: boolean // signals and occupied blocks (zoom in)
 }
 
 // What the person is looking at and where it is. Pan/zoom state lives with the viewport size so one object describes the camera.
@@ -65,7 +66,7 @@ export interface MapViewState {
 
 // Something on the map that can be hovered, selected or searched for.
 export interface MapHit {
-  type: 'place' | 'industry' | 'switch' | 'track' | 'train'
+  type: 'place' | 'industry' | 'switch' | 'track' | 'train' | 'signal'
   id: string
   name: string
   x: number

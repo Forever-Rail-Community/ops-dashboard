@@ -4,7 +4,7 @@ import { Maximize, Minus, Plus } from '@lucide/vue'
 // `live` is what moves while the map is open (trains). The railroad itself comes from `map`.
 // `rememberAs` names where the map's position is saved in the browser, so it reopens where it was left.
 const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData; rememberAs?: string }>(), {
-  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false, industries: { cars: {}, passengers: {} }, industriesStale: false, industriesReported: false }),
+  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false, industries: { cars: {}, passengers: {} }, industriesStale: false, industriesReported: false, signals: { layout: null, aspects: {}, occupied: {}, stale: false } }),
   rememberAs: undefined
 })
 
@@ -67,7 +67,7 @@ const hoverStyle = computed(() => {
 const pointer = useMapPointer(canvas, pointerCamera, {
   hitAt: (x, y) => {
     const ctx = canvas.value?.getContext('2d')
-    return ctx ? hitAt(x, y, props.map, view, layers.value, props.live.trains, ctx) : null
+    return ctx ? hitAt(x, y, props.map, view, layers.value, props.live, ctx) : null
   },
   onHover: (hit) => (hovered.value = hit),
   onSelect: (hit) => (selected.value = hit)
@@ -166,6 +166,7 @@ function focusOn(hit: MapHit) {
           </div>
           <div v-else-if="hovered.type === 'train'" class="text-muted-foreground">{{ trainMotion(hovered.speed ?? 0) }}</div>
           <div v-else-if="hovered.type === 'switch'" class="text-muted-foreground">{{ switchText(live.switches[hovered.id]) }}</div>
+          <div v-else-if="hovered.type === 'signal'" class="text-muted-foreground">{{ ASPECT_TEXT[live.signals.aspects[hovered.id] ?? 'unknown'] }}</div>
         </div>
 
         <!-- The tile provider's terms require this credit to stay visible whenever their map is shown. -->

@@ -3,7 +3,9 @@
 
 type Ctx = CanvasRenderingContext2D
 
-export type MapSymbol = 'place' | 'industry' | 'stop' | 'switch' | 'switchOpen' | 'switchClosed' | 'turntable' | 'trainMoving' | 'trainStopped'
+export type MapSymbol =
+  | 'place' | 'industry' | 'stop' | 'switch' | 'switchOpen' | 'switchClosed' | 'turntable' | 'trainMoving' | 'trainStopped'
+  | 'signalStop' | 'signalApproach' | 'signalClear' | 'signalRestricting' | 'blockOccupied'
 
 // Size of each symbol in pixels: the distance from its center to its edge.
 export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
@@ -15,7 +17,78 @@ export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
   switchClosed: 5.5,
   turntable: 7, // used by the key only; on the map a turntable is drawn at its real size
   trainMoving: 9,
-  trainStopped: 9
+  trainStopped: 9,
+  signalStop: 5, // the lamp's radius, ring included
+  signalApproach: 5,
+  signalClear: 5,
+  signalRestricting: 5,
+  blockOccupied: 7 // used by the key only
+}
+
+// The key's signal symbols, by the aspect each stands for.
+const SIGNAL_SYMBOLS: Partial<Record<MapSymbol, SignalAspect>> = {
+  signalStop: 'stop',
+  signalApproach: 'approach',
+  signalClear: 'clear',
+  signalRestricting: 'restricting'
+}
+
+// A signal, drawn the way railroad signal plans draw one: a foot at the edge of the track, a mast running along
+// the track the way its trains go, and a lamp at the end in its aspect's color, set in a ring like a signal's
+// target. Foot, mast and ring share the label color, so a signal reads as one glyph, unlike the round switch
+// markers. Shape adds to color: a bar across the lamp for stop, a hollow lamp for restricting (grey when not
+// reported). Diverging aspects look like their plain ones.
+export interface SignalPose {
+  x: number // the foot, beside the track
+  y: number
+  alongX: number // the way its trains run, on screen (a unit vector)
+  alongY: number
+}
+
+const SIGNAL_FOOT = 5 // half the foot's length, px
+const SIGNAL_MAST = 11 // mast length, px
+const SIGNAL_RING = 2.5 // the target ring around the lamp, px
+
+// Where a signal's lamp is drawn: what the pointer has to be near.
+export const signalLamp = (pose: SignalPose, scale = 1) => {
+  const reach = SIGNAL_MAST + SYMBOL_RADIUS.signalStop * scale + SIGNAL_RING
+  return { x: pose.x + pose.alongX * reach, y: pose.y + pose.alongY * reach }
+}
+
+export function drawSignalShape(ctx: Ctx, pose: SignalPose, aspect: SignalAspect, palette: MapPalette, scale = 1) {
+  const { x, y, alongX, alongY } = pose
+  const r = SYMBOL_RADIUS.signalStop * scale
+  const lamp = signalLamp(pose, scale)
+  const color = palette.aspects[aspect]
+
+  ctx.save()
+  ctx.strokeStyle = palette.ink
+  ctx.lineWidth = 2.25
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(x - alongY * SIGNAL_FOOT, y + alongX * SIGNAL_FOOT) // the foot, across the mast
+  ctx.lineTo(x + alongY * SIGNAL_FOOT, y - alongX * SIGNAL_FOOT)
+  ctx.moveTo(x, y) // the mast
+  ctx.lineTo(x + alongX * SIGNAL_MAST, y + alongY * SIGNAL_MAST)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(lamp.x, lamp.y, r + SIGNAL_RING / 2, 0, Math.PI * 2)
+  ctx.fillStyle = palette.ink
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(lamp.x, lamp.y, r - SIGNAL_RING / 2, 0, Math.PI * 2)
+  if (aspect === 'restricting' || aspect === 'unknown') {
+    paint(ctx, palette.outline, color, 2)
+  } else {
+    ctx.fillStyle = color
+    ctx.fill()
+  }
+  if (aspect === 'stop') {
+    ctx.fillStyle = palette.outline
+    ctx.fillRect(lamp.x - r * 0.6, lamp.y - r * 0.18, r * 1.2, r * 0.36)
+  }
+  ctx.restore()
 }
 
 function paint(ctx: Ctx, fill: string, stroke: string, lineWidth: number) {
@@ -125,5 +198,26 @@ export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, pa
       return drawTrainShape(ctx, x, y, 90, true, palette)
     case 'trainStopped':
       return drawTrainShape(ctx, x, y, 90, false, palette)
+    case 'signalStop':
+    case 'signalApproach':
+    case 'signalClear':
+    case 'signalRestricting':
+      // In the key: foot on the left, lamp on the right, centered on (x, y).
+      return drawSignalShape(ctx, { x: x - 12, y, alongX: 1, alongY: 0 }, SIGNAL_SYMBOLS[symbol]!, palette, scale)
+    case 'blockOccupied': // a short band of track, as drawn on the map
+      ctx.globalAlpha = 0.35
+      ctx.strokeStyle = palette.occupied
+      ctx.lineCap = 'round'
+      ctx.lineWidth = r
+      ctx.moveTo(x - r, y)
+      ctx.lineTo(x + r, y)
+      ctx.stroke()
+      ctx.globalAlpha = 1
+      ctx.lineWidth = 2
+      ctx.strokeStyle = palette.track
+      ctx.beginPath()
+      ctx.moveTo(x - r, y)
+      ctx.lineTo(x + r, y)
+      return ctx.stroke()
   }
 }

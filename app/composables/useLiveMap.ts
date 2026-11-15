@@ -1,8 +1,9 @@
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 import type { Ref } from 'vue'
 
-// What moves on the Railroader map (trains and switch positions), refreshed every 5 seconds while the
-// page is visible. Trains are placed on the track as the map draws it.
+// What moves on the Railroader map (trains, switch positions, cars at industries, signals), refreshed every
+// 5 seconds while the page is visible. Trains are placed on the track as the map draws it. The signal layout is
+// fetched only when its version changes.
 const REFRESH_MS = 5_000
 
 export function useLiveMap(map: Ref<MapData | null | undefined>) {
@@ -19,6 +20,19 @@ export function useLiveMap(map: Ref<MapData | null | undefined>) {
     }
   })
 
+  const signalLayout = ref<RailroaderSignalLayout | null>(null)
+  watch(
+    () => data.value?.signalLayoutVersion,
+    async (version) => {
+      if (!version) return
+      try {
+        signalLayout.value = await $fetch<RailroaderSignalLayout>(`/api/railroader/signal-layout?v=${version}`)
+      } catch {
+        // Keep the last layout; the next version change tries again.
+      }
+    }
+  )
+
   const live = computed<LiveMapData>(() => {
     const trains = data.value?.trains ?? []
     return {
@@ -28,7 +42,13 @@ export function useLiveMap(map: Ref<MapData | null | undefined>) {
       switchesStale: data.value?.switchesAge.stale ?? false,
       industries: data.value?.industries ?? { cars: {}, passengers: {} },
       industriesStale: data.value?.industriesAge?.stale ?? false,
-      industriesReported: (data.value?.industriesAge?.ageSec ?? null) !== null
+      industriesReported: (data.value?.industriesAge?.ageSec ?? null) !== null,
+      signals: {
+        layout: signalLayout.value,
+        aspects: data.value?.signals?.aspects ?? {},
+        occupied: data.value?.signals?.occupied ?? {},
+        stale: data.value?.signalsAge?.stale ?? false
+      }
     }
   })
   return { live, response: data, error }

@@ -162,7 +162,14 @@ The map shows what the Railroader server's agent reports, refreshed every 5 seco
 positions, switch positions, cars at industries and waiting passengers to the game's log; the agent reads the log
 and sends "trains", "switches" and "industries" reports (`server/utils/trainReports.ts`, `industryReports.ts`).
 Checked against the real game: its positions are the map's own coordinates, and its track ids match the map data.
-Not available from the game's mod API: signal aspects, and which switches are CTC/ABS controlled.
+**Signals** come from a second, compiled mod, **Forever Rail Signals** (Railroader's "unsafe DLL" mods; the Relay
+API can't reach signals). It reads the game's CTC classes the way QbanRambo's Map Plus does, and the agent sends
+"signals" (aspects, occupied blocks) and "signallayout" (where signals stand, each block's track). The map draws
+each signal as railroad signal plans do: a foot at the right-hand edge of the track (for its trains), a mast
+along the track the way they run, and a lamp in the aspect's color (a bar across it for stop, hollow for
+restricting). Occupied blocks
+are shaded (`app/utils/mapSignals.ts`, `drawSignalShape` in `app/utils/mapSymbols.ts`). The layout is fetched from `/api/railroader/signal-layout` only when its
+version in the live data changes.
 
 **Trying it without the game:** add a Railroader server in Admin > Servers, then run (Node.js 22.18 or newer):
 

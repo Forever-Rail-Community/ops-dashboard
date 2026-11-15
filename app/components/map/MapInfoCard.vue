@@ -21,6 +21,10 @@ const info = computed(() => {
       lines: [trainWhere(props.map, train), `${train.cars} ${train.cars === 1 ? 'car' : 'cars'}, locomotives included`]
     }
   }
+  if (hit.type === 'signal') {
+    const text = ASPECT_TEXT[props.live.signals.aspects[hit.id] ?? 'unknown']
+    return { title: hit.name, sub: props.live.signals.stale ? `Last known: ${text.toLowerCase()}` : text, lines: [] }
+  }
   if (hit.type === 'switch') {
     const text = switchText(props.live.switches[hit.id])
     return { title: 'Switch', sub: props.live.switchesStale ? `Last known: ${text}` : text, lines: [] }

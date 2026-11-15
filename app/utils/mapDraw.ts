@@ -31,6 +31,15 @@ export interface LiveMapData {
   industries: RailroaderIndustries // cars at industries and passengers waiting
   industriesStale: boolean
   industriesReported: boolean // false until a game server has sent them (needs tracker pack 0.3 or newer)
+  signals: LiveSignals
+}
+
+// Signals from the Forever Rail Signals mod: where they are (fetched separately, rarely) and what they show.
+export interface LiveSignals {
+  layout: RailroaderSignalLayout | null // null until a server has sent one
+  aspects: Record<string, SignalAspect>
+  occupied: Record<string, boolean>
+  stale: boolean
 }
 
 const STOP_LABEL_ZOOM = 3
@@ -187,10 +196,13 @@ export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
   const scene: Scene = { ...frame, ctx, accent, p: projector(view), zoom: view.s / view.fit }
 
   if (layers.background && tiles) drawBackground(ctx, map, view, scene.p, palette.tiles, tiles)
+  const signalsShown = signalsVisible(view, layers)
+  if (signalsShown) drawOccupiedBlocks(ctx, view, scene.p, live.signals, palette)
   drawTrack(ctx, map, view, scene.p, layers.speed, palette)
   if (highlight) drawTrackHighlight(ctx, map, view, scene.p, highlight.track, palette.industry[industryType(highlight)])
   if (layers.turntables) drawTurntables(scene)
   if (switchesVisible(view, layers)) drawSwitches(scene)
+  if (signalsShown) drawSignals(ctx, view, scene.p, live.signals, palette)
   drawIndustryMarkers(scene)
   if (layers.places) drawPlaceMarkers(scene)
   if (layers.trains) drawTrains(scene)

@@ -43,4 +43,7 @@ export interface LiveResponse {
   switchesAge: ReportAge
   industries: RailroaderIndustries // cars at industries and passengers waiting, merged across servers
   industriesAge: ReportAge
+  signals: RailroaderSignals // aspects and occupied blocks, merged across servers
+  signalsAge: ReportAge
+  signalLayoutVersion: number | null // when the newest signal layout arrived; fetch /api/railroader/signal-layout when it changes
 }

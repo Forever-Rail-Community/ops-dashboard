@@ -16,14 +16,19 @@ function distToSegment(px: number, py: number, ax: number, ay: number, bx: numbe
 }
 
 // The closest hit within `radius` pixels of the pointer.
-function nearest(hits: MapHit[], px: number, py: number, p: Projector, radius: number): MapHit | null {
-  let best: MapHit | null = null
+const nearest = (hits: MapHit[], px: number, py: number, p: Projector, radius: number) =>
+  nearestBy(hits, (hit) => ({ x: p.x(hit.x), y: p.y(hit.z) }), px, py, radius)
+
+// The item drawn closest to the pointer, within `radius` pixels, given where each is drawn on screen.
+function nearestBy<T>(items: T[], at: (item: T) => { x: number; y: number }, px: number, py: number, radius: number): T | null {
+  let best: T | null = null
   let bestDist = radius
-  for (const hit of hits) {
-    const d = Math.hypot(px - p.x(hit.x), py - p.y(hit.z))
+  for (const item of items) {
+    const { x, y } = at(item)
+    const d = Math.hypot(px - x, py - y)
     if (d < bestDist) {
       bestDist = d
-      best = hit
+      best = item
     }
   }
   return best
@@ -46,7 +51,8 @@ function trackAt(px: number, py: number, map: MapData, p: Projector): MapHit | n
 }
 
 // `ctx` is only used to measure text, so train tags are laid out exactly as drawn.
-export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers, trains: LiveTrain[], ctx: CanvasRenderingContext2D): MapHit | null {
+export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers, live: LiveMapData, ctx: CanvasRenderingContext2D): MapHit | null {
+  const { trains } = live
   const p = projector(view)
 
   if (layers.trains) {
@@ -60,6 +66,11 @@ export function hitAt(px: number, py: number, map: MapData, view: MapViewState, 
   const industries = map.industries.filter((i) => industryVisible(i, layers)).map(industryHit)
   const point = nearest([...places, ...industries], px, py, p, POINT_RADIUS)
   if (point) return point
+
+  if (signalsVisible(view, layers) && live.signals.layout) {
+    const near = nearestBy(live.signals.layout.signals, (s) => signalLamp(signalPose(s, p)), px, py, SWITCH_RADIUS)
+    if (near) return signalHit(near)
+  }
 
   if (switchesVisible(view, layers)) {
     const switches = map.switches.map((node, k) => switchHit(map.switchIds[k]!, map.nodes[node]![0], map.nodes[node]![1]))

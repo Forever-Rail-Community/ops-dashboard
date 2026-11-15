@@ -21,6 +21,8 @@ export interface MapPalette {
   train: string // live trains: filled when moving, outlined when stopped
   onTrain: string // text on a moving train's tag
   tiles: TileStyle // the real-world map's style
+  aspects: Record<SignalAspect, string> // a signal's lamp, by aspect
+  occupied: string // the band along an occupied block's track
 }
 
 const LIGHT_PALETTE: MapPalette = {
@@ -40,7 +42,9 @@ const LIGHT_PALETTE: MapPalette = {
   speeds: { 0: '#71717a', 15: '#dc2626', 25: '#ea580c', 30: '#ca8a04', 45: '#16a34a' },
   train: '#7c3aed',
   onTrain: '#ffffff',
-  tiles: 'light_all'
+  tiles: 'light_all',
+  aspects: { stop: '#dc2626', approach: '#ca8a04', divergingApproach: '#ca8a04', clear: '#16a34a', divergingClear: '#16a34a', restricting: '#ea580c', unknown: '#71717a' },
+  occupied: '#dc2626'
 }
 
 const DARK_PALETTE: MapPalette = {
@@ -60,7 +64,9 @@ const DARK_PALETTE: MapPalette = {
   speeds: { 0: '#a1a1aa', 15: '#f87171', 25: '#fb923c', 30: '#facc15', 45: '#4ade80' },
   train: '#a78bfa',
   onTrain: '#1e1036',
-  tiles: 'dark_all'
+  tiles: 'dark_all',
+  aspects: { stop: '#f87171', approach: '#facc15', divergingApproach: '#facc15', clear: '#4ade80', divergingClear: '#4ade80', restricting: '#fb923c', unknown: '#a1a1aa' },
+  occupied: '#f87171'
 }
 
 export const mapPalette = (dark: boolean): MapPalette => (dark ? DARK_PALETTE : LIGHT_PALETTE)
@@ -87,7 +93,8 @@ export const DEFAULT_LAYERS: MapLayers = {
   industries: true,
   stops: true,
   turntables: true,
-  trains: true
+  trains: true,
+  signals: true
 }
 
 // An industry's main type, which decides its color and group: the first of these it has.
@@ -140,6 +147,17 @@ export const MAP_KEY: MapKeyRow[] = [
       { symbol: 'switch', label: 'Position not reported' }
     ]
   },
+  {
+    layer: 'signals',
+    label: 'Signals (zoom in)',
+    items: [
+      { symbol: 'signalClear', label: 'Clear (or diverging clear)' },
+      { symbol: 'signalApproach', label: 'Approach (or diverging approach)' },
+      { symbol: 'signalStop', label: 'Stop' },
+      { symbol: 'signalRestricting', label: 'Restricting' },
+      { symbol: 'blockOccupied', label: 'Occupied block' }
+    ]
+  },
   { layer: 'speed', label: 'Color track by speed limit' },
   { layer: 'background', label: 'Real-world map underneath' },
   { layer: 'places', label: 'Towns', symbol: 'place' },
@@ -163,10 +181,23 @@ export const isPassengerStop = (industry: MapIndustry) => industry.kinds.include
 export const industryVisible = (industry: MapIndustry, layers: MapLayers) =>
   isPassengerStop(industry) ? layers.stops : layers.industries
 
-// Switches only appear once you are zoomed in this far (relative to the whole-railroad view).
+// Switches and signals only appear once you are zoomed in this far (relative to the whole-railroad view).
 const SWITCH_ZOOM = 3
 export const switchesVisible = (view: MapViewState, layers: MapLayers) =>
   layers.switches && view.s / view.fit > SWITCH_ZOOM
+export const signalsVisible = (view: MapViewState, layers: MapLayers) =>
+  layers.signals && view.s / view.fit > SWITCH_ZOOM
+
+export const ASPECT_TEXT: Record<SignalAspect, string> = {
+  stop: 'Stop',
+  approach: 'Approach',
+  clear: 'Clear',
+  divergingApproach: 'Diverging approach',
+  divergingClear: 'Diverging clear',
+  restricting: 'Restricting',
+  unknown: 'Aspect not reported'
+}
+export const signalHit = (s: SignalDef): MapHit => ({ type: 'signal', id: s.id, name: s.name || 'Signal', x: s.x, z: s.z })
 
 export const switchHit = (gameId: string, x: number, z: number): MapHit => ({ type: 'switch', id: gameId, name: 'Switch', x, z })
 
