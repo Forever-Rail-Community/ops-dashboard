@@ -43,6 +43,7 @@ export interface MapData {
 
 // Which parts of the map are drawn.
 export interface MapLayers {
+  background: boolean // the real-world map under the track
   speed: boolean
   switches: boolean
   places: boolean

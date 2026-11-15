@@ -10,9 +10,9 @@ export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
   place: 6,
   industry: 4.5,
   stop: 7.5,
-  switch: 3.5,
-  switchOpen: 3.5,
-  switchClosed: 3.5,
+  switch: 5.5,
+  switchOpen: 5.5,
+  switchClosed: 5.5,
   turntable: 7, // used by the key only; on the map a turntable is drawn at its real size
   trainMoving: 9,
   trainStopped: 9
@@ -63,8 +63,38 @@ export function drawTrainShape(ctx: Ctx, x: number, y: number, heading: number, 
   ctx.restore()
 }
 
-export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, palette: MapPalette) {
-  const r = SYMBOL_RADIUS[symbol]
+// A switch: a disc in its state's color with a bar along the track's direction (`angle`, degrees clockwise from
+// north). Straight bar: lined straight. Slanted bar: thrown to the diverging route. Hollow ring: not reported.
+// The shape tells the states apart as well as the color does.
+function drawSwitchShape(ctx: Ctx, symbol: 'switch' | 'switchOpen' | 'switchClosed', x: number, y: number, r: number, angle: number, palette: MapPalette) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate((angle * Math.PI) / 180)
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  if (symbol === 'switch') {
+    paint(ctx, palette.outline, palette.switch, 2)
+    return ctx.restore()
+  }
+  paint(ctx, symbol === 'switchOpen' ? palette.switchOpen : palette.switchClosed, palette.outline, 1.5)
+  ctx.beginPath()
+  if (symbol === 'switchOpen') {
+    ctx.moveTo(0, -r * 0.62)
+    ctx.lineTo(0, r * 0.62)
+  } else {
+    ctx.moveTo(-r * 0.42, r * 0.5)
+    ctx.lineTo(r * 0.42, -r * 0.5)
+  }
+  ctx.strokeStyle = palette.outline
+  ctx.lineWidth = Math.max(1.5, r * 0.3)
+  ctx.lineCap = 'round'
+  ctx.stroke()
+  ctx.restore()
+}
+
+// `angle` turns symbols that follow the track (switches); `scale` enlarges a symbol when zoomed far in.
+export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, palette: MapPalette, angle = 0, scale = 1) {
+  const r = SYMBOL_RADIUS[symbol] * scale
   ctx.beginPath()
   switch (symbol) {
     case 'place': // hollow circle
@@ -80,11 +110,10 @@ export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, pa
       ctx.lineTo(x - r, y)
       ctx.closePath()
       return paint(ctx, palette.stop, palette.outline, 1.5)
-    case 'switch': // small dot, colored by position when the game reports it
+    case 'switch':
     case 'switchOpen':
     case 'switchClosed':
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-      return paint(ctx, symbol === 'switchOpen' ? palette.switchOpen : symbol === 'switchClosed' ? palette.switchClosed : palette.switch, palette.outline, 1)
+      return drawSwitchShape(ctx, symbol, x, y, r, angle, palette)
     case 'turntable':
       return drawTurntableShape(ctx, x, y, r, [x - r, y, x + r, y], palette)
     case 'trainMoving':

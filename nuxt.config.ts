@@ -30,6 +30,12 @@ export default defineNuxtConfig({
     // Discord user IDs (comma-separated) that are always admins. Set this to your own ID.
     bootstrapAdminIds: '',
     staleAfterSec: 90,
+    // Free key from https://carto.com/basemaps/apikey/ for the real-world map under the Railroader map.
+    // Without it, that layer is simply not offered. Redeploy after setting it.
+    cartoKey: '',
+    public: {
+      mapBackground: Boolean(process.env.NUXT_CARTO_KEY)
+    },
     discord: {
       guildId: '',
       // The three role-ID lists below are only used once, to fill in the starting Access settings.

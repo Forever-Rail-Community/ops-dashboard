@@ -23,8 +23,11 @@ function trackIndex(map: MapData): TrackIndex {
 
 // The game's positions are exact, but the map's curves are an approximation, so on a curve a train would sit
 // beside the drawn line. This moves it onto the line at the same distance along the same piece of track.
+// The map's index for the piece of track the train's lead end is on.
+const pieceOf = (map: MapData, train: LiveTrain) => (train.track ? trackIndex(map).segmentById.get(train.track.segment) : undefined)
+
 export function placeOnTrack(map: MapData, train: LiveTrain): LiveTrain {
-  const piece = train.track && trackIndex(map).segmentById.get(train.track.segment)
+  const piece = pieceOf(map, train)
   if (piece === undefined || !train.track) return train
 
   const [a, b] = map.segments[piece]!
@@ -41,11 +44,18 @@ export function placeOnTrack(map: MapData, train: LiveTrain): LiveTrain {
 
 // "At Bryson Freight House" when it's on an industry's track, otherwise "Near <closest town>".
 export function trainWhere(map: MapData, train: LiveTrain): string {
-  const piece = train.track && trackIndex(map).segmentById.get(train.track.segment)
+  const piece = pieceOf(map, train)
   const industry = piece === undefined ? undefined : trackIndex(map).industryBySegment.get(piece)
   if (industry) return `At ${industry.name}`
   const closest = map.areas.reduce((best, area) =>
     Math.hypot(area.x - train.x, area.z - train.z) < Math.hypot(best.x - train.x, best.z - train.z) ? area : best
   )
   return `Near ${closest.name}`
+}
+
+// The posted speed limit where the train's lead end is, or undefined when the map data sets none there.
+export function trainSpeedLimit(map: MapData, train: LiveTrain): number | undefined {
+  const piece = pieceOf(map, train)
+  const limit = piece === undefined ? 0 : map.segments[piece]![2]
+  return limit || undefined
 }

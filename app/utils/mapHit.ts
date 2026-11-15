@@ -1,4 +1,5 @@
-// Finding what is under the pointer. Trains win over towns and industries, those over switches, and switches over plain track.
+// Finding what is under the pointer. Trains (and their tags) win over towns and industries, those over switches,
+// and switches over plain track.
 
 const POINT_RADIUS = 14 // pixels around a town or industry that count as pointing at it
 const SWITCH_RADIUS = 9
@@ -44,10 +45,13 @@ function trackAt(px: number, py: number, map: MapData, p: Projector): MapHit | n
   return best
 }
 
-export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers, trains: LiveTrain[]): MapHit | null {
+// `ctx` is only used to measure text, so train tags are laid out exactly as drawn.
+export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers, trains: LiveTrain[], ctx: CanvasRenderingContext2D): MapHit | null {
   const p = projector(view)
 
   if (layers.trains) {
+    const tag = tagAt(layoutTrainTags(ctx, trains, p, view.w, view.h), px, py)
+    if (tag) return trainHit(tag.train)
     const train = nearest(trains.map(trainHit), px, py, p, POINT_RADIUS)
     if (train) return train
   }

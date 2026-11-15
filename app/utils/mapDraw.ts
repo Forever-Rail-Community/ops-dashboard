@@ -24,8 +24,9 @@ export interface LiveMapData {
   switchesStale: boolean
 }
 
-const FONT = 'Inter Variable, system-ui, sans-serif'
 const STOP_LABEL_ZOOM = 3
+// Town names start past the selection ring, so selecting a town doesn't cover its name.
+const SELECTION_RADIUS = 13
 const INDUSTRY_LABEL_ZOOM = 6
 
 const onScreen = (s: Scene, x: number, y: number, margin = 20) =>
@@ -41,40 +42,6 @@ function label(s: Scene, text: string, x: number, y: number, color = s.palette.i
   ctx.fillText(text, x, y)
 }
 
-// True when a piece lies completely off one side of the screen, judged by its curve's four points.
-function offScreen(s: Scene, points: Point[], margin = 20) {
-  const { view } = s
-  const xs = points.map((q) => q[0])
-  const ys = points.map((q) => q[1])
-  return (
-    Math.max(...xs) < -margin || Math.min(...xs) > view.w + margin ||
-    Math.max(...ys) < -margin || Math.min(...ys) > view.h + margin
-  )
-}
-
-function drawTrack(s: Scene) {
-  const { ctx, map, layers, p, palette } = s
-  ctx.lineCap = 'round'
-  // Thin enough that neighboring yard tracks, a few meters apart, stay separate lines.
-  ctx.lineWidth = Math.min(2.6, Math.max(1.1, 1.1 + Math.log2(s.zoom) * 0.35))
-
-  // One pass per speed limit, so each color is a single path.
-  const limits = layers.speed ? speedLimitsIn(map) : [null]
-  for (const limit of limits) {
-    ctx.strokeStyle = limit === null ? palette.track : speedColor(palette, limit)
-    ctx.beginPath()
-    for (const [a, b, speed] of map.segments) {
-      if (limit !== null && speed !== limit) continue
-      const { from, handle1, handle2, to } = curveBetween(map, a, b)
-      const [start, c1, c2, end] = [from, handle1, handle2, to].map(([x, z]): Point => [p.x(x), p.y(z)])
-      if (offScreen(s, [start!, c1!, c2!, end!])) continue
-      ctx.moveTo(start![0], start![1])
-      ctx.bezierCurveTo(c1![0], c1![1], c2![0], c2![1], end![0], end![1])
-    }
-    ctx.stroke()
-  }
-}
-
 // The pit is a ring, with the bridge drawn across it from the default stall to the one opposite.
 function drawTurntables(s: Scene) {
   const { ctx, map, p, view, palette } = s
@@ -86,12 +53,14 @@ function drawTurntables(s: Scene) {
 
 // Switches are the track points where three pieces meet. Too small to matter until zoomed in.
 // Green when open (lined straight), red when closed (thrown), blue when the game hasn't reported it.
+// Each one is turned to line up with the track through it. Close in, they grow with the track.
 function drawSwitches(s: Scene) {
-  const { ctx, map, p, live } = s
+  const { ctx, map, p, live, view } = s
+  const scale = Math.max(1, view.s / DETAIL_SCALE)
   ctx.globalAlpha = live.switchesStale ? 0.4 : 1
   map.switches.forEach((node, k) => {
-    const [x, z] = map.nodes[node]!
-    if (onScreen(s, p.x(x), p.y(z), 5)) drawSymbol(ctx, switchSymbol(live.switches[map.switchIds[k]!]), p.x(x), p.y(z), s.palette)
+    const [x, z, yaw] = map.nodes[node]!
+    if (onScreen(s, p.x(x), p.y(z), 10)) drawSymbol(ctx, switchSymbol(live.switches[map.switchIds[k]!]), p.x(x), p.y(z), s.palette, yaw, scale)
   })
   ctx.globalAlpha = 1
 }
@@ -133,36 +102,29 @@ interface Label {
   color: string
 }
 
-// Labels are listed most important first. A label that would overlap one already drawn is skipped,
-// so zooming in reveals more names instead of piling them on top of each other.
+// Labels are listed most important first. A label that would overlap one already drawn (or a train's tag) is
+// skipped, so zooming in reveals more names instead of piling them on top of each other.
 function labelsFor(s: Scene): Label[] {
-  const { map, layers, p, zoom, palette, live } = s
+  const { map, layers, p, zoom, palette } = s
   const labels: Label[] = []
-
-  if (layers.trains) {
-    for (const t of live.trains) {
-      labels.push({ text: t.name, x: p.x(t.x) + SYMBOL_RADIUS.trainMoving + 4, y: p.y(t.z), font: `600 11.5px ${FONT}`, color: palette.train })
-    }
-  }
 
   if (layers.places) {
     for (const area of [...map.areas].sort((a, b) => b.r - a.r)) {
-      labels.push({ text: area.name, x: p.x(area.x) + SYMBOL_RADIUS.place + 4, y: p.y(area.z), font: `600 12.5px ${FONT}`, color: palette.strong })
+      labels.push({ text: area.name, x: p.x(area.x) + SELECTION_RADIUS + 3, y: p.y(area.z), font: `600 12.5px ${MAP_FONT}`, color: palette.strong })
     }
   }
   const industries = map.industries.filter((i) => industryVisible(i, layers))
   const stops = industries.filter(isPassengerStop)
   const others = industries.filter((i) => !isPassengerStop(i))
   const small = (list: MapIndustry[]) =>
-    list.map((i) => ({ text: i.name, x: p.x(i.x) + SYMBOL_RADIUS.stop + 3, y: p.y(i.z), font: `11px ${FONT}`, color: palette.ink }))
+    list.map((i) => ({ text: i.name, x: p.x(i.x) + SYMBOL_RADIUS.stop + 3, y: p.y(i.z), font: `11px ${MAP_FONT}`, color: palette.ink }))
   if (zoom > STOP_LABEL_ZOOM) labels.push(...small(stops))
   if (zoom > INDUSTRY_LABEL_ZOOM) labels.push(...small(others))
   return labels
 }
 
-function drawLabels(s: Scene) {
+function drawLabels(s: Scene, taken: number[][]) {
   const { ctx } = s
-  const taken: number[][] = []
   for (const l of labelsFor(s)) {
     if (!onScreen(s, l.x, l.y, 60)) continue
     ctx.font = l.font
@@ -183,17 +145,17 @@ function drawSelection(s: Scene) {
   ctx.strokeStyle = s.accent
   ctx.lineWidth = 2.5
   ctx.beginPath()
-  ctx.arc(p.x(at.x), p.y(at.z), 13, 0, Math.PI * 2)
+  ctx.arc(p.x(at.x), p.y(at.z), SELECTION_RADIUS, 0, Math.PI * 2)
   ctx.stroke()
 }
 
 // Units are assumed to be meters.
 function drawScaleBar(s: Scene) {
   const { ctx, view } = s
-  const steps = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+  const steps = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
   const meters = [...steps].reverse().find((m) => m <= 140 / view.s) ?? steps[0]!
   const px = meters * view.s
-  const y = view.h - 16
+  const y = view.h - 30 // clear of the map credit line
   ctx.strokeStyle = s.palette.ink
   ctx.lineWidth = 2
   ctx.beginPath()
@@ -201,7 +163,7 @@ function drawScaleBar(s: Scene) {
   ctx.moveTo(16, y - 5); ctx.lineTo(16, y + 5)
   ctx.moveTo(16 + px, y - 5); ctx.lineTo(16 + px, y + 5)
   ctx.stroke()
-  ctx.font = `11px ${FONT}`
+  ctx.font = `11px ${MAP_FONT}`
   label(s, meters >= 1000 ? `${meters / 1000} km` : `${meters} m`, 16, y - 13)
 }
 
@@ -213,7 +175,8 @@ export function drawMap(
   selected: MapHit | null,
   live: LiveMapData,
   palette: MapPalette,
-  dpr: number
+  dpr: number,
+  tiles: TileCache | null // null when the real-world map isn't available
 ) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, view.w, view.h)
@@ -223,13 +186,19 @@ export function drawMap(
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111'
   const scene: Scene = { ctx, map, view, layers, selected, live, palette, accent, p: projector(view), zoom: view.s / view.fit }
 
-  drawTrack(scene)
+  if (layers.background && tiles) drawBackground(ctx, view, scene.p, palette.tiles, tiles)
+  drawTrack(ctx, map, view, scene.p, layers.speed, palette)
   if (layers.turntables) drawTurntables(scene)
   if (switchesVisible(view, layers)) drawSwitches(scene)
   drawIndustryMarkers(scene)
   if (layers.places) drawPlaceMarkers(scene)
   if (layers.trains) drawTrains(scene)
-  drawLabels(scene)
+  // Train tags are laid out first so town and industry names keep clear of them, and drawn last so they stay on top.
+  const tags = layers.trains ? layoutTrainTags(ctx, live.trains, scene.p, view.w, view.h) : []
+  drawLabels(scene, tags.map((t) => [...t.box]))
+  ctx.globalAlpha = live.stale ? 0.4 : 1
+  drawTrainTags(ctx, tags, palette)
+  ctx.globalAlpha = 1
   drawSelection(scene)
   drawScaleBar(scene)
 }

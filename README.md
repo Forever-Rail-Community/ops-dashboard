@@ -97,26 +97,58 @@ Run8 and Railroader each have their own section: `/run8` and `/railroader` (the 
 
 ## Railroader map
 
-The Map page (sidebar > Map) draws the Railroader track layout: track colored by speed limit, switches, towns, industries, passenger stops and turntables, with search, zoom and layer toggles.
+The Map page (sidebar > Map) draws the Railroader track layout: track colored by speed limit, switches, towns, industries, passenger stops and turntables, with search and zoom. The Map key card beside it is also where each layer is turned on or off.
 
 - **Who can see it:** the "View the Railroader map" permission (Admin > Access). The data is only sent to signed-in people who have it.
 - **Where the data comes from:** the game's own `Map.json`. To refresh it after a game update, run `node scripts/build-map.mjs "path/to/Map.json"` and redeploy. This writes `server/assets/map.json`. If you change what that script writes, raise `MAP_DATA_VERSION` in `shared/utils/mapData.ts` and the `version` in the script together, so browsers fetch the new file instead of a cached one.
-- **Symbols and the map key:** every symbol is drawn by `app/utils/mapSymbols.ts`. The map and the Map key card both use it, so changing a symbol there changes both.
+- **Track:** drawn by `app/utils/mapTrack.ts`. Far out it is a line colored by speed limit; closer in it sits on a ballast bed so neighboring tracks stay apart; zoomed right in (`DETAIL_SCALE`) it is drawn to scale with two rails and ties, assuming standard gauge.
+- **Symbols and the map key:** every symbol is drawn by `app/utils/mapSymbols.ts`. The map and the Map key card (`app/components/map/MapKey.vue`, rows listed in `MAP_KEY` in `app/utils/mapStyle.ts`) both use it, so changing a symbol there changes both.
 - **Layout of the code:** `app/utils/map*.ts` (styling, drawing, hit testing, coordinates), `app/composables/useMap*.ts` (camera, input), `app/components/map/*` (the page's parts).
 - **Assumptions:** units are meters, speed limits are mph, and a switch is a track point where three pieces meet. The map data doesn't say, so these come from reading the file.
 - **Curves:** the file stores track pieces as two end points, not their shape. Each point also has a heading, so `app/utils/mapCurve.ts` draws each piece as a smooth curve between them. This is an approximation that looks right but has not been checked against the game's exact curves.
+
+## Real-world map under the Railroader map
+
+The Map key has a "Real-world map underneath" layer (off by default) that draws the real map (OpenStreetMap data,
+CARTO's light or dark style to match the theme) under the track.
+
+- **Setting it up:** get a free key at https://carto.com/basemaps/apikey/ (free for non-commercial use up to
+  5 million tile requests a month), add it in Vercel as `NUXT_CARTO_KEY`, and redeploy. Without it the layer is
+  shown greyed out with a note.
+- **How tiles are served:** the browser asks the dashboard's `/map-tiles/<style>/<z>/<x>/<y>` route, which fetches
+  the tile from CARTO with the key and lets Vercel's CDN cache it for 30 days. The key stays on the server, and
+  repeat views don't count against CARTO's limit. The route only serves tiles around the railroad.
+- **The credit line** under the map ("© OpenStreetMap contributors © CARTO") is required by CARTO's terms and
+  must stay visible while the layer is on.
+- **Alignment:** the game's world turns out to be the real line at 1:1 (within 1%) with north up.
+  `shared/utils/mapGeo.ts` fits it to real depot positions from OpenStreetMap (Bryson City, Andrews, Almond);
+  they land 50–170 m from a single straight fit, so that's how far the real map can sit off the drawn track.
+  Around Almond the real line was moved for Fontana Lake, so expect the most difference there. To improve the
+  fit, add more points to `GEO_CONTROL_POINTS`.
+- **Another tile provider:** CARTO says its raster tiles are being phased out in favor of vector tiles. To
+  switch, change the URL in `server/routes/map-tiles/[style]/[z]/[x]/[y].get.ts` and the credit line in
+  `app/components/map/MapViewer.vue`.
+- **Drawing:** `app/utils/mapTiles.ts` places each tile by converting its corners to game coordinates, and shows
+  a stretched lower-zoom tile while a sharper one loads.
 
 ## Live trains and switches on the Railroader map (prototype)
 
 The map shows what the Railroader server's agent reports, refreshed every 5 seconds while the tab is open:
 
-- **Trains:** an arrow per train (locomotives coupled together), pointing the way it goes, filled when moving
-  and outlined when stopped. The game's positions are exact, but the drawn curves are an approximation, so each
+- **Trains:** an arrow per train (locomotives coupled together) on the track, pointing the way it goes, with a tag
+  above it: a direction arrow, its callsign (the lead locomotive's reporting mark and number) and its speed while
+  moving. Moving trains have filled tags, stopped ones outlined tags. Tags that would overlap are moved aside or
+  stacked, and clicking a tag selects the train (`app/utils/mapTrainTags.ts`). The game's positions are exact, but the drawn curves are an approximation, so each
   train is placed on the drawn line at the same distance along the same piece of track (`app/utils/mapTrains.ts`).
   Its card says where it is: "At <industry>" when it's on track that belongs to an industry (from the map data's
   track spans), otherwise "Near <closest town>".
-- **Switches:** green when open (lined straight), red when closed (thrown to the diverging route), blue when the
-  game hasn't reported it. Shown once zoomed in, like before.
+- **Switches:** a disc turned to line up with the track: green with a straight bar when open (lined straight), red
+  with a slanted bar when closed (thrown to the diverging route), a hollow blue ring when the game hasn't reported it.
+  Shown once zoomed in. The slanted bar only means "thrown": the map data doesn't say which leg is the diverging one.
+- **Beside the map:** a Trains tab lists every train (moving first) with its speed, cars and where it is; picking
+  one jumps to it. A train's card shows its speed against the posted limit where its lead end is (amber when more
+  than 2 mph over), and **Follow** keeps it centered as it moves, until the map is dragged. The map reopens where it
+  was left, saved per browser (`rememberAs` on `MapViewer`).
 - When a server stops reporting for longer than `NUXT_STALE_AFTER_SEC`, trains and switches fade and the line above
   the map says how old the positions are. Anyone who can view the map can see them.
 
@@ -133,7 +165,7 @@ It moves made-up trains along the real track and throws switches now and then, p
 
 **Code:** `server/utils/trainReports.ts` checks reports, `server/api/railroader/live.get.ts` serves them,
 `app/composables/useLiveMap.ts` polls and places trains, and the drawing is in `app/utils/mapDraw.ts`
-(`drawTrains`, `drawSwitches`) and `app/utils/mapSymbols.ts`. The agent's setup checks its key with
+(`drawTrains`, `drawSwitches`), `app/utils/mapTrainTags.ts` and `app/utils/mapSymbols.ts`. The agent's setup checks its key with
 `server/api/agent/whoami.get.ts`.
 
 **After rebuilding the map data,** also refresh the tracker pack's switch list:

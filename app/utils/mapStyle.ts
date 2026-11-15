@@ -1,11 +1,15 @@
 // Everything about how the map is styled and labeled, in one place.
 
+export const MAP_FONT = 'Inter Variable, system-ui, sans-serif'
+
 // Every color the map uses, once for a light page and once for a dark one.
 export interface MapPalette {
   ink: string // small labels, scale bar
   strong: string // town names
   halo: string // outline behind text so it stays readable over track
   track: string // track with no speed limit set
+  ballast: string // the bed under the track when zoomed in
+  tie: string // ties, when track is drawn to scale
   turntable: string
   switch: string // position not reported
   switchOpen: string // lined straight (normal)
@@ -15,6 +19,8 @@ export interface MapPalette {
   outline: string // ring around markers (and the fill of town dots)
   speeds: Record<number, string> // by speed limit; 0 is the fallback
   train: string // live trains: filled when moving, outlined when stopped
+  onTrain: string // text on a moving train's tag
+  tiles: TileStyle // the real-world map's style
 }
 
 const LIGHT_PALETTE: MapPalette = {
@@ -22,6 +28,8 @@ const LIGHT_PALETTE: MapPalette = {
   strong: '#09090b',
   halo: 'rgba(255,255,255,0.92)',
   track: '#52525b',
+  ballast: '#e9e9ec',
+  tie: '#b8b8c0',
   turntable: '#3f3f46',
   switch: '#2563eb',
   switchOpen: '#16a34a',
@@ -30,7 +38,9 @@ const LIGHT_PALETTE: MapPalette = {
   marker: '#18181b',
   outline: '#ffffff',
   speeds: { 0: '#71717a', 15: '#dc2626', 25: '#ea580c', 30: '#ca8a04', 45: '#16a34a' },
-  train: '#7c3aed'
+  train: '#7c3aed',
+  onTrain: '#ffffff',
+  tiles: 'light_all'
 }
 
 const DARK_PALETTE: MapPalette = {
@@ -38,6 +48,8 @@ const DARK_PALETTE: MapPalette = {
   strong: '#fafafa',
   halo: 'rgba(10,10,10,0.9)',
   track: '#a1a1aa',
+  ballast: '#2a2a2e',
+  tie: '#47474e',
   turntable: '#a1a1aa',
   switch: '#60a5fa',
   switchOpen: '#4ade80',
@@ -46,7 +58,9 @@ const DARK_PALETTE: MapPalette = {
   marker: '#e4e4e7',
   outline: '#18181b',
   speeds: { 0: '#a1a1aa', 15: '#f87171', 25: '#fb923c', 30: '#facc15', 45: '#4ade80' },
-  train: '#a78bfa'
+  train: '#a78bfa',
+  onTrain: '#1e1036',
+  tiles: 'dark_all'
 }
 
 export const mapPalette = (dark: boolean): MapPalette => (dark ? DARK_PALETTE : LIGHT_PALETTE)
@@ -66,6 +80,7 @@ export const KIND_TEXT: Record<IndustryKind, string> = {
 }
 
 export const DEFAULT_LAYERS: MapLayers = {
+  background: false,
   speed: true,
   switches: true,
   places: true,
@@ -75,14 +90,39 @@ export const DEFAULT_LAYERS: MapLayers = {
   trains: true
 }
 
-export const LAYER_OPTIONS: { key: keyof MapLayers; label: string }[] = [
-  { key: 'speed', label: 'Color track by speed limit' },
-  { key: 'switches', label: 'Switches (zoom in)' },
-  { key: 'places', label: 'Town names' },
-  { key: 'industries', label: 'Industries' },
-  { key: 'stops', label: 'Passenger stops' },
-  { key: 'turntables', label: 'Turntables' },
-  { key: 'trains', label: 'Live trains' }
+// The map key: one row per layer, with its on/off box and symbol, and what its symbols mean listed under it.
+// Track speed limits are listed by the key itself, since they come from the map data.
+export interface MapKeyRow {
+  layer: keyof MapLayers
+  label: string
+  symbol?: MapSymbol
+  items?: { symbol: MapSymbol; label: string }[]
+}
+
+export const MAP_KEY: MapKeyRow[] = [
+  {
+    layer: 'trains',
+    label: 'Live trains',
+    items: [
+      { symbol: 'trainMoving', label: 'Moving: filled tag with its speed' },
+      { symbol: 'trainStopped', label: 'Stopped: outlined tag' }
+    ]
+  },
+  {
+    layer: 'switches',
+    label: 'Switches (zoom in)',
+    items: [
+      { symbol: 'switchOpen', label: 'Open, lined straight' },
+      { symbol: 'switchClosed', label: 'Closed, thrown to the diverging route' },
+      { symbol: 'switch', label: 'Position not reported' }
+    ]
+  },
+  { layer: 'speed', label: 'Color track by speed limit' },
+  { layer: 'background', label: 'Real-world map underneath' },
+  { layer: 'places', label: 'Towns', symbol: 'place' },
+  { layer: 'industries', label: 'Industries', symbol: 'industry' },
+  { layer: 'stops', label: 'Passenger stops', symbol: 'stop' },
+  { layer: 'turntables', label: 'Turntables', symbol: 'turntable' }
 ]
 
 export const isPassengerStop = (industry: MapIndustry) => industry.kinds.includes('passenger')
@@ -92,7 +132,7 @@ export const industryVisible = (industry: MapIndustry, layers: MapLayers) =>
   isPassengerStop(industry) ? layers.stops : layers.industries
 
 // Switches only appear once you are zoomed in this far (relative to the whole-railroad view).
-const SWITCH_ZOOM = 4
+const SWITCH_ZOOM = 3
 export const switchesVisible = (view: MapViewState, layers: MapLayers) =>
   layers.switches && view.s / view.fit > SWITCH_ZOOM
 

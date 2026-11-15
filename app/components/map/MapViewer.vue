@@ -2,8 +2,10 @@
 import { Maximize, Minus, Plus } from '@lucide/vue'
 
 // `live` is what moves while the map is open (trains). The railroad itself comes from `map`.
-const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData }>(), {
-  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false })
+// `rememberAs` names where the map's position is saved in the browser, so it reopens where it was left.
+const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData; rememberAs?: string }>(), {
+  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false }),
+  rememberAs: undefined
 })
 
 const layers = ref<MapLayers>({ ...DEFAULT_LAYERS })
@@ -14,8 +16,35 @@ const wrap = ref<HTMLDivElement>()
 const canvas = ref<HTMLCanvasElement>()
 let dpr = 1
 
-const camera = useMapView(props.map.bounds)
+const camera = useMapView(props.map.bounds, props.rememberAs)
 const { view } = camera
+
+// ---- Following a train: the map keeps it centered at each update, until the map is dragged or another thing is picked ----
+const following = ref<string | null>(null)
+watch(
+  () => props.live.trains,
+  (trains) => {
+    const train = following.value ? trains.find((t) => t.id === following.value) : undefined
+    if (train) camera.centerOn(train.x, train.z)
+  }
+)
+watch(selected, (hit) => {
+  if (hit?.id !== following.value) following.value = null
+})
+function setFollowing(on: boolean) {
+  const hit = selected.value
+  following.value = on && hit?.type === 'train' ? hit.id : null
+  const train = props.live.trains.find((t) => t.id === following.value)
+  if (train) camera.centerOn(train.x, train.z)
+}
+// Moving the map by hand stops following.
+const pointerCamera = {
+  ...camera,
+  panBy: (dx: number, dy: number) => {
+    following.value = null
+    camera.panBy(dx, dy)
+  }
+}
 const { areaById } = useMapIndex(props.map)
 const palette = useMapPalette()
 const speeds = computed(() => speedLimitsIn(props.map))
@@ -27,13 +56,19 @@ const hoverStyle = computed(() => {
   return h.sx > view.w - 220 ? { right: `${view.w - h.sx + 14}px`, top: `${h.sy + 14}px` } : { left: `${h.sx + 14}px`, top: `${h.sy + 14}px` }
 })
 
-const pointer = useMapPointer(canvas, camera, {
-  hitAt: (x, y) => hitAt(x, y, props.map, view, layers.value, props.live.trains),
+const pointer = useMapPointer(canvas, pointerCamera, {
+  hitAt: (x, y) => {
+    const ctx = canvas.value?.getContext('2d')
+    return ctx ? hitAt(x, y, props.map, view, layers.value, props.live.trains, ctx) : null
+  },
   onHover: (hit) => (hovered.value = hit),
   onSelect: (hit) => (selected.value = hit)
 })
 
 // ---- Drawing: redraw (at most once per frame) whenever the camera, layers or selection change ----
+// The real-world map is only offered when the server has a tile key; its tiles redraw the map as they arrive.
+const backgroundAvailable = useRuntimeConfig().public.mapBackground
+const tiles = backgroundAvailable ? new TileCache(() => redraw()) : null
 let queued = false
 function redraw() {
   if (queued) return
@@ -41,7 +76,7 @@ function redraw() {
   requestAnimationFrame(() => {
     queued = false
     const ctx = canvas.value?.getContext('2d')
-    if (ctx && view.w) drawMap(ctx, props.map, view, layers.value, selected.value, props.live, palette.value, dpr)
+    if (ctx && view.w) drawMap(ctx, props.map, view, layers.value, selected.value, props.live, palette.value, dpr, tiles)
   })
 }
 watch([view, layers, selected, palette, () => props.live], redraw, { deep: true })
@@ -67,13 +102,16 @@ onMounted(() => {
 })
 onBeforeUnmount(() => observer?.disconnect())
 
-// ---- Jump to a search result or a place in the list ----
+// ---- Jump to a search result, a place or a train in the lists ----
+const pickTrain = (train: LiveTrain) => focusOn(trainHit(train))
+
 function focusOn(hit: MapHit) {
   selected.value = hit
+  // Towns are framed by their size; a train close enough to see the tracks around it; anything else a bit wider.
   const radius = hit.type === 'place' ? areaById.get(hit.id)?.r : undefined
   const scale = radius
     ? Math.max(view.fit * 4, Math.min(view.w, view.h) / (radius * 2.4))
-    : view.fit * 12
+    : Math.max(view.s, view.fit * (hit.type === 'train' ? 40 : 12))
   camera.flyTo(hit.x, hit.z, scale)
 }
 </script>
@@ -83,7 +121,7 @@ function focusOn(hit: MapHit) {
     <div class="flex min-w-0 flex-col gap-3">
       <MapSearch :map="map" @pick="focusOn" />
 
-      <div ref="wrap" class="relative h-[55vh] min-h-[360px] sm:h-[62vh] sm:min-h-[420px] overflow-hidden rounded-xl border bg-card">
+      <div ref="wrap" class="relative h-[60vh] min-h-[360px] overflow-hidden rounded-xl border bg-card sm:min-h-[440px] lg:h-[calc(100svh-14rem)]">
         <canvas
           ref="canvas"
           class="block cursor-grab touch-none active:cursor-grabbing"
@@ -113,6 +151,12 @@ function focusOn(hit: MapHit) {
           <div v-else-if="hovered.type === 'switch'" class="text-muted-foreground">{{ switchText(live.switches[hovered.id]) }}</div>
         </div>
 
+        <!-- The tile provider's terms require this credit to stay visible whenever their map is shown. -->
+        <p v-if="tiles && layers.background" class="absolute bottom-0 left-0 rounded-tr-md bg-background/80 px-2 py-0.5 text-[11px] text-muted-foreground">
+          © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" class="underline">OpenStreetMap</a> contributors
+          © <a href="https://carto.com/attributions" target="_blank" rel="noopener" class="underline">CARTO</a>
+        </p>
+
         <div class="absolute bottom-3 right-3 flex flex-col gap-1.5">
           <Button size="icon" variant="outline" aria-label="Zoom in" @click="camera.zoomCenter(1.6)"><Plus /></Button>
           <Button size="icon" variant="outline" aria-label="Zoom out" @click="camera.zoomCenter(1 / 1.6)"><Minus /></Button>
@@ -121,11 +165,22 @@ function focusOn(hit: MapHit) {
       </div>
     </div>
 
-    <div class="flex flex-col gap-4">
-      <MapInfoCard v-if="selected" :map="map" :hit="selected" :live="live" />
-      <MapLegend :layers="layers" :speeds="speeds" />
-      <MapLayerPanel v-model="layers" />
-      <MapPlaceList :map="map" @pick="focusOn" />
+    <div class="flex min-w-0 flex-col gap-4">
+      <MapInfoCard v-if="selected" :map="map" :hit="selected" :live="live" :following="following === selected.id" @follow="setFollowing" />
+      <Card class="gap-0 p-3">
+        <Tabs default-value="trains">
+          <TabsList class="w-full">
+            <TabsTrigger value="trains">Trains ({{ live.trains.length }})</TabsTrigger>
+            <TabsTrigger value="key">Map key</TabsTrigger>
+            <TabsTrigger value="places">Places</TabsTrigger>
+          </TabsList>
+          <TabsContent value="trains" class="max-h-[60vh] overflow-auto pt-2">
+            <MapTrainList :map="map" :trains="live.trains" :stale="live.stale" :selected-id="selected?.type === 'train' ? selected.id : undefined" @pick="pickTrain" />
+          </TabsContent>
+          <TabsContent value="key" class="px-1 pt-3"><MapKey v-model="layers" :speeds="speeds" :background-available="backgroundAvailable" /></TabsContent>
+          <TabsContent value="places" class="max-h-[60vh] overflow-auto pt-2"><MapPlaceList :map="map" @pick="focusOn" /></TabsContent>
+        </Tabs>
+      </Card>
     </div>
   </div>
 </template>

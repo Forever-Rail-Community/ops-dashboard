@@ -1,9 +1,28 @@
+import { useDebounceFn } from '@vueuse/core'
+
 // The map's camera: where it is looking, how far in, and the moves that change it (zoom, pan, fly to a place).
 
-const MAX_SCALE = 3 // pixels per world unit
+const MAX_SCALE = 12 // pixels per world unit: close enough to see rails and ties
 const FLY_MS = 350
 
-export function useMapView(bounds: MapData['bounds']) {
+// Where the map was last left, per browser. Only a convenience: if it can't be read, the map shows the whole railroad.
+interface SavedView {
+  cx: number
+  cz: number
+  s: number
+}
+
+function readSaved(key: string): SavedView | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) ?? 'null')
+    return saved && [saved.cx, saved.cz, saved.s].every(Number.isFinite) ? saved : null
+  } catch {
+    return null
+  }
+}
+
+// `rememberAs` names the saved view; without it the map always opens on the whole railroad.
+export function useMapView(bounds: MapData['bounds'], rememberAs?: string) {
   const view = reactive<MapViewState>({ cx: 0, cz: 0, s: 1, w: 0, h: 0, fit: 1 })
   let moved = false // once the person has moved the map, resizing the window no longer re-fits it
   let flight = 0
@@ -18,10 +37,33 @@ export function useMapView(bounds: MapData['bounds']) {
   }
 
   function resize(w: number, h: number) {
+    const first = !view.w
     view.w = w
     view.h = h
     view.fit = fitScale(bounds, w, h)
-    if (!moved) reset()
+    const saved = first && rememberAs ? readSaved(rememberAs) : null
+    if (saved) {
+      moved = true
+      Object.assign(view, { cx: saved.cx, cz: saved.cz, s: clampScale(saved.s) })
+    } else if (!moved) {
+      reset()
+    }
+  }
+
+  if (rememberAs) {
+    const save = useDebounceFn(() => {
+      try {
+        localStorage.setItem(rememberAs, JSON.stringify({ cx: view.cx, cz: view.cz, s: view.s }))
+      } catch {
+        // Storage can be unavailable (private windows); the map just won't reopen here.
+      }
+    }, 500)
+    watch(() => [view.cx, view.cz, view.s], () => view.w && save())
+  }
+
+  // Keeps the zoom and moves the center, as when following a train.
+  function centerOn(x: number, z: number) {
+    flyTo(x, z, view.s)
   }
 
   function panBy(dxPx: number, dyPx: number) {
@@ -64,5 +106,5 @@ export function useMapView(bounds: MapData['bounds']) {
 
   onBeforeUnmount(() => cancelAnimationFrame(flight))
 
-  return { view, reset, resize, panBy, zoomAt, zoomCenter, flyTo }
+  return { view, reset, resize, panBy, zoomAt, zoomCenter, flyTo, centerOn }
 }
