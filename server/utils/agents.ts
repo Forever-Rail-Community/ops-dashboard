@@ -12,7 +12,7 @@ const NAME = /^[a-z0-9][a-z0-9-]{1,39}$/
 const hashKey = (key: string) => createHash('sha256').update(key).digest('hex')
 const newKey = () => `fra_${randomBytes(24).toString('base64url')}`
 // The latest report of each kind is kept per server, under "<kind>:<server>".
-const REPORT_KINDS = ['status', 'trains', 'switches'] as const
+const REPORT_KINDS = ['status', 'trains', 'switches', 'industries'] as const
 type ReportKind = (typeof REPORT_KINDS)[number]
 const reportKey = (kind: ReportKind, id: string) => `${kind}:${id}`
 

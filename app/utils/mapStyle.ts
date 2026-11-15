@@ -14,8 +14,8 @@ export interface MapPalette {
   switch: string // position not reported
   switchOpen: string // lined straight (normal)
   switchClosed: string // thrown to the diverging route
-  stop: string // passenger stop diamonds
-  marker: string // industry dots (and the ring on town dots)
+  industry: Record<IndustryType, string> // industry markers and highlighted track, by main type (passenger: the diamonds)
+  marker: string // the ring on town dots
   outline: string // ring around markers (and the fill of town dots)
   speeds: Record<number, string> // by speed limit; 0 is the fallback
   train: string // live trains: filled when moving, outlined when stopped
@@ -34,7 +34,7 @@ const LIGHT_PALETTE: MapPalette = {
   switch: '#2563eb',
   switchOpen: '#16a34a',
   switchClosed: '#dc2626',
-  stop: '#1d4ed8',
+  industry: { passenger: '#1d4ed8', repair: '#db2777', interchange: '#4d7c0f', loads: '#0f766e', unloads: '#b45309', team: '#52525b', other: '#71717a' },
   marker: '#18181b',
   outline: '#ffffff',
   speeds: { 0: '#71717a', 15: '#dc2626', 25: '#ea580c', 30: '#ca8a04', 45: '#16a34a' },
@@ -54,7 +54,7 @@ const DARK_PALETTE: MapPalette = {
   switch: '#60a5fa',
   switchOpen: '#4ade80',
   switchClosed: '#f87171',
-  stop: '#60a5fa',
+  industry: { passenger: '#60a5fa', repair: '#f472b6', interchange: '#a3e635', loads: '#2dd4bf', unloads: '#fbbf24', team: '#a1a1aa', other: '#71717a' },
   marker: '#e4e4e7',
   outline: '#18181b',
   speeds: { 0: '#a1a1aa', 15: '#f87171', 25: '#fb923c', 30: '#facc15', 45: '#4ade80' },
@@ -90,13 +90,36 @@ export const DEFAULT_LAYERS: MapLayers = {
   trains: true
 }
 
+// An industry's main type, which decides its color and group: the first of these it has.
+export type IndustryType = IndustryKind | 'other'
+export const INDUSTRY_TYPES: IndustryType[] = ['passenger', 'repair', 'interchange', 'loads', 'unloads', 'team', 'other']
+export const industryType = (industry: MapIndustry): IndustryType => INDUSTRY_TYPES.find((t) => industry.kinds.includes(t as IndustryKind)) ?? 'other'
+
+// Group names, and short names for chips and tags.
+export const INDUSTRY_TYPE_TEXT: Record<IndustryType, { group: string; short: string }> = {
+  passenger: { group: 'Passenger', short: 'Passenger' },
+  repair: { group: 'Engine service and repair', short: 'Repair' },
+  interchange: { group: 'Interchange', short: 'Interchange' },
+  loads: { group: 'Loads cars', short: 'Loads' },
+  unloads: { group: 'Unloads cars', short: 'Unloads' },
+  team: { group: 'Team track', short: 'Team track' },
+  other: { group: 'Other', short: 'Other' }
+}
+
+// What else an industry does, besides its main type, in plain words ("Also unloads").
+export function industryAlso(industry: MapIndustry) {
+  const main = industryType(industry)
+  const rest = industry.kinds.filter((k) => k !== main).map((k) => KIND_TEXT[k].toLowerCase())
+  return rest.length ? `Also ${rest.join(' and ')}` : ''
+}
+
 // The map key: one row per layer, with its on/off box and symbol, and what its symbols mean listed under it.
 // Track speed limits are listed by the key itself, since they come from the map data.
 export interface MapKeyRow {
   layer: keyof MapLayers
   label: string
   symbol?: MapSymbol
-  items?: { symbol: MapSymbol; label: string }[]
+  items?: { symbol: MapSymbol; label: string; industryType?: IndustryType }[] // industryType colors the symbol
 }
 
 export const MAP_KEY: MapKeyRow[] = [
@@ -120,12 +143,21 @@ export const MAP_KEY: MapKeyRow[] = [
   { layer: 'speed', label: 'Color track by speed limit' },
   { layer: 'background', label: 'Real-world map underneath' },
   { layer: 'places', label: 'Towns', symbol: 'place' },
-  { layer: 'industries', label: 'Industries', symbol: 'industry' },
+  {
+    layer: 'industries',
+    label: 'Industries, colored by what they do',
+    items: (['loads', 'unloads', 'repair', 'interchange', 'team'] as const).map((t) => ({
+      symbol: 'industry' as const,
+      label: INDUSTRY_TYPE_TEXT[t].group,
+      industryType: t
+    }))
+  },
   { layer: 'stops', label: 'Passenger stops', symbol: 'stop' },
   { layer: 'turntables', label: 'Turntables', symbol: 'turntable' }
 ]
 
 export const isPassengerStop = (industry: MapIndustry) => industry.kinds.includes('passenger')
+
 
 // Passenger stops and other industries are separate layers.
 export const industryVisible = (industry: MapIndustry, layers: MapLayers) =>
@@ -150,3 +182,9 @@ export const trainMotion = (speedMph: number) => (speedMph >= MOVING_MPH ? `Movi
 export const trainHit = (t: TrainReport): MapHit => ({ type: 'train', id: t.id, name: t.name, x: t.x, z: t.z, speed: t.speedMph })
 export const placeHit = (a: MapArea): MapHit => ({ type: 'place', id: a.id, name: a.name, x: a.x, z: a.z })
 export const industryHit = (i: MapIndustry): MapHit => ({ type: 'industry', id: i.id, name: i.name, x: i.x, z: i.z })
+
+// A small tag in an industry type's color: tinted background, colored text (the palette's colors are 6-digit hex).
+export const industryTagStyle = (palette: MapPalette, type: IndustryType) => ({
+  background: `${palette.industry[type]}26`,
+  color: palette.industry[type]
+})

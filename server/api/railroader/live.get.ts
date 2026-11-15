@@ -2,9 +2,10 @@
 export default defineEventHandler(async (event): Promise<LiveResponse> => {
   await requirePermission(event, 'map.view')
   const staleAfter = Number(useRuntimeConfig(event).staleAfterSec)
-  const [trainReports, switchReports] = await Promise.all([
+  const [trainReports, switchReports, industryReports] = await Promise.all([
     latestReports<RailroaderTrains>('railroader', 'trains', staleAfter),
-    latestReports<RailroaderSwitches>('railroader', 'switches', staleAfter)
+    latestReports<RailroaderSwitches>('railroader', 'switches', staleAfter),
+    latestReports<RailroaderIndustries>('railroader', 'industries', staleAfter)
   ])
 
   const ageOf = (reports: { ageSec: number; stale: boolean }[]): ReportAge => ({
@@ -16,6 +17,11 @@ export default defineEventHandler(async (event): Promise<LiveResponse> => {
     trains: trainReports.flatMap(({ stored }) => stored.data.trains.map((t) => ({ ...t, agentId: stored.agentId }))),
     trainsAge: ageOf(trainReports),
     switches: Object.assign({}, ...switchReports.map(({ stored }) => stored.data.thrown)),
-    switchesAge: ageOf(switchReports)
+    switchesAge: ageOf(switchReports),
+    industries: {
+      cars: Object.assign({}, ...industryReports.map(({ stored }) => stored.data.cars)),
+      passengers: Object.assign({}, ...industryReports.map(({ stored }) => stored.data.passengers))
+    },
+    industriesAge: ageOf(industryReports)
   }
 })

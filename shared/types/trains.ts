@@ -41,4 +41,6 @@ export interface LiveResponse {
   trainsAge: ReportAge
   switches: Record<string, boolean>
   switchesAge: ReportAge
+  industries: RailroaderIndustries // cars at industries and passengers waiting, merged across servers
+  industriesAge: ReportAge
 }

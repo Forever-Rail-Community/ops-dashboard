@@ -8,28 +8,51 @@ type Projector = ReturnType<typeof projector>
 const MAX_CACHED = 400 // tiles kept in memory
 const PARENT_LEVELS = 4 // how many zoom levels up to look for a stand-in while a tile loads
 
-// Loads tiles once and remembers them, calling `onLoad` when one arrives so the map can redraw.
+const RETRY_AFTER_MS = [2_000, 8_000, 30_000] // a tile that fails is tried again after these waits, then left blank
+
+interface Entry {
+  image: HTMLImageElement
+  failures: number
+  retryAt: number // when a failed tile may be asked for again (0 while loading or loaded)
+}
+
+// Loads tiles and remembers them, calling `onLoad` when one arrives so the map can redraw. A tile that fails to
+// load (a busy server, a dropped connection) is tried again a few times instead of leaving a permanent gap.
 export class TileCache {
-  private images = new Map<string, HTMLImageElement>()
+  private entries = new Map<string, Entry>()
   constructor(private onLoad: () => void) {}
 
-  // The tile's image if it has loaded; otherwise starts loading it (once) and returns undefined.
+  // The tile's image if it has loaded; otherwise starts loading it and returns undefined.
+  // With `load` false it only looks (used for stand-in tiles from lower zooms).
   get(url: string, load = true): HTMLImageElement | undefined {
-    const image = this.images.get(url)
-    if (image) {
+    const entry = this.entries.get(url)
+    if (entry) {
       // Most recently used last, so the oldest are dropped first.
-      this.images.delete(url)
-      this.images.set(url, image)
-      return image.complete && image.naturalWidth ? image : undefined
+      this.entries.delete(url)
+      this.entries.set(url, entry)
+      if (entry.image.complete && entry.image.naturalWidth) return entry.image
+      if (load && entry.retryAt && Date.now() >= entry.retryAt) this.load(url, entry.failures)
+      return undefined
     }
-    if (!load) return undefined
-    const next = new Image()
-    next.decoding = 'async'
-    next.onload = this.onLoad
-    next.src = url
-    this.images.set(url, next)
-    if (this.images.size > MAX_CACHED) this.images.delete(this.images.keys().next().value!)
+    if (load) this.load(url, 0)
     return undefined
+  }
+
+  private load(url: string, failures: number) {
+    const entry: Entry = { image: new Image(), failures, retryAt: 0 }
+    entry.image.decoding = 'async'
+    entry.image.onload = this.onLoad
+    entry.image.onerror = () => {
+      entry.failures++
+      const wait = RETRY_AFTER_MS[entry.failures - 1]
+      if (wait === undefined) return // given up: stays blank until the page is reloaded
+      entry.retryAt = Date.now() + wait
+      // Redraw once the wait is over, so the retry happens even if nobody moves the map.
+      setTimeout(this.onLoad, wait + 50)
+    }
+    entry.image.src = url
+    this.entries.set(url, entry)
+    if (this.entries.size > MAX_CACHED) this.entries.delete(this.entries.keys().next().value!)
   }
 }
 

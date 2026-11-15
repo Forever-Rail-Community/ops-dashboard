@@ -149,11 +149,18 @@ The map shows what the Railroader server's agent reports, refreshed every 5 seco
   one jumps to it. A train's card shows its speed against the posted limit where its lead end is (amber when more
   than 2 mph over), and **Follow** keeps it centered as it moves, until the map is dragged. The map reopens where it
   was left, saved per browser (`rememberAs` on `MapViewer`).
+- **Towns and industries:** picking a town shows its card (`MapTownCard.vue`): trains in town, then its industries
+  in track order (measured along the track from the end nearest the next town, `app/utils/mapTown.ts`), with
+  filter chips by what they do. Opening an industry highlights its track on the map. An industry's card
+  (`MapIndustryCard.vue`) shows its types, its track, trains on its track, the nearest trains, and, with tracker
+  pack 0.3.0 or newer, the cars on its track (loads and waybills) and passengers waiting at a stop. Industries are
+  colored by their main type (`industryType` in `app/utils/mapStyle.ts`).
 - When a server stops reporting for longer than `NUXT_STALE_AFTER_SEC`, trains and switches fade and the line above
   the map says how old the positions are. Anyone who can view the map can see them.
 
 **Where the data comes from:** the Forever Rail Tracker pack, on the machine hosting the session, writes locomotive
-positions and switch positions to the game's log; the agent reads the log and sends "trains" and "switches" reports.
+positions, switch positions, cars at industries and waiting passengers to the game's log; the agent reads the log
+and sends "trains", "switches" and "industries" reports (`server/utils/trainReports.ts`, `industryReports.ts`).
 Checked against the real game: its positions are the map's own coordinates, and its track ids match the map data.
 Not available from the game's mod API: signal aspects, and which switches are CTC/ABS controlled.
 

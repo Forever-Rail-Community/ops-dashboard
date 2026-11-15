@@ -92,8 +92,13 @@ function drawSwitchShape(ctx: Ctx, symbol: 'switch' | 'switchOpen' | 'switchClos
   ctx.restore()
 }
 
-// `angle` turns symbols that follow the track (switches); `scale` enlarges a symbol when zoomed far in.
-export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, palette: MapPalette, angle = 0, scale = 1) {
+export interface SymbolOptions {
+  angle?: number // turns symbols that follow the track (switches), degrees clockwise from north
+  scale?: number // enlarges a symbol when zoomed far in
+  fill?: string // an industry's color (its main type); otherwise the palette's
+}
+
+export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, palette: MapPalette, { angle = 0, scale = 1, fill }: SymbolOptions = {}) {
   const r = SYMBOL_RADIUS[symbol] * scale
   ctx.beginPath()
   switch (symbol) {
@@ -102,14 +107,14 @@ export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, pa
       return paint(ctx, palette.outline, palette.marker, 2)
     case 'industry': // solid square
       ctx.rect(x - r, y - r, r * 2, r * 2)
-      return paint(ctx, palette.marker, palette.outline, 1.5)
+      return paint(ctx, fill ?? palette.marker, palette.outline, 1.5)
     case 'stop': // diamond
       ctx.moveTo(x, y - r)
       ctx.lineTo(x + r, y)
       ctx.lineTo(x, y + r)
       ctx.lineTo(x - r, y)
       ctx.closePath()
-      return paint(ctx, palette.stop, palette.outline, 1.5)
+      return paint(ctx, fill ?? palette.industry.passenger, palette.outline, 1.5)
     case 'switch':
     case 'switchOpen':
     case 'switchClosed':

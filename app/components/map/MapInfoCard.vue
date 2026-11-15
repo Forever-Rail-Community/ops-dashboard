@@ -4,22 +4,9 @@ import { Crosshair } from '@lucide/vue'
 const props = defineProps<{ map: MapData; hit: MapHit; live: LiveMapData; following: boolean }>()
 const emit = defineEmits<{ follow: [on: boolean] }>()
 
-const { areaById, industryById, industriesIn } = useMapIndex(props.map)
-
-// Title, subtitle and a short list, whatever kind of thing was selected.
+// Title, subtitle and a short list for a train, a switch or plain track. Towns and industries have their own cards.
 const info = computed(() => {
   const { hit } = props
-  if (hit.type === 'place') {
-    return { title: hit.name, sub: 'Town or area', lines: industriesIn(hit.id).map((i) => i.name) }
-  }
-  if (hit.type === 'industry') {
-    const industry = industryById.get(hit.id)
-    return {
-      title: hit.name,
-      sub: areaById.get(industry?.area ?? '')?.name ?? '',
-      lines: (industry?.kinds ?? []).map((k) => KIND_TEXT[k])
-    }
-  }
   if (hit.type === 'train') {
     // Read the train from the latest positions, so the card stays current while it moves.
     const train = props.live.trains.find((t) => t.id === hit.id)

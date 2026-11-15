@@ -4,13 +4,22 @@ import { Maximize, Minus, Plus } from '@lucide/vue'
 // `live` is what moves while the map is open (trains). The railroad itself comes from `map`.
 // `rememberAs` names where the map's position is saved in the browser, so it reopens where it was left.
 const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData; rememberAs?: string }>(), {
-  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false }),
+  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false, industries: { cars: {}, passengers: {} }, industriesStale: false, industriesReported: false }),
   rememberAs: undefined
 })
 
 const layers = ref<MapLayers>({ ...DEFAULT_LAYERS })
 const selected = ref<MapHit | null>(null)
 const hovered = ref<(MapHit & { sx: number; sy: number }) | null>(null)
+
+// ---- What the side card shows, and which industry's track is highlighted ----
+const { areaById, industryById } = useMapIndex(props.map)
+const selectedArea = computed(() => (selected.value?.type === 'place' ? areaById.get(selected.value.id) : undefined))
+const selectedIndustry = computed(() => (selected.value?.type === 'industry' ? industryById.get(selected.value.id) : undefined))
+// Selecting an industry highlights its track; a town card highlights the industry opened in it.
+const highlightId = ref<string | null>(null)
+watch(selected, (hit) => (highlightId.value = hit?.type === 'industry' ? hit.id : null))
+const highlight = computed(() => (highlightId.value ? industryById.get(highlightId.value) ?? null : null))
 
 const wrap = ref<HTMLDivElement>()
 const canvas = ref<HTMLCanvasElement>()
@@ -45,7 +54,6 @@ const pointerCamera = {
     camera.panBy(dx, dy)
   }
 }
-const { areaById } = useMapIndex(props.map)
 const palette = useMapPalette()
 const speeds = computed(() => speedLimitsIn(props.map))
 
@@ -76,10 +84,11 @@ function redraw() {
   requestAnimationFrame(() => {
     queued = false
     const ctx = canvas.value?.getContext('2d')
-    if (ctx && view.w) drawMap(ctx, props.map, view, layers.value, selected.value, props.live, palette.value, dpr, tiles)
+    if (!ctx || !view.w) return
+    drawMap(ctx, { map: props.map, view, layers: layers.value, selected: selected.value, highlight: highlight.value, live: props.live, palette: palette.value, tiles }, dpr)
   })
 }
-watch([view, layers, selected, palette, () => props.live], redraw, { deep: true })
+watch([view, layers, selected, highlight, palette, () => props.live], redraw, { deep: true })
 
 // ---- Size: keep the canvas sharp on high-density screens ----
 function fitCanvasToBox() {
@@ -102,12 +111,20 @@ onMounted(() => {
 })
 onBeforeUnmount(() => observer?.disconnect())
 
-// ---- Jump to a search result, a place or a train in the lists ----
+// ---- Jump to a search result, a place, an industry or a train in the lists ----
 const pickTrain = (train: LiveTrain) => focusOn(trainHit(train))
+const openIndustry = (industry: MapIndustry) => focusOn(industryHit(industry))
+// Frames the industry's own track, with room around it.
+function zoomToIndustry(industry: MapIndustry) {
+  const { x, z, meters } = industryFrame(props.map, industry)
+  camera.flyTo(x, z, Math.min(view.w, view.h) / (meters * 2))
+}
 
 function focusOn(hit: MapHit) {
   selected.value = hit
-  // Towns are framed by their size; a train close enough to see the tracks around it; anything else a bit wider.
+  const industry = hit.type === 'industry' ? industryById.get(hit.id) : undefined
+  if (industry) return zoomToIndustry(industry)
+  // Towns are framed by their size, industries by their track, trains close enough to see the tracks around them.
   const radius = hit.type === 'place' ? areaById.get(hit.id)?.r : undefined
   const scale = radius
     ? Math.max(view.fit * 4, Math.min(view.w, view.h) / (radius * 2.4))
@@ -117,7 +134,7 @@ function focusOn(hit: MapHit) {
 </script>
 
 <template>
-  <div class="grid gap-4 lg:grid-cols-[1fr_300px]">
+  <div class="grid gap-4 lg:grid-cols-[1fr_340px]">
     <div class="flex min-w-0 flex-col gap-3">
       <MapSearch :map="map" @pick="focusOn" />
 
@@ -166,7 +183,30 @@ function focusOn(hit: MapHit) {
     </div>
 
     <div class="flex min-w-0 flex-col gap-4">
-      <MapInfoCard v-if="selected" :map="map" :hit="selected" :live="live" :following="following === selected.id" @follow="setFollowing" />
+      <MapTownCard
+        v-if="selectedArea"
+        :map="map"
+        :area="selectedArea"
+        :live="live"
+        :highlight-id="highlightId"
+        @highlight="highlightId = $event"
+        @open-industry="openIndustry"
+        @pick-train="pickTrain"
+        @zoom-town="focusOn(placeHit(selectedArea))"
+      />
+      <MapIndustryCard
+        v-else-if="selectedIndustry"
+        :map="map"
+        :industry="selectedIndustry"
+        :live="live"
+        :track-shown="highlightId === selectedIndustry.id"
+        @back="focusOn(placeHit($event))"
+        @zoom="zoomToIndustry(selectedIndustry)"
+        @show-track="highlightId = $event ? selectedIndustry.id : null"
+        @open-industry="openIndustry"
+        @pick-train="pickTrain"
+      />
+      <MapInfoCard v-else-if="selected" :map="map" :hit="selected" :live="live" :following="following === selected.id" @follow="setFollowing" />
       <Card class="gap-0 p-3">
         <Tabs default-value="trains">
           <TabsList class="w-full">

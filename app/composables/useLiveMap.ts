@@ -25,7 +25,10 @@ export function useLiveMap(map: Ref<MapData | null | undefined>) {
       trains: map.value ? trains.map((t) => placeOnTrack(map.value!, t)) : trains,
       stale: data.value?.trainsAge.stale ?? false,
       switches: data.value?.switches ?? {},
-      switchesStale: data.value?.switchesAge.stale ?? false
+      switchesStale: data.value?.switchesAge.stale ?? false,
+      industries: data.value?.industries ?? { cars: {}, passengers: {} },
+      industriesStale: data.value?.industriesAge?.stale ?? false,
+      industriesReported: (data.value?.industriesAge?.ageSec ?? null) !== null
     }
   })
   return { live, response: data, error }

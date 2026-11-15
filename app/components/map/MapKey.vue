@@ -28,8 +28,8 @@ const trackItems = computed(() =>
       </label>
 
       <ul v-if="row.items" class="grid gap-1 pl-6.5 text-muted-foreground" :class="{ 'opacity-50': !layers[row.layer] }">
-        <li v-for="item in row.items" :key="item.symbol" class="flex items-center gap-2">
-          <MapSymbolIcon :symbol="item.symbol" />
+        <li v-for="item in row.items" :key="item.label" class="flex items-center gap-2">
+          <MapSymbolIcon :symbol="item.symbol" :fill="item.industryType && palette.industry[item.industryType]" />
           {{ item.label }}
         </li>
       </ul>

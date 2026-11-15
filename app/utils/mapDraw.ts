@@ -3,14 +3,20 @@
 type Ctx = CanvasRenderingContext2D
 type Projector = ReturnType<typeof projector>
 
-interface Scene {
-  ctx: Ctx
+// Everything one drawing of the map depends on.
+export interface MapFrame {
   map: MapData
   view: MapViewState
   layers: MapLayers
   selected: MapHit | null
+  highlight: MapIndustry | null // an industry whose track is highlighted
   live: LiveMapData
   palette: MapPalette
+  tiles: TileCache | null // null when the real-world map isn't available
+}
+
+interface Scene extends MapFrame {
+  ctx: Ctx
   accent: string // the brand color, used for the selection ring
   p: Projector
   zoom: number // how far in we are relative to the whole-railroad view
@@ -22,6 +28,9 @@ export interface LiveMapData {
   stale: boolean // the game server has stopped reporting trains, so these are last known positions
   switches: Record<string, boolean> // thrown, by the game's switch id
   switchesStale: boolean
+  industries: RailroaderIndustries // cars at industries and passengers waiting
+  industriesStale: boolean
+  industriesReported: boolean // false until a game server has sent them (needs tracker pack 0.3 or newer)
 }
 
 const STOP_LABEL_ZOOM = 3
@@ -60,7 +69,7 @@ function drawSwitches(s: Scene) {
   ctx.globalAlpha = live.switchesStale ? 0.4 : 1
   map.switches.forEach((node, k) => {
     const [x, z, yaw] = map.nodes[node]!
-    if (onScreen(s, p.x(x), p.y(z), 10)) drawSymbol(ctx, switchSymbol(live.switches[map.switchIds[k]!]), p.x(x), p.y(z), s.palette, yaw, scale)
+    if (onScreen(s, p.x(x), p.y(z), 10)) drawSymbol(ctx, switchSymbol(live.switches[map.switchIds[k]!]), p.x(x), p.y(z), s.palette, { angle: yaw, scale })
   })
   ctx.globalAlpha = 1
 }
@@ -71,7 +80,7 @@ function drawIndustryMarkers(s: Scene) {
     if (!industryVisible(ind, layers)) continue
     const x = p.x(ind.x), y = p.y(ind.z)
     if (!onScreen(s, x, y, 10)) continue
-    drawSymbol(ctx, isPassengerStop(ind) ? 'stop' : 'industry', x, y, palette)
+    drawSymbol(ctx, isPassengerStop(ind) ? 'stop' : 'industry', x, y, palette, { fill: palette.industry[industryType(ind)] })
   }
 }
 
@@ -167,27 +176,19 @@ function drawScaleBar(s: Scene) {
   label(s, meters >= 1000 ? `${meters / 1000} km` : `${meters} m`, 16, y - 13)
 }
 
-export function drawMap(
-  ctx: Ctx,
-  map: MapData,
-  view: MapViewState,
-  layers: MapLayers,
-  selected: MapHit | null,
-  live: LiveMapData,
-  palette: MapPalette,
-  dpr: number,
-  tiles: TileCache | null // null when the real-world map isn't available
-) {
+export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
+  const { map, view, layers, live, palette, tiles, highlight } = frame
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, view.w, view.h)
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111'
-  const scene: Scene = { ctx, map, view, layers, selected, live, palette, accent, p: projector(view), zoom: view.s / view.fit }
+  const scene: Scene = { ...frame, ctx, accent, p: projector(view), zoom: view.s / view.fit }
 
   if (layers.background && tiles) drawBackground(ctx, map, view, scene.p, palette.tiles, tiles)
   drawTrack(ctx, map, view, scene.p, layers.speed, palette)
+  if (highlight) drawTrackHighlight(ctx, map, view, scene.p, highlight.track, palette.industry[industryType(highlight)])
   if (layers.turntables) drawTurntables(scene)
   if (switchesVisible(view, layers)) drawSwitches(scene)
   drawIndustryMarkers(scene)

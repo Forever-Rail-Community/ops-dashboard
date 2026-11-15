@@ -26,11 +26,12 @@ interface Piece {
   curve: [Point, Point, Point, Point] // in screen pixels
 }
 
-// The pieces on screen, with their curves already in screen pixels.
-function visiblePieces(map: MapData, p: Projector, w: number, h: number): Piece[] {
+// The pieces on screen (all of them, or only `only`), with their curves already in screen pixels.
+function visiblePieces(map: MapData, p: Projector, w: number, h: number, only?: number[]): Piece[] {
   const margin = 40
   const pieces: Piece[] = []
-  for (const [a, b, speed] of map.segments) {
+  for (const index of only ?? map.segments.keys()) {
+    const [a, b, speed] = map.segments[index]!
     const { from, handle1, handle2, to } = curveBetween(map, a, b)
     const curve = [from, handle1, handle2, to].map(([x, z]): Point => [p.x(x), p.y(z)]) as Piece['curve']
     const xs = curve.map((q) => q[0])
@@ -137,5 +138,25 @@ export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Project
     ctx.strokeStyle = color
     ctx.stroke(rails)
   }
+  ctx.restore()
+}
+
+// The industry's track drawn over the rest: a translucent band in its color, with the track line itself in that
+// color, so it stands out at any zoom and on top of the real-world map.
+export function drawTrackHighlight(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, pieces: number[], color: string) {
+  const zoom = view.s / view.fit
+  const line = view.s < DETAIL_SCALE ? trackLineWidth(view.s, zoom) : 0.6 * view.s
+  const band = view.s < DETAIL_SCALE ? line + 12 : (BED_WIDTH + 2) * view.s
+  const path = pathOf(visiblePieces(map, p, view.w, view.h, pieces))
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = color
+  ctx.globalAlpha = 0.3
+  ctx.lineWidth = band
+  ctx.stroke(path)
+  ctx.globalAlpha = 1
+  ctx.lineWidth = line
+  ctx.stroke(path)
   ctx.restore()
 }

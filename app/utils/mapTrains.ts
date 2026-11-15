@@ -24,7 +24,7 @@ function trackIndex(map: MapData): TrackIndex {
 // The game's positions are exact, but the map's curves are an approximation, so on a curve a train would sit
 // beside the drawn line. This moves it onto the line at the same distance along the same piece of track.
 // The map's index for the piece of track the train's lead end is on.
-const pieceOf = (map: MapData, train: LiveTrain) => (train.track ? trackIndex(map).segmentById.get(train.track.segment) : undefined)
+export const pieceOf = (map: MapData, train: LiveTrain) => (train.track ? trackIndex(map).segmentById.get(train.track.segment) : undefined)
 
 export function placeOnTrack(map: MapData, train: LiveTrain): LiveTrain {
   const piece = pieceOf(map, train)
@@ -43,9 +43,14 @@ export function placeOnTrack(map: MapData, train: LiveTrain): LiveTrain {
 }
 
 // "At Bryson Freight House" when it's on an industry's track, otherwise "Near <closest town>".
-export function trainWhere(map: MapData, train: LiveTrain): string {
+// The industry whose track the train's lead end is on (the most specific one, where tracks are shared).
+export function trainIndustry(map: MapData, train: LiveTrain): MapIndustry | undefined {
   const piece = pieceOf(map, train)
-  const industry = piece === undefined ? undefined : trackIndex(map).industryBySegment.get(piece)
+  return piece === undefined ? undefined : trackIndex(map).industryBySegment.get(piece)
+}
+
+export function trainWhere(map: MapData, train: LiveTrain): string {
+  const industry = trainIndustry(map, train)
   if (industry) return `At ${industry.name}`
   const closest = map.areas.reduce((best, area) =>
     Math.hypot(area.x - train.x, area.z - train.z) < Math.hypot(best.x - train.x, best.z - train.z) ? area : best

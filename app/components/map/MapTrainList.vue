@@ -12,12 +12,7 @@ const rows = computed(() => {
   return props.trains
     .filter((t) => !q || t.name.toLowerCase().includes(q))
     .sort((a, b) => Number(isMoving(b)) - Number(isMoving(a)) || a.name.localeCompare(b.name))
-    .map((train) => ({
-      train,
-      speed: isMoving(train) ? `${Math.round(train.speedMph)} mph` : 'Stopped',
-      where: trainWhere(props.map, train),
-      cars: `${train.cars} ${train.cars === 1 ? 'car' : 'cars'}`
-    }))
+    .map((train) => ({ train, detail: `${trainWhere(props.map, train)}, ${train.cars} ${train.cars === 1 ? 'car' : 'cars'}` }))
 })
 </script>
 
@@ -34,23 +29,8 @@ const rows = computed(() => {
     <p v-else-if="!rows.length" class="px-1 py-2 text-sm text-muted-foreground">No train matches "{{ query }}".</p>
 
     <ul class="grid gap-0.5" :class="{ 'opacity-60': stale }">
-      <li v-for="row in rows" :key="row.train.id">
-        <button
-          type="button"
-          class="grid w-full gap-0.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-          :class="{ 'bg-accent': row.train.id === selectedId }"
-          :aria-current="row.train.id === selectedId ? 'true' : undefined"
-          @click="emit('pick', row.train)"
-        >
-          <span class="flex items-baseline justify-between gap-3">
-            <span class="font-medium">{{ row.train.name }}</span>
-            <span class="tabular-nums" :class="isMoving(row.train) ? '' : 'text-muted-foreground'">{{ row.speed }}</span>
-          </span>
-          <span class="flex justify-between gap-3 text-xs text-muted-foreground">
-            <span class="truncate">{{ row.where }}</span>
-            <span class="shrink-0">{{ row.cars }}</span>
-          </span>
-        </button>
+      <li v-for="row in rows" :key="row.train.id" class="rounded-lg" :class="{ 'bg-accent': row.train.id === selectedId }" :aria-current="row.train.id === selectedId ? 'true' : undefined">
+        <MapTrainRow :map="map" :train="row.train" :detail="row.detail" @pick="emit('pick', row.train)" />
       </li>
     </ul>
   </div>

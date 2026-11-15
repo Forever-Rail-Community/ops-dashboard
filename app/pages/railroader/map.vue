@@ -24,7 +24,7 @@ const live = useLiveMap(data)
     <MapViewer :map="data" :live="live.live.value" remember-as="railroader-map-view" />
   </div>
 
-  <div v-else class="grid gap-4 lg:grid-cols-[1fr_300px]">
+  <div v-else class="grid gap-4 lg:grid-cols-[1fr_340px]">
     <Skeleton class="h-[60vh] min-h-[360px] rounded-xl sm:min-h-[440px] lg:h-[calc(100svh-14rem)]" />
     <Skeleton class="h-64 rounded-xl" />
   </div>

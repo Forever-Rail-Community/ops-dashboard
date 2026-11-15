@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One map symbol, drawn by the same code the map uses.
-const props = defineProps<{ symbol: MapSymbol }>()
+const props = defineProps<{ symbol: MapSymbol; fill?: string }>()
 
 const SIZE = 24 // CSS pixels
 const canvas = ref<HTMLCanvasElement>()
@@ -15,11 +15,11 @@ function draw() {
   el.height = SIZE * dpr
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, SIZE, SIZE)
-  drawSymbol(ctx, props.symbol, SIZE / 2, SIZE / 2, palette.value)
+  drawSymbol(ctx, props.symbol, SIZE / 2, SIZE / 2, palette.value, { fill: props.fill })
 }
 
 onMounted(draw)
-watch([palette, () => props.symbol], draw)
+watch([palette, () => props.symbol, () => props.fill], draw)
 </script>
 
 <template>
