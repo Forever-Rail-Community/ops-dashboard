@@ -38,6 +38,6 @@ export function helpSlugFromTitle(text: string): string {
 }
 
 // The Appearance settings the public help site uses. The feed sends these, and changing one rebuilds the site.
-export const HELP_SITE_FIELDS = ['name', 'logo', 'brandColor', 'helpLightAccent', 'helpDarkAccent'] as const satisfies readonly (keyof SiteSettings)[]
+export const HELP_SITE_FIELDS = ['name', 'logo', 'brandColor', 'helpLightAccent', 'helpDarkAccent', 'helpHeroImage', 'helpHeroOverlay'] as const satisfies readonly (keyof SiteSettings)[]
 export type HelpSiteSettings = Pick<SiteSettings, (typeof HELP_SITE_FIELDS)[number]>
 export const isHelpSiteField = (key: string) => (HELP_SITE_FIELDS as readonly string[]).includes(key)

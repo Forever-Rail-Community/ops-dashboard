@@ -42,6 +42,16 @@ export function validateSite(body: any): SiteSettings {
   const helpLightAccent = color(body.helpLightAccent, 'Help site light mode color', DEFAULT_SITE.helpLightAccent)
   const helpDarkAccent = color(body.helpDarkAccent, 'Help site dark mode color', DEFAULT_SITE.helpDarkAccent)
 
+  // Older versions of the page don't send these; they keep their defaults.
+  const helpHeroImage = body.helpHeroImage === undefined ? DEFAULT_SITE.helpHeroImage : String(body.helpHeroImage).trim()
+  if (helpHeroImage && !(helpHeroImage.startsWith('https://') && helpHeroImage.length <= 500)) {
+    throw bad('The hero image must be an https:// address (up to 500 characters)')
+  }
+  const helpHeroOverlay = body.helpHeroOverlay === undefined ? DEFAULT_SITE.helpHeroOverlay : Number(body.helpHeroOverlay)
+  if (!Number.isInteger(helpHeroOverlay) || helpHeroOverlay < 0 || helpHeroOverlay > 100) {
+    throw bad('The overlay strength must be a whole number from 0 to 100')
+  }
+
   const logo = String(body.logo ?? '')
   const logoOk =
     logo === '/logo.svg' ||
@@ -54,5 +64,5 @@ export function validateSite(body: any): SiteSettings {
     labels[f.key] = text(body.labels?.[f.key] ?? f.fallback, f.title, 40)
   }
 
-  return { name, subtitle, logo, brandColor, helpLightAccent, helpDarkAccent, labels }
+  return { name, subtitle, logo, brandColor, helpLightAccent, helpDarkAccent, helpHeroImage, helpHeroOverlay, labels }
 }

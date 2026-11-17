@@ -80,24 +80,12 @@ async function save() {
       </CardContent>
     </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Help site colors</CardTitle>
-        <CardDescription>
-          A light touch of color on the public help site: icons, highlights, and links. The help site rebuilds when you save.
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="grid gap-6 sm:grid-cols-2">
-        <div class="grid gap-2">
-          <Label>Light mode</Label>
-          <AdminColorField v-model="form.helpLightAccent" label="Help site light mode color" />
-        </div>
-        <div class="grid gap-2">
-          <Label>Dark mode</Label>
-          <AdminColorField v-model="form.helpDarkAccent" label="Help site dark mode color" />
-        </div>
-      </CardContent>
-    </Card>
+    <AdminHelpSiteLook
+      v-model:light="form.helpLightAccent"
+      v-model:dark="form.helpDarkAccent"
+      v-model:image="form.helpHeroImage"
+      v-model:overlay="form.helpHeroOverlay"
+    />
 
     <Card>
       <CardHeader>
