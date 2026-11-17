@@ -45,6 +45,8 @@ export default defineNuxtConfig({
     },
     discord: {
       guildId: '',
+      // Optional: a channel webhook URL; published What's new updates are posted there (NUXT_DISCORD_UPDATES_WEBHOOK).
+      updatesWebhook: '',
       // The three role-ID lists below are only used once, to fill in the starting Access settings.
       adminRoleIds: '',
       dispatcherRoleIds: '',

@@ -1,13 +1,19 @@
 // The signed-in person's own choices, loaded once and shared by every component. Changing one saves it to their
-// account right away; until the first load finishes, the defaults apply.
+// account right away; until the first load finishes (`ready`), the defaults apply.
 export function usePreferences() {
-  const prefs = useState<Preferences>('preferences', () => ({ units: DEFAULT_UNITS }))
-  const loaded = useState('preferences-loaded', () => false)
+  const prefs = useState<Preferences>('preferences', () => ({ units: DEFAULT_UNITS, whatsNewAuto: true, whatsNewSeen: 0 }))
+  const requested = useState('preferences-requested', () => false)
+  const ready = useState('preferences-ready', () => false)
   const { loggedIn } = useUserSession()
 
-  if (import.meta.client && !loaded.value && loggedIn.value) {
-    loaded.value = true
-    $fetch<Preferences>('/api/me/preferences').then((saved) => (prefs.value = saved)).catch(() => (loaded.value = false))
+  if (import.meta.client && !requested.value && loggedIn.value) {
+    requested.value = true
+    $fetch<Preferences>('/api/me/preferences')
+      .then((saved) => {
+        prefs.value = saved
+        ready.value = true
+      })
+      .catch(() => (requested.value = false))
   }
 
   async function update(changes: Partial<Preferences>) {
@@ -20,7 +26,7 @@ export function usePreferences() {
       throw error
     }
   }
-  return { prefs: readonly(prefs), update }
+  return { prefs: readonly(prefs), ready: readonly(ready), update }
 }
 
 // The person's units, with formatters bound to them.

@@ -144,6 +144,28 @@ const STEPS: { name: string; sql: string }[] = [
       updated_at timestamptz NOT NULL DEFAULT now()
     )`
   },
+  // What's new: updates people see after they ship (server/utils/updates.ts).
+  {
+    name: 'updates-table',
+    sql: `CREATE TABLE IF NOT EXISTS updates (
+      id serial PRIMARY KEY,
+      title text NOT NULL,
+      changes jsonb NOT NULL DEFAULT '[]'::jsonb,
+      published_at timestamptz,
+      discord_message_id text,
+      created_by text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )`
+  },
+  { name: 'grant-updates-post', sql: grantPermission('updates.post', ['admin']) },
+  // The newest update each person has seen, and whether What's new opens by itself for them.
+  {
+    name: 'user-preferences-whats-new',
+    sql: `ALTER TABLE user_preferences
+      ADD COLUMN IF NOT EXISTS whats_new_auto boolean NOT NULL DEFAULT true,
+      ADD COLUMN IF NOT EXISTS whats_new_seen integer NOT NULL DEFAULT 0`
+  },
   { name: 'train-history-at-index', sql: `CREATE INDEX IF NOT EXISTS train_history_at ON train_history (at)` }
 ]
 
