@@ -75,3 +75,12 @@ export function measureCurve(curve: Curve, steps = 32) {
   }
   return { length, at }
 }
+
+// Pixels from (px, py) to the straight line from a to b.
+export function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const dx = bx - ax
+  const dy = by - ay
+  const len2 = dx * dx + dy * dy
+  const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+}

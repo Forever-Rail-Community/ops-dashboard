@@ -11,9 +11,7 @@ export interface MapPalette {
   ballast: string // the bed under the track when zoomed in
   tie: string // ties, when track is drawn to scale
   turntable: string
-  switch: string // position not reported
-  switchOpen: string // lined straight (normal)
-  switchClosed: string // thrown to the diverging route
+  switch: string // a switch that can't show which way it's lined
   industry: Record<IndustryType, string> // industry markers and highlighted track, by main type (passenger: the diamonds)
   marker: string // the ring on town dots
   outline: string // ring around markers (and the fill of town dots)
@@ -23,6 +21,8 @@ export interface MapPalette {
   tiles: TileStyle // the real-world map's style
   aspects: Record<SignalAspect, string> // a signal's lamp, by aspect
   occupied: string // the band along an occupied block's track
+  climbs: [string, string, string, string] // by gradeClass, level to steep: climbing, and the grade layer
+  descents: [string, string, string, string] // by gradeClass: descending
 }
 
 const LIGHT_PALETTE: MapPalette = {
@@ -34,8 +34,6 @@ const LIGHT_PALETTE: MapPalette = {
   tie: '#b8b8c0',
   turntable: '#3f3f46',
   switch: '#2563eb',
-  switchOpen: '#16a34a',
-  switchClosed: '#dc2626',
   industry: { passenger: '#1d4ed8', repair: '#db2777', interchange: '#4d7c0f', loads: '#0f766e', unloads: '#b45309', team: '#52525b', other: '#71717a' },
   marker: '#18181b',
   outline: '#ffffff',
@@ -44,7 +42,9 @@ const LIGHT_PALETTE: MapPalette = {
   onTrain: '#ffffff',
   tiles: 'light_all',
   aspects: { stop: '#dc2626', approach: '#ca8a04', divergingApproach: '#ca8a04', clear: '#16a34a', divergingClear: '#16a34a', restricting: '#ea580c', unknown: '#71717a' },
-  occupied: '#dc2626'
+  occupied: '#dc2626',
+  climbs: ['#71717a', '#d97706', '#ea580c', '#dc2626'],
+  descents: ['#71717a', '#0284c7', '#2563eb', '#7c3aed']
 }
 
 const DARK_PALETTE: MapPalette = {
@@ -56,8 +56,6 @@ const DARK_PALETTE: MapPalette = {
   tie: '#47474e',
   turntable: '#a1a1aa',
   switch: '#60a5fa',
-  switchOpen: '#4ade80',
-  switchClosed: '#f87171',
   industry: { passenger: '#60a5fa', repair: '#f472b6', interchange: '#a3e635', loads: '#2dd4bf', unloads: '#fbbf24', team: '#a1a1aa', other: '#71717a' },
   marker: '#e4e4e7',
   outline: '#18181b',
@@ -66,7 +64,9 @@ const DARK_PALETTE: MapPalette = {
   onTrain: '#1e1036',
   tiles: 'dark_all',
   aspects: { stop: '#f87171', approach: '#facc15', divergingApproach: '#facc15', clear: '#4ade80', divergingClear: '#4ade80', restricting: '#fb923c', unknown: '#a1a1aa' },
-  occupied: '#f87171'
+  occupied: '#f87171',
+  climbs: ['#a1a1aa', '#fbbf24', '#fb923c', '#f87171'],
+  descents: ['#a1a1aa', '#38bdf8', '#60a5fa', '#a78bfa']
 }
 
 export const mapPalette = (dark: boolean): MapPalette => (dark ? DARK_PALETTE : LIGHT_PALETTE)
@@ -88,6 +88,7 @@ export const KIND_TEXT: Record<IndustryKind, string> = {
 export const DEFAULT_LAYERS: MapLayers = {
   background: false,
   speed: true,
+  grade: false,
   switches: true,
   places: true,
   industries: true,
@@ -142,9 +143,8 @@ export const MAP_KEY: MapKeyRow[] = [
     layer: 'switches',
     label: 'Switches (zoom in)',
     items: [
-      { symbol: 'switchOpen', label: 'Open, lined straight' },
-      { symbol: 'switchClosed', label: 'Closed, thrown to the diverging route' },
-      { symbol: 'switch', label: 'Position not reported' }
+      { symbol: 'switchLined', label: 'Lined route solid, other way faint' },
+      { symbol: 'switch', label: 'Not reported' }
     ]
   },
   {
@@ -159,6 +159,7 @@ export const MAP_KEY: MapKeyRow[] = [
     ]
   },
   { layer: 'speed', label: 'Color track by speed limit' },
+  { layer: 'grade', label: 'Color track by steepness' },
   { layer: 'background', label: 'Real-world map underneath' },
   { layer: 'places', label: 'Towns', symbol: 'place' },
   {
@@ -197,19 +198,31 @@ export const ASPECT_TEXT: Record<SignalAspect, string> = {
   restricting: 'Restricting',
   unknown: 'Aspect not reported'
 }
-export const signalHit = (s: SignalDef): MapHit => ({ type: 'signal', id: s.id, name: s.name || 'Signal', x: s.x, z: s.z })
+// "Absolute signal", "Intermediate signal", or just "Signal" from mods that don't say.
+export const signalKindText = (s: SignalDef) =>
+  s.intermediate === undefined ? 'Signal' : s.intermediate ? 'Intermediate signal' : 'Absolute signal'
+
+// The way a signal's trains run, to the nearest of eight compass points ("Northbound trains"). The game's z axis
+// points north (about true north). Empty when the game doesn't give a direction.
+const COMPASS = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest']
+export function signalFacingText(s: SignalDef) {
+  if (!s.dx && !s.dz) return ''
+  const degrees = (Math.atan2(s.dx, s.dz) * 180) / Math.PI // clockwise from north
+  const point = COMPASS[Math.round((degrees + 360) / 45) % 8]!
+  return `${point}${point.length > 5 ? '-' : ''}bound trains`
+}
+
+export const signalHit = (s: SignalDef): MapHit => ({ type: 'signal', id: s.id, name: s.name || signalKindText(s), x: s.x, z: s.z })
 
 export const switchHit = (gameId: string, x: number, z: number): MapHit => ({ type: 'switch', id: gameId, name: 'Switch', x, z })
 
-// A switch's position in plain words, and its symbol. thrown is undefined when the game hasn't reported it.
-export const switchSymbol = (thrown: boolean | undefined): MapSymbol =>
-  thrown === undefined ? 'switch' : thrown ? 'switchClosed' : 'switchOpen'
+// A switch's position in plain words. thrown is undefined when the game hasn't reported it.
 export const switchText = (thrown: boolean | undefined) =>
   thrown === undefined ? 'Position not reported' : thrown ? 'Closed: thrown to the diverging route' : 'Open: lined straight'
 // A train slower than this is shown as stopped (speeds drift a little while standing).
 const MOVING_MPH = 0.5
 export const isMoving = (train: TrainReport) => train.speedMph >= MOVING_MPH
-export const trainMotion = (speedMph: number) => (speedMph >= MOVING_MPH ? `Moving at ${Math.round(speedMph)} mph` : 'Stopped')
+export const trainMotion = (speedMph: number, units: UnitSystem) => (speedMph >= MOVING_MPH ? `Moving at ${formatSpeed(speedMph, units)}` : 'Stopped')
 export const trainHit = (t: TrainReport): MapHit => ({ type: 'train', id: t.id, name: t.name, x: t.x, z: t.z, speed: t.speedMph })
 export const placeHit = (a: MapArea): MapHit => ({ type: 'place', id: a.id, name: a.name, x: a.x, z: a.z })
 export const industryHit = (i: MapIndustry): MapHit => ({ type: 'industry', id: i.id, name: i.name, x: i.x, z: i.z })

@@ -3,6 +3,7 @@
 const props = defineProps<{ map: MapData; train: LiveTrain; detail?: string }>()
 const emit = defineEmits<{ pick: [] }>()
 const moving = computed(() => isMoving(props.train))
+const { speed } = useUnits()
 </script>
 
 <template>
@@ -12,6 +13,6 @@ const moving = computed(() => isMoving(props.train))
       <span class="font-medium">{{ train.name }}</span>
       <span class="truncate text-xs text-muted-foreground">{{ detail ?? trainWhere(map, train) }}</span>
     </span>
-    <span class="shrink-0 tabular-nums" :class="moving ? '' : 'text-muted-foreground'">{{ moving ? `${Math.round(train.speedMph)} mph` : 'Stopped' }}</span>
+    <span class="shrink-0 tabular-nums" :class="moving ? '' : 'text-muted-foreground'">{{ moving ? speed(train.speedMph) : 'Stopped' }}</span>
   </button>
 </template>

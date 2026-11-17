@@ -4,11 +4,12 @@ import { Maximize, Minus, Plus } from '@lucide/vue'
 // `live` is what moves while the map is open (trains). The railroad itself comes from `map`.
 // `rememberAs` names where the map's position is saved in the browser, so it reopens where it was left.
 const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData; rememberAs?: string }>(), {
-  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false, industries: { cars: {}, passengers: {} }, industriesStale: false, industriesReported: false, signals: { layout: null, aspects: {}, occupied: {}, stale: false } }),
+  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false, switchLegs: {}, industries: { cars: {}, passengers: {} }, industriesStale: false, industriesReported: false, signals: { layout: null, aspects: {}, occupied: {}, stale: false } }),
   rememberAs: undefined
 })
 
 const layers = ref<MapLayers>({ ...DEFAULT_LAYERS })
+const { units, speed } = useUnits()
 const selected = ref<MapHit | null>(null)
 const hovered = ref<(MapHit & { sx: number; sy: number }) | null>(null)
 
@@ -67,7 +68,7 @@ const hoverStyle = computed(() => {
 const pointer = useMapPointer(canvas, pointerCamera, {
   hitAt: (x, y) => {
     const ctx = canvas.value?.getContext('2d')
-    return ctx ? hitAt(x, y, props.map, view, layers.value, props.live, ctx) : null
+    return ctx ? hitAt(x, y, props.map, view, layers.value, props.live, ctx, units.value) : null
   },
   onHover: (hit) => (hovered.value = hit),
   onSelect: (hit) => (selected.value = hit)
@@ -85,10 +86,10 @@ function redraw() {
     queued = false
     const ctx = canvas.value?.getContext('2d')
     if (!ctx || !view.w) return
-    drawMap(ctx, { map: props.map, view, layers: layers.value, selected: selected.value, highlight: highlight.value, live: props.live, palette: palette.value, tiles }, dpr)
+    drawMap(ctx, { map: props.map, view, layers: layers.value, selected: selected.value, highlight: highlight.value, live: props.live, palette: palette.value, tiles, units: units.value }, dpr)
   })
 }
-watch([view, layers, selected, highlight, palette, () => props.live], redraw, { deep: true })
+watch([view, layers, selected, highlight, palette, units, () => props.live], redraw, { deep: true })
 
 // ---- Size: keep the canvas sharp on high-density screens ----
 function fitCanvasToBox() {
@@ -162,9 +163,9 @@ function focusOn(hit: MapHit) {
         >
           <div class="font-medium">{{ hovered.name }}</div>
           <div v-if="hovered.type === 'track'" class="text-muted-foreground">
-            {{ hovered.speed ? `Speed limit ${hovered.speed} mph` : 'No speed limit set' }}
+            {{ hovered.speed ? `Speed limit ${speed(hovered.speed)}` : 'No speed limit set' }}
           </div>
-          <div v-else-if="hovered.type === 'train'" class="text-muted-foreground">{{ trainMotion(hovered.speed ?? 0) }}</div>
+          <div v-else-if="hovered.type === 'train'" class="text-muted-foreground">{{ trainMotion(hovered.speed ?? 0, units) }}</div>
           <div v-else-if="hovered.type === 'switch'" class="text-muted-foreground">{{ switchText(live.switches[hovered.id]) }}</div>
           <div v-else-if="hovered.type === 'signal'" class="text-muted-foreground">{{ ASPECT_TEXT[live.signals.aspects[hovered.id] ?? 'unknown'] }}</div>
         </div>

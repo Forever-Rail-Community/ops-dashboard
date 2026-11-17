@@ -38,7 +38,10 @@ export default defineNuxtConfig({
     // Without it, articles still save and publish; the help site just updates on its next deploy.
     helpDeployHook: '',
     public: {
-      mapBackground: Boolean(process.env.NUXT_CARTO_KEY)
+      mapBackground: Boolean(process.env.NUXT_CARTO_KEY),
+      // The Forever Rail status page's address (e.g. https://status.example.com), for the status in the header.
+      // Set NUXT_PUBLIC_STATUS_URL; without it the header shows no status.
+      statusUrl: ''
     },
     discord: {
       guildId: '',

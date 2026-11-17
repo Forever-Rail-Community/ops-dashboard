@@ -1,5 +1,7 @@
-// Draws the track. Far out it is a line colored by speed limit; closer in it sits on a ballast bed so crossing and
+// Draws the track. Far out it is a line colored by speed limit or steepness; closer in it sits on a ballast bed so crossing and
 // neighboring tracks stay distinct; close in it is drawn to scale, with two rails and ties.
+// Pieces a switch isn't lined for are drawn faint (thinner too, when not to scale), so the route each switch is
+// lined for reads as the one continuous line.
 
 type Ctx = CanvasRenderingContext2D
 type Projector = ReturnType<typeof projector>
@@ -15,13 +17,21 @@ const BED_WIDTH = 3.4
 export const DETAIL_SCALE = 4
 // Below this zoom (relative to the whole-railroad view) there is no ballast bed: the lines are too close together.
 const BED_ZOOM = 6
+export const FAINT_ALPHA = 0.3
+// Of the normal line width, when not drawn to scale.
+export const FAINT_WIDTH = 0.6
 
 // Line width in pixels when not drawn to scale: grows as you zoom in, and never narrower than a 1.8 m band,
 // so it meets the to-scale drawing without a jump.
 export const trackLineWidth = (scale: number, zoom: number) =>
   Math.max(Math.min(3, 1.6 + 0.45 * Math.log2(Math.max(1, zoom))), 1.8 * scale)
 
+// Half the width the track is drawn at, in pixels: its line, or its ballast bed when drawn to scale.
+export const trackHalfWidth = (view: MapViewState) =>
+  (view.s < DETAIL_SCALE ? trackLineWidth(view.s, view.s / view.fit) : BED_WIDTH * view.s) / 2
+
 interface Piece {
+  index: number // into map.segments
   speed: number
   curve: [Point, Point, Point, Point] // in screen pixels
 }
@@ -37,7 +47,7 @@ function visiblePieces(map: MapData, p: Projector, w: number, h: number, only?: 
     const xs = curve.map((q) => q[0])
     const ys = curve.map((q) => q[1])
     if (Math.max(...xs) < -margin || Math.min(...xs) > w + margin || Math.max(...ys) < -margin || Math.min(...ys) > h + margin) continue
-    pieces.push({ speed, curve })
+    pieces.push({ index, speed, curve })
   }
   return pieces
 }
@@ -74,26 +84,41 @@ function offsetLine(curve: Piece['curve'], offset: number, steps: number) {
 }
 
 // Groups pieces by the color they are drawn in, so each color is one path and one stroke.
-function byColor(pieces: Piece[], colorOf: (speed: number) => string) {
+function byColor(pieces: Piece[], colorOf: (piece: Piece) => string) {
   const groups = new Map<string, Piece[]>()
   for (const piece of pieces) {
-    const color = colorOf(piece.speed)
+    const color = colorOf(piece)
     groups.set(color, [...(groups.get(color) ?? []), piece])
   }
   return groups
 }
 
-export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, bySpeed: boolean, palette: MapPalette) {
+// What the track's color shows: its speed limit, how steep it is, or nothing.
+export type TrackColoring = 'speed' | 'grade' | 'plain'
+
+export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, coloring: TrackColoring, palette: MapPalette, faint: Set<number>) {
   const pieces = visiblePieces(map, p, view.w, view.h)
-  const zoom = view.s / view.fit
-  const colorOf = (speed: number) => (bySpeed ? speedColor(palette, speed) : palette.track)
-  const all = pathOf(pieces)
+  const grades = coloring === 'grade' ? pieceGrades(map) : undefined
+  const colorOf = (piece: Piece) =>
+    grades ? palette.climbs[gradeClass(grades[piece.index]!)]! : coloring === 'speed' ? speedColor(palette, piece.speed) : palette.track
   ctx.save()
+  ctx.globalAlpha = FAINT_ALPHA
+  drawPieces(ctx, view, pieces.filter((piece) => faint.has(piece.index)), colorOf, palette, FAINT_WIDTH)
+  ctx.globalAlpha = 1
+  drawPieces(ctx, view, pieces.filter((piece) => !faint.has(piece.index)), colorOf, palette, 1)
+  ctx.restore()
+}
+
+// `widthFactor` narrows the line when not drawn to scale.
+function drawPieces(ctx: Ctx, view: MapViewState, pieces: Piece[], colorOf: (piece: Piece) => string, palette: MapPalette, widthFactor: number) {
+  if (!pieces.length) return
+  const zoom = view.s / view.fit
+  const all = pathOf(pieces)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
 
   if (view.s < DETAIL_SCALE) {
-    const width = trackLineWidth(view.s, zoom)
+    const width = trackLineWidth(view.s, zoom) * widthFactor
     if (zoom >= BED_ZOOM) {
       ctx.strokeStyle = palette.ballast
       ctx.lineWidth = width + 4
@@ -104,7 +129,6 @@ export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Project
       ctx.strokeStyle = color
       ctx.stroke(pathOf(group))
     }
-    ctx.restore()
     return
   }
 
@@ -138,7 +162,6 @@ export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Project
     ctx.strokeStyle = color
     ctx.stroke(rails)
   }
-  ctx.restore()
 }
 
 // The industry's track drawn over the rest: a translucent band in its color, with the track line itself in that

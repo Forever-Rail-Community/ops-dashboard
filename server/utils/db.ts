@@ -118,7 +118,33 @@ const STEPS: { name: string; sql: string }[] = [
     sql: `CREATE INDEX IF NOT EXISTS help_revisions_article ON help_revisions (article_id, published_at DESC)`
   },
   { name: 'grant-help-edit', sql: grantPermission('help.edit', ['admin']) },
-  { name: 'grant-help-publish', sql: grantPermission('help.publish', ['admin']) }
+  { name: 'grant-help-publish', sql: grantPermission('help.publish', ['admin']) },
+  // Where each Railroader train has been lately, for the grade it ran over (server/utils/trainHistory.ts).
+  {
+    name: 'train-history-table',
+    sql: `CREATE TABLE IF NOT EXISTS train_history (
+      agent_id text NOT NULL,
+      train_id text NOT NULL,
+      at timestamptz NOT NULL DEFAULT now(),
+      segment text NOT NULL,
+      track_end text NOT NULL,
+      distance real NOT NULL,
+      speed_mph real NOT NULL,
+      x real NOT NULL,
+      z real NOT NULL
+    )`
+  },
+  { name: 'train-history-train-index', sql: `CREATE INDEX IF NOT EXISTS train_history_train ON train_history (agent_id, train_id, at)` },
+  // Each person's own choices, by Discord user id.
+  {
+    name: 'user-preferences-table',
+    sql: `CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id text PRIMARY KEY,
+      units text NOT NULL DEFAULT 'imperial',
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )`
+  },
+  { name: 'train-history-at-index', sql: `CREATE INDEX IF NOT EXISTS train_history_at ON train_history (at)` }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

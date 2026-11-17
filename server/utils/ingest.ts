@@ -11,7 +11,10 @@ const HANDLERS: Record<GameKey, Record<string, Handler>> = {
   },
   railroader: {
     status: (agent, data, sentAt) => saveReport('status', agent, sentAt, parseRailroaderStatus(data)),
-    trains: (agent, data, sentAt) => saveReport('trains', agent, sentAt, parseTrains(data)),
+    trains: async (agent, data, sentAt) => {
+      const report = parseTrains(data)
+      await Promise.all([saveReport('trains', agent, sentAt, report), recordTrainHistory(agent.id, report.trains)])
+    },
     switches: (agent, data, sentAt) => saveReport('switches', agent, sentAt, parseSwitches(data)),
     industries: (agent, data, sentAt) => saveReport('industries', agent, sentAt, parseIndustries(data)),
     signals: (agent, data, sentAt) => saveReport('signals', agent, sentAt, parseSignals(data)),

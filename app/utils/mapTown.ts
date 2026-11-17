@@ -98,7 +98,6 @@ export function trainsAtIndustry(map: MapData, industry: MapIndustry, trains: Li
 }
 
 // "120 m" or "1.4 km".
-export const formatMeters = (m: number) => (m < 950 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`)
 
 // Where to look to see an industry: the middle of its track, and how much ground to show (at least 150 m).
 const MIN_FRAME_METERS = 150

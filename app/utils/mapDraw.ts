@@ -13,10 +13,12 @@ export interface MapFrame {
   live: LiveMapData
   palette: MapPalette
   tiles: TileCache | null // null when the real-world map isn't available
+  units: UnitSystem
 }
 
 interface Scene extends MapFrame {
   ctx: Ctx
+  unlined: Map<string, number> // the piece each switch isn't lined for, by switch id; empty when switches are hidden
   accent: string // the brand color, used for the selection ring
   p: Projector
   zoom: number // how far in we are relative to the whole-railroad view
@@ -28,6 +30,7 @@ export interface LiveMapData {
   stale: boolean // the game server has stopped reporting trains, so these are last known positions
   switches: Record<string, boolean> // thrown, by the game's switch id
   switchesStale: boolean
+  switchLegs: Record<string, [string, string]> // [normal, reverse] piece ids, by switch id (from the signals mod)
   industries: RailroaderIndustries // cars at industries and passengers waiting
   industriesStale: boolean
   industriesReported: boolean // false until a game server has sent them (needs tracker pack 0.3 or newer)
@@ -69,18 +72,17 @@ function drawTurntables(s: Scene) {
   }
 }
 
-// Switches are the track points where three pieces meet. Too small to matter until zoomed in.
-// Green when open (lined straight), red when closed (thrown), blue when the game hasn't reported it.
-// Each one is turned to line up with the track through it. Close in, they grow with the track.
-function drawSwitches(s: Scene) {
-  const { ctx, map, p, live, view } = s
-  const scale = Math.max(1, view.s / DETAIL_SCALE)
-  ctx.globalAlpha = live.switchesStale ? 0.4 : 1
+// Switches are the track points where three pieces meet. Too small to matter until zoomed in. Which way one is
+// lined shows on the track (see mapSwitches.ts); a switch that can't show it that way gets a hollow ring instead.
+// Close in, the rings grow with the track.
+function drawUnreportedSwitches(s: Scene) {
+  const { ctx, map, p, view, unlined } = s
+  const scale = switchRingScale(view)
   map.switches.forEach((node, k) => {
-    const [x, z, yaw] = map.nodes[node]!
-    if (onScreen(s, p.x(x), p.y(z), 10)) drawSymbol(ctx, switchSymbol(live.switches[map.switchIds[k]!]), p.x(x), p.y(z), s.palette, { angle: yaw, scale })
+    if (unlined.has(map.switchIds[k]!)) return
+    const [x, z] = map.nodes[node]!
+    if (onScreen(s, p.x(x), p.y(z), 10)) drawSymbol(ctx, 'switch', p.x(x), p.y(z), s.palette, { scale })
   })
-  ctx.globalAlpha = 1
 }
 
 function drawIndustryMarkers(s: Scene) {
@@ -167,12 +169,12 @@ function drawSelection(s: Scene) {
   ctx.stroke()
 }
 
-// Units are assumed to be meters.
+// The longest round length in the person's units that fits in about 140 pixels. Map units are meters.
 function drawScaleBar(s: Scene) {
   const { ctx, view } = s
-  const steps = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-  const meters = [...steps].reverse().find((m) => m <= 140 / view.s) ?? steps[0]!
-  const px = meters * view.s
+  const steps = scaleSteps(s.units)
+  const step = [...steps].reverse().find((st) => st.meters <= 140 / view.s) ?? steps[0]!
+  const px = step.meters * view.s
   const y = view.h - 30 // clear of the map credit line
   ctx.strokeStyle = s.palette.ink
   ctx.lineWidth = 2
@@ -182,7 +184,7 @@ function drawScaleBar(s: Scene) {
   ctx.moveTo(16 + px, y - 5); ctx.lineTo(16 + px, y + 5)
   ctx.stroke()
   ctx.font = `11px ${MAP_FONT}`
-  label(s, meters >= 1000 ? `${meters / 1000} km` : `${meters} m`, 16, y - 13)
+  label(s, step.label, 16, y - 13)
 }
 
 export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
@@ -193,21 +195,24 @@ export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
   ctx.textAlign = 'left'
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111'
-  const scene: Scene = { ...frame, ctx, accent, p: projector(view), zoom: view.s / view.fit }
+  const switchesShown = switchesVisible(view, layers)
+  const unlined = switchesShown ? unlinedPieces(map, live.switchLegs, live.switches) : new Map<string, number>()
+  const scene: Scene = { ...frame, ctx, accent, unlined, p: projector(view), zoom: view.s / view.fit }
 
   if (layers.background && tiles) drawBackground(ctx, map, view, scene.p, palette.tiles, tiles)
   const signalsShown = signalsVisible(view, layers)
   if (signalsShown) drawOccupiedBlocks(ctx, view, scene.p, live.signals, palette)
-  drawTrack(ctx, map, view, scene.p, layers.speed, palette)
+  const coloring = layers.grade ? 'grade' : layers.speed ? 'speed' : 'plain'
+  drawTrack(ctx, map, view, scene.p, coloring, palette, new Set(unlined.values()))
   if (highlight) drawTrackHighlight(ctx, map, view, scene.p, highlight.track, palette.industry[industryType(highlight)])
   if (layers.turntables) drawTurntables(scene)
-  if (switchesVisible(view, layers)) drawSwitches(scene)
+  if (switchesShown) drawUnreportedSwitches(scene)
   if (signalsShown) drawSignals(ctx, view, scene.p, live.signals, palette)
   drawIndustryMarkers(scene)
   if (layers.places) drawPlaceMarkers(scene)
   if (layers.trains) drawTrains(scene)
   // Train tags are laid out first so town and industry names keep clear of them, and drawn last so they stay on top.
-  const tags = layers.trains ? layoutTrainTags(ctx, live.trains, scene.p, view.w, view.h) : []
+  const tags = layers.trains ? layoutTrainTags(ctx, live.trains, scene.p, view.w, view.h, frame.units) : []
   drawLabels(scene, tags.map((t) => [...t.box]))
   ctx.globalAlpha = live.stale ? 0.4 : 1
   drawTrainTags(ctx, tags, palette)

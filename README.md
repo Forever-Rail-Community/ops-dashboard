@@ -161,9 +161,11 @@ The map shows what the Railroader server's agent reports, refreshed every 5 seco
   train is placed on the drawn line at the same distance along the same piece of track (`app/utils/mapTrains.ts`).
   Its card says where it is: "At <industry>" when it's on track that belongs to an industry (from the map data's
   track spans), otherwise "Near <closest town>".
-- **Switches:** a disc turned to line up with the track: green with a straight bar when open (lined straight), red
-  with a slanted bar when closed (thrown to the diverging route), a hollow blue ring when the game hasn't reported it.
-  Shown once zoomed in. The slanted bar only means "thrown": the map data doesn't say which leg is the diverging one.
+- **Switches:** shown on the track itself once zoomed in, like Smokey's live map: the piece a switch isn't lined for
+  is drawn faint, so the lined route is the one continuous line (`app/utils/mapSwitches.ts`). The position comes
+  from the tracker pack; which piece is the normal leg and which the reverse comes from the Forever Rail Signals
+  mod 0.2.0 or newer (the game's own decoding, sent with the signal layout). A switch missing either shows a
+  hollow blue ring.
 - **Beside the map:** a Trains tab lists every train (moving first) with its speed, cars and where it is; picking
   one jumps to it. A train's card shows its speed against the posted limit where its lead end is (amber when more
   than 2 mph over), and **Follow** keeps it centered as it moves, until the map is dragged. The map reopens where it
@@ -174,8 +176,8 @@ The map shows what the Railroader server's agent reports, refreshed every 5 seco
   (`MapIndustryCard.vue`) shows its types, its track, trains on its track, the nearest trains, and, with tracker
   pack 0.3.0 or newer, the cars on its track (loads and waybills) and passengers waiting at a stop. Industries are
   colored by their main type (`industryType` in `app/utils/mapStyle.ts`).
-- When a server stops reporting for longer than `NUXT_STALE_AFTER_SEC`, trains and switches fade and the line above
-  the map says how old the positions are. Anyone who can view the map can see them.
+- When a server stops reporting for longer than `NUXT_STALE_AFTER_SEC`, trains fade, switches keep their last known
+  position (their card says "Last known"), and the line above the map says how old the positions are. Anyone who can view the map can see them.
 
 **Where the data comes from:** the Forever Rail Tracker pack, on the machine hosting the session, writes locomotive
 positions, switch positions, cars at industries and waiting passengers to the game's log; the agent reads the log
@@ -198,11 +200,42 @@ It moves made-up trains along the real track and throws switches now and then, p
 
 **Code:** `server/utils/trainReports.ts` checks reports, `server/api/railroader/live.get.ts` serves them,
 `app/composables/useLiveMap.ts` polls and places trains, and the drawing is in `app/utils/mapDraw.ts`
-(`drawTrains`, `drawSwitches`), `app/utils/mapTrainTags.ts` and `app/utils/mapSymbols.ts`. The agent's setup checks its key with
+(`drawTrains`, `drawUnreportedSwitches`), `app/utils/mapTrack.ts` (faint legs), `app/utils/mapTrainTags.ts` and `app/utils/mapSymbols.ts`. The agent's setup checks its key with
 `server/api/agent/whoami.get.ts`.
 
 **After rebuilding the map data,** also refresh the tracker pack's switch list:
 `node tools/write-switch-ids.mjs path/to/server/assets/map.json` in the tracker pack's folder.
+
+## Grade on the Railroader map
+
+Grades come from the track heights in the map data (`server/assets/map.json`, version 4 and up). Between two track
+points the height is taken to change evenly.
+
+- **A train's card** shows the grade under its lead end, a profile of where it has been and the track ahead (2, 5 or
+  10 miles or km), and the steepest climb and descent, the top of the climb and the next town ahead. The track ahead
+  follows the switches as they're lined, so it needs the switch legs from the Forever Rail Signals mod 0.2.0 or
+  newer; without them it stops at the first switch and says why.
+- **Where it has been** is the train's real path: the server keeps 30 minutes of it in the `train_history` table,
+  one sample of every train per server at most every 20 seconds. Old samples are dropped by the same statement, so
+  the table stays small. `GET /api/railroader/train-history?agent=<server>&train=<train id>` returns it.
+- **Map key > Color track by steepness** colors all track by how steep it is, either way. It replaces the speed
+  limit colors while it's on.
+- **Code:** `app/utils/mapGrade.ts`, `app/components/map/MapGradePanel.vue`, `server/utils/trainHistory.ts`.
+- Not yet checked against a real train: that "climbing" matches the direction a train is actually going.
+
+## Units
+
+Everyone picks **Miles and feet** or **Kilometers and meters** in the account menu (bottom of the sidebar). It's
+saved with their account (`user_preferences` table, `GET`/`PUT /api/me/preferences`) and applies to distances,
+heights, speeds, the map's scale bar and train tags. The default is miles and feet. Formatting is in
+`shared/utils/units.ts`; components use `useUnits()`.
+
+## Status in the header
+
+With `NUXT_PUBLIC_STATUS_URL` set to the status page's address (for example `https://status.example.com`), the top bar
+shows the overall status next to the theme button; hovering lists each group's main components, and clicking opens
+the status page. It reads the status page's public `/api/summary` once a minute (the status page caches it for 60
+seconds). Without the setting, nothing is shown. Redeploy after setting it. Code: `app/components/StatusWidget.vue`.
 
 ## Light and dark mode
 

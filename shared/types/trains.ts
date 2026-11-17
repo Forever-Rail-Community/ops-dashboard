@@ -47,3 +47,17 @@ export interface LiveResponse {
   signalsAge: ReportAge
   signalLayoutVersion: number | null // when the newest signal layout arrived; fetch /api/railroader/signal-layout when it changes
 }
+
+// Where a train has been lately (GET /api/railroader/train-history), oldest first. Kept for HISTORY_MINUTES.
+export interface TrainHistorySample {
+  at: number // ms since 1970
+  track: TrackLocation
+  speedMph: number
+  x: number
+  z: number
+}
+
+export interface TrainHistory {
+  minutes: number
+  samples: TrainHistorySample[]
+}
