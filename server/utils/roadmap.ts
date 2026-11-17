@@ -65,6 +65,7 @@ type ItemRow = {
   update_id: number | null
   update_title: string | null
   update_published_at: Date | null
+  bug_fix: boolean
 }
 
 const toItem = (r: ItemRow): RoadmapItem => ({
@@ -76,6 +77,7 @@ const toItem = (r: ItemRow): RoadmapItem => ({
   votes: r.votes,
   requestedBy: r.requested_by,
   shippedIn: r.update_id && r.update_published_at ? { id: r.update_id, title: r.update_title!, publishedAt: r.update_published_at.toISOString() } : null,
+  bugFix: r.bug_fix,
   updatedAt: r.updated_at.toISOString()
 })
 
@@ -83,7 +85,8 @@ const ITEM_SELECT = `
   SELECT i.id, i.title, i.description, i.scope, i.status, i.updated_at,
     (SELECT count(*)::int FROM feature_votes v WHERE v.request_id = i.request_id) AS votes,
     r.author_name AS requested_by,
-    u.id AS update_id, u.title AS update_title, u.published_at AS update_published_at
+    u.id AS update_id, u.title AS update_title, u.published_at AS update_published_at,
+    EXISTS (SELECT 1 FROM bug_reports b WHERE b.roadmap_item_id = i.id) AS bug_fix
   FROM roadmap_items i
   LEFT JOIN feature_requests r ON r.id = i.request_id
   LEFT JOIN updates u ON u.id = i.update_id`
@@ -115,11 +118,11 @@ async function announceStatus(item: RoadmapItem, origin: string): Promise<Discor
 
 export async function createRoadmapItem(input: ReturnType<typeof parseRoadmapItemInput>, actor: Actor, requestId: number | null = null) {
   const sql = await db()
-  const [{ id }] = await sql<{ id: number }[]>`
+  const [{ id } = { id: 0 }] = await sql<{ id: number }[]>`
     INSERT INTO roadmap_items (title, description, scope, status, request_id, created_by)
     VALUES (${input.title}, ${input.description}, ${input.scope}, ${input.status}, ${requestId}, ${actor.id})
     RETURNING id`
-  return getItem(id!)
+  return getItem(id)
 }
 
 // Saves an item. Moving it to another column is announced on Discord when `announce` is set.
@@ -221,17 +224,17 @@ async function getRequest(id: number, viewerId = ''): Promise<FeatureRequest> {
 
 export async function createRequest(input: ReturnType<typeof parseRequestInput>, actor: Actor, origin: string) {
   const sql = await db()
-  const [{ today }] = await sql<{ today: number }[]>`
+  const [{ today } = { today: 0 }] = await sql<{ today: number }[]>`
     SELECT count(*)::int AS today FROM feature_requests WHERE author_id = ${actor.id} AND created_at > now() - interval '1 day'`
-  if (today! >= ROADMAP_LIMITS.requestsPerDay) {
+  if (today >= ROADMAP_LIMITS.requestsPerDay) {
     throw createError({ statusCode: 429, statusMessage: `You can suggest up to ${ROADMAP_LIMITS.requestsPerDay} features a day. Try again tomorrow.` })
   }
-  const [{ id }] = await sql<{ id: number }[]>`
+  const [{ id } = { id: 0 }] = await sql<{ id: number }[]>`
     INSERT INTO feature_requests (title, body, scope, author_id, author_name)
     VALUES (${input.title}, ${input.body}, ${input.scope}, ${actor.id}, ${actor.name})
     RETURNING id`
   // The person asking votes for it.
-  await sql`INSERT INTO feature_votes (request_id, user_id) VALUES (${id!}, ${actor.id}) ON CONFLICT DO NOTHING`
+  await sql`INSERT INTO feature_votes (request_id, user_id) VALUES (${id}, ${actor.id}) ON CONFLICT DO NOTHING`
   const { messageId } = await discordPost('staff', {
     title: `New feature request: ${input.title}`,
     url: `${origin}/roadmap?tab=requests`,
@@ -239,8 +242,8 @@ export async function createRequest(input: ReturnType<typeof parseRequestInput>,
     description: input.body || undefined,
     footer: { text: `${scopeLabel(input.scope)} · from ${actor.name}` }
   })
-  if (messageId) await sql`UPDATE feature_requests SET discord_message_id = ${messageId} WHERE id = ${id!}`
-  return getRequest(id!, actor.id)
+  if (messageId) await sql`UPDATE feature_requests SET discord_message_id = ${messageId} WHERE id = ${id}`
+  return getRequest(id, actor.id)
 }
 
 // Votes for a request, or takes the vote back. Only open requests take votes.

@@ -1,6 +1,6 @@
 // Posting to Discord channels through webhooks. Two optional channels, each a webhook URL in Vercel:
 //   announcements (NUXT_DISCORD_UPDATES_WEBHOOK): What's new updates and roadmap status changes;
-//   staff (NUXT_DISCORD_STAFF_WEBHOOK): new feature requests (and bug reports).
+//   staff (NUXT_DISCORD_STAFF_WEBHOOK): new feature requests and bug reports.
 // Messages never ping anyone. Discord failing never stops what triggered it: callers get an outcome to report.
 
 export type DiscordChannel = 'announcements' | 'staff'

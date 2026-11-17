@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, Check, ChevronsUpDown, Gamepad2, LogOut, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
+import { BookOpen, Bug, Check, ChevronsUpDown, Gamepad2, LogOut, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
 
 const { user, clear } = useUserSession()
 const { site } = useSite()
@@ -93,6 +93,14 @@ async function signOut() {
                 <NuxtLink to="/roadmap">
                   <Milestone />
                   <span>Roadmap</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton as-child :is-active="route.path.startsWith('/bugs')" tooltip="Bug reports">
+                <NuxtLink to="/bugs">
+                  <Bug />
+                  <span>Bug reports</span>
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

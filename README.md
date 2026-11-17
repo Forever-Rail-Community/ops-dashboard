@@ -268,6 +268,27 @@ Run8, Railroader or Dashboard, and filterable by that. Complete shows the latest
   optional. Webhook code is shared in `server/utils/discord.ts`.
 - **Code:** `server/utils/roadmap.ts`, `app/pages/roadmap.vue`, `app/components/roadmap/`.
 
+## Bug reports
+
+**Community > Bug reports**, for everyone signed in. Reports are private: each person sees their own, with its status
+(**New**, **Confirmed**, **Fixed**, **Won't fix**) and any staff reply.
+
+- **Reporting:** what's wrong, where (the same parts as What's new, plus "Somewhere else"), what happened, and up to
+  3 screenshots (paste, drop or pick). The browser shrinks screenshots to at most 1920 pixels and WebP before
+  uploading. Up to 5 reports a day per person.
+- **Staff** (the **See and answer all bug reports** permission; admins have it) get an **All reports** tab: filter
+  by status, set the status, reply to the reporter, link the report to a roadmap item (the item then shows "Bug
+  fix"), or delete it with its screenshots. New reports go to the Discord staff channel (`NUXT_DISCORD_STAFF_WEBHOOK`).
+- **Screenshots are private.** They're stored in a separate, *private* Vercel Blob store (the help center's store is
+  public) and only served through `GET /api/bugs/screenshots/<id>`, which checks the viewer is the reporter or staff.
+  To set it up: Vercel > the project > **Storage** > **Create** > **Blob**, set access to **Private**, create it, open
+  the store and copy its `BLOB_READ_WRITE_TOKEN` value, and add it to the project as `NUXT_BUGS_BLOB_TOKEN`. Redeploy.
+  Without it, bug reports work and the screenshot picker is hidden. (In local development without a token,
+  screenshots are kept in local storage so the flow can be tried.)
+- Hobby includes 1 GB of Blob storage, 2,000 uploads and 10,000 reads a month (Vercel's pricing page, November 2026);
+  if that runs out Blob pauses for 30 days rather than charging.
+- **Code:** `server/utils/bugs.ts`, `server/utils/screenshots.ts`, `app/pages/bugs.vue`, `app/components/bugs/`.
+
 ## Status in the header
 
 With `NUXT_PUBLIC_STATUS_URL` set to the status page's address (for example `https://status.example.com`), the top bar
