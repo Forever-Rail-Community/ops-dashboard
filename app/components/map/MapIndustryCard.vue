@@ -52,6 +52,7 @@ const waiting = computed(() => {
   return stop ? Object.entries(stop.waiting).map(([to, count]) => ({ to: stopName(to), count })).sort((a, b) => b.count - a.count) : []
 })
 const isStop = computed(() => isPassengerStop(props.industry))
+const { distance } = useUnits()
 </script>
 
 <template>
@@ -124,7 +125,7 @@ const isStop = computed(() => isPassengerStop(props.industry))
           :key="n.train.id"
           :map="map"
           :train="n.train"
-          :detail="`${formatMeters(n.meters)} away, ${trainWhere(map, n.train).toLowerCase()}`"
+          :detail="`${distance(n.meters)} away, ${trainWhere(map, n.train).toLowerCase()}`"
           @pick="emit('pickTrain', n.train)"
         />
       </section>

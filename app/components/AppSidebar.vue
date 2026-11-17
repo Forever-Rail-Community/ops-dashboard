@@ -9,6 +9,10 @@ const { current, labelOf } = useGame()
 const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith('admin.')) ?? false)
 const canEditHelp = computed(() => user.value?.permissions?.includes('help.edit') ?? false)
 const features = computed(() => (current.value ? visibleFeatures(current.value, user.value?.permissions) : []))
+const { prefs, update } = usePreferences()
+const setUnits = (value: unknown) => {
+  if (isUnitSystem(value)) update({ units: value })
+}
 const initials = computed(() => (user.value?.name ?? '?').slice(0, 2).toUpperCase())
 
 async function signOut() {
@@ -122,6 +126,11 @@ async function signOut() {
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent class="w-56" side="top" align="start">
+              <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Units</DropdownMenuLabel>
+              <DropdownMenuRadioGroup :model-value="prefs.units" @update:model-value="setUnits">
+                <DropdownMenuRadioItem v-for="u in UNIT_SYSTEMS" :key="u.value" :value="u.value" @select.prevent>{{ u.label }}</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
               <DropdownMenuItem @select="signOut">
                 <LogOut />
                 Sign out

@@ -214,7 +214,7 @@ export const switchText = (thrown: boolean | undefined) =>
 // A train slower than this is shown as stopped (speeds drift a little while standing).
 const MOVING_MPH = 0.5
 export const isMoving = (train: TrainReport) => train.speedMph >= MOVING_MPH
-export const trainMotion = (speedMph: number) => (speedMph >= MOVING_MPH ? `Moving at ${Math.round(speedMph)} mph` : 'Stopped')
+export const trainMotion = (speedMph: number, units: UnitSystem) => (speedMph >= MOVING_MPH ? `Moving at ${formatSpeed(speedMph, units)}` : 'Stopped')
 export const trainHit = (t: TrainReport): MapHit => ({ type: 'train', id: t.id, name: t.name, x: t.x, z: t.z, speed: t.speedMph })
 export const placeHit = (a: MapArea): MapHit => ({ type: 'place', id: a.id, name: a.name, x: a.x, z: a.z })
 export const industryHit = (i: MapIndustry): MapHit => ({ type: 'industry', id: i.id, name: i.name, x: i.x, z: i.z })

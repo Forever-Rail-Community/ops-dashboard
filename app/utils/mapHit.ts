@@ -48,12 +48,12 @@ function nearestTrack(px: number, py: number, map: MapData, view: MapViewState, 
 }
 
 // `ctx` is only used to measure text, so train tags are laid out exactly as drawn.
-export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers, live: LiveMapData, ctx: CanvasRenderingContext2D): MapHit | null {
+export function hitAt(px: number, py: number, map: MapData, view: MapViewState, layers: MapLayers, live: LiveMapData, ctx: CanvasRenderingContext2D, units: UnitSystem): MapHit | null {
   const p = projector(view)
   const candidates: Candidate[] = []
 
   if (layers.trains) {
-    const tag = tagAt(layoutTrainTags(ctx, live.trains, p, view.w, view.h), px, py)
+    const tag = tagAt(layoutTrainTags(ctx, live.trains, p, view.w, view.h, units), px, py)
     if (tag) return trainHit(tag.train)
     for (const train of live.trains) candidates.push(round(trainHit(train), SYMBOL_RADIUS.trainMoving, p, px, py, LAYER.train))
   }

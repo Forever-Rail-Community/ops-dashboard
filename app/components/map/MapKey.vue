@@ -13,9 +13,10 @@ const unavailable = (layer: keyof MapLayers) => layer === 'background' && !props
 // With speed colors off, track is one color.
 const trackItems = computed(() =>
   layers.value.speed
-    ? props.speeds.map((limit) => ({ color: speedColor(palette.value, limit), label: limit ? `${limit} mph` : 'No limit in the map data' }))
+    ? props.speeds.map((limit) => ({ color: speedColor(palette.value, limit), label: limit ? speed(limit) : 'No limit in the map data' }))
     : [{ color: palette.value.track, label: 'Track' }]
 )
+const { speed } = useUnits()
 </script>
 
 <template>

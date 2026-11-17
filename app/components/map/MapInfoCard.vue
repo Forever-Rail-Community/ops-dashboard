@@ -4,6 +4,7 @@ import { Crosshair } from '@lucide/vue'
 const props = defineProps<{ map: MapData; hit: MapHit; live: LiveMapData; following: boolean }>()
 const emit = defineEmits<{ follow: [on: boolean] }>()
 const palette = useMapPalette()
+const { units } = useUnits()
 
 // A labeled detail; `color` adds a dot before the value (a signal's aspect).
 interface Row {
@@ -48,7 +49,7 @@ const info = computed((): { title: string; sub: string; lines: string[]; rows?: 
   }
   return {
     title: 'Track',
-    sub: hit.speed ? `Posted speed limit: ${hit.speed} mph` : 'No speed limit set in the map data',
+    sub: hit.speed ? `Posted speed limit: ${formatSpeed(hit.speed, units.value)}` : 'No speed limit set in the map data',
     lines: []
   }
 })

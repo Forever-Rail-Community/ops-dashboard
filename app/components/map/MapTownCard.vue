@@ -35,7 +35,7 @@ const rows = computed(() =>
       return {
         industry,
         type,
-        distance: distance === null ? '' : formatMeters(distance),
+        distance: distance === null ? '' : formatDistance(distance, units.value),
         open: industry.id === props.highlightId,
         also: industryAlso(industry),
         trains: trainsAtIndustry(props.map, industry, props.live.trains),
@@ -51,6 +51,7 @@ const summary = computed(() => {
 })
 
 const toggle = (industry: MapIndustry) => emit('highlight', industry.id === props.highlightId ? null : industry.id)
+const { units, speed } = useUnits()
 </script>
 
 <template>
@@ -109,7 +110,7 @@ const toggle = (industry: MapIndustry) => emit('highlight', industry.id === prop
               <template v-if="row.industry.track.length">Its track is highlighted on the map.</template>
             </p>
             <p v-for="train in row.trains" :key="train.id" class="font-medium" :style="{ color: palette.train }">
-              {{ train.name }} is on its track, {{ isMoving(train) ? `moving at ${Math.round(train.speedMph)} mph` : 'stopped' }}
+              {{ train.name }} is on its track, {{ isMoving(train) ? `moving at ${speed(train.speedMph)}` : 'stopped' }}
             </p>
             <p v-if="row.cars" class="text-muted-foreground">{{ row.cars }} {{ row.cars === 1 ? 'car' : 'cars' }} on its track</p>
             <div class="flex gap-1.5">

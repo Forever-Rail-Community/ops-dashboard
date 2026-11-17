@@ -7,14 +7,15 @@ const props = defineProps<{ mph: number; limit?: number }>()
 const OVER_BY_MPH = 2
 const over = computed(() => props.limit !== undefined && props.mph > props.limit + OVER_BY_MPH)
 const share = computed(() => (props.limit ? Math.min(1, props.mph / props.limit) : 0))
+const { units, speed } = useUnits()
 </script>
 
 <template>
   <div class="grid gap-1.5 text-sm">
     <p class="flex items-baseline justify-between gap-3">
-      <span><span class="text-lg font-semibold tabular-nums">{{ Math.round(mph) }}</span> mph</span>
+      <span><span class="text-lg font-semibold tabular-nums">{{ speedValue(mph, units) }}</span> {{ speedUnit(units) }}</span>
       <span :class="over ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-muted-foreground'">
-        {{ limit === undefined ? 'No limit in the map data' : over ? `Over the ${limit} mph limit` : `Limit ${limit} mph` }}
+        {{ limit === undefined ? 'No limit in the map data' : over ? `Over the ${speed(limit)} limit` : `Limit ${speed(limit)}` }}
       </span>
     </p>
     <div v-if="limit !== undefined" class="h-1.5 overflow-hidden rounded-full bg-muted" role="presentation">

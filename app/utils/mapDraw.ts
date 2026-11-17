@@ -13,6 +13,7 @@ export interface MapFrame {
   live: LiveMapData
   palette: MapPalette
   tiles: TileCache | null // null when the real-world map isn't available
+  units: UnitSystem
 }
 
 interface Scene extends MapFrame {
@@ -168,12 +169,12 @@ function drawSelection(s: Scene) {
   ctx.stroke()
 }
 
-// Units are assumed to be meters.
+// The longest round length in the person's units that fits in about 140 pixels. Map units are meters.
 function drawScaleBar(s: Scene) {
   const { ctx, view } = s
-  const steps = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-  const meters = [...steps].reverse().find((m) => m <= 140 / view.s) ?? steps[0]!
-  const px = meters * view.s
+  const steps = scaleSteps(s.units)
+  const step = [...steps].reverse().find((st) => st.meters <= 140 / view.s) ?? steps[0]!
+  const px = step.meters * view.s
   const y = view.h - 30 // clear of the map credit line
   ctx.strokeStyle = s.palette.ink
   ctx.lineWidth = 2
@@ -183,7 +184,7 @@ function drawScaleBar(s: Scene) {
   ctx.moveTo(16 + px, y - 5); ctx.lineTo(16 + px, y + 5)
   ctx.stroke()
   ctx.font = `11px ${MAP_FONT}`
-  label(s, meters >= 1000 ? `${meters / 1000} km` : `${meters} m`, 16, y - 13)
+  label(s, step.label, 16, y - 13)
 }
 
 export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
@@ -210,7 +211,7 @@ export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
   if (layers.places) drawPlaceMarkers(scene)
   if (layers.trains) drawTrains(scene)
   // Train tags are laid out first so town and industry names keep clear of them, and drawn last so they stay on top.
-  const tags = layers.trains ? layoutTrainTags(ctx, live.trains, scene.p, view.w, view.h) : []
+  const tags = layers.trains ? layoutTrainTags(ctx, live.trains, scene.p, view.w, view.h, frame.units) : []
   drawLabels(scene, tags.map((t) => [...t.box]))
   ctx.globalAlpha = live.stale ? 0.4 : 1
   drawTrainTags(ctx, tags, palette)

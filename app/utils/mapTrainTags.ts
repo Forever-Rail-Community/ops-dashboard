@@ -41,7 +41,7 @@ function freeSpot(tags: TrainTag[], anchor: Point, width: number): TrainTag['box
   return [left, box[1], left + width, box[3]]
 }
 
-export function layoutTrainTags(ctx: Ctx, trains: LiveTrain[], p: ReturnType<typeof projector>, w: number, h: number): TrainTag[] {
+export function layoutTrainTags(ctx: Ctx, trains: LiveTrain[], p: ReturnType<typeof projector>, w: number, h: number, units: UnitSystem): TrainTag[] {
   const tags: TrainTag[] = []
   // Moving trains first, so they get the spots nearest their trains.
   const ordered = [...trains].sort((a, b) => Number(isMoving(b)) - Number(isMoving(a)))
@@ -49,7 +49,7 @@ export function layoutTrainTags(ctx: Ctx, trains: LiveTrain[], p: ReturnType<typ
     const anchor: Point = [p.x(train.x), p.y(train.z)]
     if (anchor[0] < -80 || anchor[0] > w + 80 || anchor[1] < -40 || anchor[1] > h + 120) continue
     const moving = isMoving(train)
-    const speed = moving ? `${Math.round(train.speedMph)} mph` : ''
+    const speed = moving ? formatSpeed(train.speedMph, units) : ''
     ctx.font = NAME_FONT
     let width = PAD + ARROW + GAP + ctx.measureText(train.name).width + PAD
     if (speed) {
