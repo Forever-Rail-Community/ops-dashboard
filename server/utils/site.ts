@@ -52,6 +52,11 @@ export function validateSite(body: any): SiteSettings {
     throw bad('The overlay strength must be a whole number from 0 to 100')
   }
 
+  // Older versions of the page don't send these either.
+  const memberRole = body.memberRole === undefined ? DEFAULT_SITE.memberRole : text(body.memberRole, 'Member role', 60)
+  const loginLive = body.loginLive === undefined ? DEFAULT_SITE.loginLive : body.loginLive === true
+  const notice = body.notice === undefined ? DEFAULT_SITE.notice : text(body.notice, 'The notice', 300, false)
+
   const logo = String(body.logo ?? '')
   const logoOk =
     logo === '/logo.svg' ||
@@ -64,5 +69,5 @@ export function validateSite(body: any): SiteSettings {
     labels[f.key] = text(body.labels?.[f.key] ?? f.fallback, f.title, 40)
   }
 
-  return { name, subtitle, logo, brandColor, helpLightAccent, helpDarkAccent, helpHeroImage, helpHeroOverlay, labels }
+  return { name, subtitle, logo, brandColor, helpLightAccent, helpDarkAccent, helpHeroImage, helpHeroOverlay, memberRole, loginLive, notice, labels }
 }

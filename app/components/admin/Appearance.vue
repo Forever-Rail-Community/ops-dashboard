@@ -46,7 +46,7 @@ async function save() {
     <Card>
       <CardHeader>
         <CardTitle>Name and logo</CardTitle>
-        <CardDescription>Shown in the sidebar and on the sign-in page.</CardDescription>
+        <CardDescription>Shown in the sidebar and on the sign-in page (the name, beside the logo).</CardDescription>
       </CardHeader>
       <CardContent class="grid gap-6 sm:grid-cols-2">
         <div class="grid gap-2">
@@ -77,6 +77,43 @@ async function save() {
       </CardHeader>
       <CardContent>
         <AdminColorField v-model="form.brandColor" label="Main color" />
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Sign-in page</CardTitle>
+        <CardDescription>What people see before they sign in.</CardDescription>
+      </CardHeader>
+      <CardContent class="grid gap-6 sm:grid-cols-2">
+        <div class="grid gap-2">
+          <Label for="member-role">Member role</Label>
+          <Input id="member-role" v-model="form.memberRole" />
+          <p class="text-xs text-muted-foreground">The Discord role people need to sign in, named under the sign-in button. Renaming it here doesn't change who can sign in: that's set in Access.</p>
+        </div>
+        <div class="flex items-start gap-3">
+          <Checkbox id="login-live" :model-value="form.loginLive" class="mt-0.5" @update:model-value="form.loginLive = $event === true" />
+          <div class="grid gap-1.5">
+            <Label for="login-live">Show what's running behind the sign-in</Label>
+            <p class="text-xs text-muted-foreground">
+              The Railroader map with trains moving, and cards as trains start and stop, signals change and servers come up.
+              It's public: anyone who opens the sign-in page sees locomotive numbers, speeds, car counts, nearby towns and signal names.
+              Visitors can also turn it off for themselves.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Notice</CardTitle>
+        <CardDescription>A banner across the top of every page, the sign-in page included. Leave it empty to hide it.</CardDescription>
+      </CardHeader>
+      <CardContent class="grid gap-2">
+        <Label for="site-notice" class="sr-only">Notice</Label>
+        <Textarea id="site-notice" v-model="form.notice" rows="2" maxlength="300" />
+        <p class="text-xs text-muted-foreground">People can close it; it comes back for everyone when you change the text. Signed-in people also get a "Report a bug" link.</p>
       </CardContent>
     </Card>
 

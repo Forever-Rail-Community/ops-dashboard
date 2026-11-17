@@ -43,7 +43,9 @@ export default defineNuxtConfig({
       mapBackground: Boolean(process.env.NUXT_CARTO_KEY),
       // The Forever Rail status page's address (e.g. https://status.example.com), for the status in the header.
       // Set NUXT_PUBLIC_STATUS_URL; without it the header shows no status.
-      statusUrl: ''
+      statusUrl: '',
+      // The public help site's address, linked from the sign-in page. Set NUXT_PUBLIC_HELP_URL; without it there's no link.
+      helpUrl: ''
     },
     discord: {
       guildId: '',

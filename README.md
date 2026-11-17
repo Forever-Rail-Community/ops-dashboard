@@ -296,6 +296,32 @@ shows the overall status next to the theme button; hovering lists each group's m
 the status page. It reads the status page's public `/api/summary` once a minute (the status page caches it for 60
 seconds). Without the setting, nothing is shown. Redeploy after setting it. Code: `app/components/StatusWidget.vue`.
 
+## Sign-in page
+
+People sign in with Discord. The page names the Discord role they need (Admin > Appearance > Sign-in page; renaming it
+there only changes the wording, Access decides who gets in) and links to the help site (`NUXT_PUBLIC_HELP_URL`) and
+the status page (`NUXT_PUBLIC_STATUS_URL`) when those are set.
+
+Behind the sign-in, the Railroader map is drawn as line art with each train where it is now, and small cards appear
+as trains start and stop, named signals change and servers come up. When nothing is running, one card says so.
+
+- **Public:** `GET /api/public/pulse` gives anyone locomotive numbers, speeds, car counts, the nearest town and named
+  signals' aspects, plus whether Run8 and Railroader are up. No player names and no map data. Admins can turn it off
+  for everyone in Admin > Appearance; the endpoint then answers 404.
+- **Visitors** can turn it off for themselves ("Turn off live background", bottom left). That's kept in their browser
+  and stops all requests. Updates also stop while the tab is hidden, and reduced motion turns the movement off.
+- **The drawing** is `public/railroad-outline.svg`, made from the map data: run `node scripts/build-outline.mjs` after
+  `build-map.mjs` whenever the map changes. Run8 isn't drawn yet: there's no Run8 track data in the project.
+- **Code:** `server/api/public/pulse.get.ts`, `app/composables/usePulseFeed.ts`, `app/pages/login.vue`,
+  `app/components/login/`.
+
+## Notice banner
+
+A banner across the top of every page, the sign-in page included, for things like "still in early development".
+Admins set the text in Admin > Appearance > Notice; empty hides it. People can close it, which lasts until the text
+changes (kept in a cookie, so it doesn't flash on load). Signed-in people also get a "Report a bug" link.
+Code: `app/components/NoticeBanner.vue`.
+
 ## Light and dark mode
 
 The sun/moon button in the top bar (and on the sign-in page) switches between Light, Dark, and System, which follows the device setting. The choice is remembered in that browser only. The dark colors are the `.dark` block in `app/assets/css/main.css`; the logic is `app/composables/useTheme.ts`. The brand color from Admin > Appearance is used in both themes. The map has its own dark colors: both palettes are in `app/utils/mapStyle.ts`.
