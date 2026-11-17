@@ -89,6 +89,7 @@ export function usePulseFeed(shown: number, on: Readonly<Ref<boolean>>) {
     // With no train or game news, take turns between signal changes and what's already running.
     const card = news.shift() ?? (key % 2 ? (nextSignal() ?? again()) : (again() ?? nextSignal()))
     if (!card) return
+    if (card.kind === 'quiet' && cards.value.some((c) => c.kind === 'quiet')) return // already showing: let it be
     // Once something is running, the quiet card goes.
     const kept = cards.value.filter((c) => c.about !== card.about && (card.kind === 'quiet' || c.kind !== 'quiet'))
     cards.value = [...kept, { ...card, key: ++key }].slice(-shown)
