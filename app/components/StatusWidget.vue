@@ -3,7 +3,7 @@ import { ExternalLink } from '@lucide/vue'
 
 // The status page's overall status in the header; hovering lists each group's main components. Reads the status
 // page's public summary (cached there for 60 seconds) once a minute. Hidden when no status page is configured.
-const base = (useRuntimeConfig().public.statusUrl as string).replace(/\/+$/, '')
+const base = absoluteUrl(useRuntimeConfig().public.statusUrl as string)
 const summary = ref<StatusSummary | null>(null)
 const failed = ref(false)
 
@@ -53,7 +53,9 @@ const DOT: Record<StatusLevel, string> = {
 }
 const level = (status: string): StatusLevel => (status in LABEL ? (status as StatusLevel) : 'unknown')
 const overall = computed(() => (summary.value && !failed.value ? level(summary.value.overall) : 'unknown'))
-const link = computed(() => summary.value?.url || base)
+// Always this setting, not the address the status page reports about itself: that one can be a leftover
+// placeholder in the status page's config, and then the link goes nowhere.
+const link = base
 // Something wrong pulses, so it's noticed; all well, or unknown, stays still.
 const alerting = computed(() => !['operational', 'unknown', 'paused'].includes(overall.value))
 </script>
