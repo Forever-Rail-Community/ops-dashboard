@@ -202,7 +202,8 @@ export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
   if (layers.background && tiles) drawBackground(ctx, map, view, scene.p, palette.tiles, tiles)
   const signalsShown = signalsVisible(view, layers)
   if (signalsShown) drawOccupiedBlocks(ctx, view, scene.p, live.signals, palette)
-  drawTrack(ctx, map, view, scene.p, layers.speed, palette, new Set(unlined.values()))
+  const coloring = layers.grade ? 'grade' : layers.speed ? 'speed' : 'plain'
+  drawTrack(ctx, map, view, scene.p, coloring, palette, new Set(unlined.values()))
   if (highlight) drawTrackHighlight(ctx, map, view, scene.p, highlight.track, palette.industry[industryType(highlight)])
   if (layers.turntables) drawTurntables(scene)
   if (switchesShown) drawUnreportedSwitches(scene)

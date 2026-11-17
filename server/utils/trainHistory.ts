@@ -21,7 +21,7 @@ export async function recordTrainHistory(agentId: string, trains: TrainReport[])
     )
     INSERT INTO train_history (agent_id, train_id, segment, track_end, distance, speed_mph, x, z)
     SELECT ${agentId}, r.train_id, r.segment, r.track_end, r.distance, r.speed_mph, r.x, r.z
-    FROM json_to_recordset(${JSON.stringify(rows)}::json)
+    FROM jsonb_to_recordset(${sql.json(rows)})
       AS r(train_id text, segment text, track_end text, distance real, speed_mph real, x real, z real)
     WHERE (SELECT yes FROM due)`
 }

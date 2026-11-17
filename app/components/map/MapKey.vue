@@ -4,18 +4,23 @@ const props = defineProps<{ speeds: number[]; backgroundAvailable: boolean }>()
 const layers = defineModel<MapLayers>({ required: true })
 const palette = useMapPalette()
 
+// Track can be colored one way at a time: turning on speed turns off steepness, and the other way round.
+const EITHER: Partial<Record<keyof MapLayers, keyof MapLayers>> = { speed: 'grade', grade: 'speed' }
 const setLayer = (key: keyof MapLayers, on: boolean | 'indeterminate') => {
-  layers.value = { ...layers.value, [key]: on === true }
+  const other = EITHER[key]
+  layers.value = { ...layers.value, [key]: on === true, ...(on === true && other ? { [other]: false } : {}) }
 }
 
 const unavailable = (layer: keyof MapLayers) => layer === 'background' && !props.backgroundAvailable
 
-// With speed colors off, track is one color.
-const trackItems = computed(() =>
-  layers.value.speed
-    ? props.speeds.map((limit) => ({ color: speedColor(palette.value, limit), label: limit ? speed(limit) : 'No limit in the map data' }))
-    : [{ color: palette.value.track, label: 'Track' }]
+// What the track's colors mean, under whichever coloring is on.
+const speedItems = computed(() =>
+  props.speeds.map((limit) => ({ color: speedColor(palette.value, limit), label: limit ? speed(limit) : 'No limit in the map data' }))
 )
+const gradeItems = computed(() => {
+  const [gentle, moderate, steep] = GRADE_STEPS
+  return [`Under ${gentle}%`, `${gentle}–${moderate}%`, `${moderate}–${steep}%`, `${steep}% and steeper`].map((label, i) => ({ color: palette.value.climbs[i]!, label }))
+})
 const { speed } = useUnits()
 </script>
 
@@ -35,8 +40,8 @@ const { speed } = useUnits()
         </li>
       </ul>
 
-      <ul v-if="row.layer === 'speed'" class="grid gap-1 pl-6.5 text-muted-foreground">
-        <li v-for="item in trackItems" :key="item.label" class="flex h-6 items-center gap-2">
+      <ul v-if="(row.layer === 'speed' || row.layer === 'grade') && layers[row.layer]" class="grid gap-1 pl-6.5 text-muted-foreground">
+        <li v-for="item in row.layer === 'speed' ? speedItems : gradeItems" :key="item.label" class="flex h-6 items-center gap-2">
           <span class="mx-0.5 h-1 w-5 shrink-0 rounded-full" :style="{ background: item.color }" />
           {{ item.label }}
         </li>

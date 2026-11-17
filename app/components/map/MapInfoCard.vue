@@ -15,11 +15,13 @@ interface Row {
 
 // Title, subtitle, labeled details and a short list for a train, a signal, a switch or plain track. Towns and
 // industries have their own cards.
+// Read a train from the latest positions, so the card stays current while it moves.
+const trainNow = computed(() => (props.hit.type === 'train' ? props.live.trains.find((t) => t.id === props.hit.id) : undefined))
+
 const info = computed((): { title: string; sub: string; lines: string[]; rows?: Row[]; speed?: { mph: number; limit?: number } } => {
   const { hit } = props
   if (hit.type === 'train') {
-    // Read the train from the latest positions, so the card stays current while it moves.
-    const train = props.live.trains.find((t) => t.id === hit.id)
+    const train = trainNow.value
     if (!train) return { title: hit.name, sub: 'No longer reported by the game server', lines: [] }
     // The speed itself is shown with the limit below, so the subtitle only says moving or stopped.
     const motion = isMoving(train) ? 'Moving' : 'Stopped'
@@ -80,6 +82,7 @@ const info = computed((): { title: string; sub: string; lines: string[]; rows?: 
         <Crosshair />
         {{ following ? 'Following: click to stop' : 'Follow this train' }}
       </Button>
+      <MapGradePanel v-if="trainNow" :key="trainNow.id" :map="map" :live="live" :train="trainNow" />
     </CardContent>
   </Card>
 </template>

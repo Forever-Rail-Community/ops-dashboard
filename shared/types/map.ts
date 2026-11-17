@@ -44,7 +44,8 @@ export interface MapData {
 // Which parts of the map are drawn.
 export interface MapLayers {
   background: boolean // the real-world map under the track
-  speed: boolean
+  speed: boolean // color track by speed limit
+  grade: boolean // color track by steepness (instead of speed)
   switches: boolean
   places: boolean
   industries: boolean

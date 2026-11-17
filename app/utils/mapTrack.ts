@@ -1,4 +1,4 @@
-// Draws the track. Far out it is a line colored by speed limit; closer in it sits on a ballast bed so crossing and
+// Draws the track. Far out it is a line colored by speed limit or steepness; closer in it sits on a ballast bed so crossing and
 // neighboring tracks stay distinct; close in it is drawn to scale, with two rails and ties.
 // Pieces a switch isn't lined for are drawn faint (thinner too, when not to scale), so the route each switch is
 // lined for reads as the one continuous line.
@@ -84,18 +84,23 @@ function offsetLine(curve: Piece['curve'], offset: number, steps: number) {
 }
 
 // Groups pieces by the color they are drawn in, so each color is one path and one stroke.
-function byColor(pieces: Piece[], colorOf: (speed: number) => string) {
+function byColor(pieces: Piece[], colorOf: (piece: Piece) => string) {
   const groups = new Map<string, Piece[]>()
   for (const piece of pieces) {
-    const color = colorOf(piece.speed)
+    const color = colorOf(piece)
     groups.set(color, [...(groups.get(color) ?? []), piece])
   }
   return groups
 }
 
-export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, bySpeed: boolean, palette: MapPalette, faint: Set<number>) {
+// What the track's color shows: its speed limit, how steep it is, or nothing.
+export type TrackColoring = 'speed' | 'grade' | 'plain'
+
+export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, coloring: TrackColoring, palette: MapPalette, faint: Set<number>) {
   const pieces = visiblePieces(map, p, view.w, view.h)
-  const colorOf = (speed: number) => (bySpeed ? speedColor(palette, speed) : palette.track)
+  const grades = coloring === 'grade' ? pieceGrades(map) : undefined
+  const colorOf = (piece: Piece) =>
+    grades ? palette.climbs[gradeClass(grades[piece.index]!)]! : coloring === 'speed' ? speedColor(palette, piece.speed) : palette.track
   ctx.save()
   ctx.globalAlpha = FAINT_ALPHA
   drawPieces(ctx, view, pieces.filter((piece) => faint.has(piece.index)), colorOf, palette, FAINT_WIDTH)
@@ -105,7 +110,7 @@ export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Project
 }
 
 // `widthFactor` narrows the line when not drawn to scale.
-function drawPieces(ctx: Ctx, view: MapViewState, pieces: Piece[], colorOf: (speed: number) => string, palette: MapPalette, widthFactor: number) {
+function drawPieces(ctx: Ctx, view: MapViewState, pieces: Piece[], colorOf: (piece: Piece) => string, palette: MapPalette, widthFactor: number) {
   if (!pieces.length) return
   const zoom = view.s / view.fit
   const all = pathOf(pieces)

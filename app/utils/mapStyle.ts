@@ -21,6 +21,8 @@ export interface MapPalette {
   tiles: TileStyle // the real-world map's style
   aspects: Record<SignalAspect, string> // a signal's lamp, by aspect
   occupied: string // the band along an occupied block's track
+  climbs: [string, string, string, string] // by gradeClass, level to steep: climbing, and the grade layer
+  descents: [string, string, string, string] // by gradeClass: descending
 }
 
 const LIGHT_PALETTE: MapPalette = {
@@ -40,7 +42,9 @@ const LIGHT_PALETTE: MapPalette = {
   onTrain: '#ffffff',
   tiles: 'light_all',
   aspects: { stop: '#dc2626', approach: '#ca8a04', divergingApproach: '#ca8a04', clear: '#16a34a', divergingClear: '#16a34a', restricting: '#ea580c', unknown: '#71717a' },
-  occupied: '#dc2626'
+  occupied: '#dc2626',
+  climbs: ['#71717a', '#d97706', '#ea580c', '#dc2626'],
+  descents: ['#71717a', '#0284c7', '#2563eb', '#7c3aed']
 }
 
 const DARK_PALETTE: MapPalette = {
@@ -60,7 +64,9 @@ const DARK_PALETTE: MapPalette = {
   onTrain: '#1e1036',
   tiles: 'dark_all',
   aspects: { stop: '#f87171', approach: '#facc15', divergingApproach: '#facc15', clear: '#4ade80', divergingClear: '#4ade80', restricting: '#fb923c', unknown: '#a1a1aa' },
-  occupied: '#f87171'
+  occupied: '#f87171',
+  climbs: ['#a1a1aa', '#fbbf24', '#fb923c', '#f87171'],
+  descents: ['#a1a1aa', '#38bdf8', '#60a5fa', '#a78bfa']
 }
 
 export const mapPalette = (dark: boolean): MapPalette => (dark ? DARK_PALETTE : LIGHT_PALETTE)
@@ -82,6 +88,7 @@ export const KIND_TEXT: Record<IndustryKind, string> = {
 export const DEFAULT_LAYERS: MapLayers = {
   background: false,
   speed: true,
+  grade: false,
   switches: true,
   places: true,
   industries: true,
@@ -152,6 +159,7 @@ export const MAP_KEY: MapKeyRow[] = [
     ]
   },
   { layer: 'speed', label: 'Color track by speed limit' },
+  { layer: 'grade', label: 'Color track by steepness' },
   { layer: 'background', label: 'Real-world map underneath' },
   { layer: 'places', label: 'Towns', symbol: 'place' },
   {
