@@ -33,6 +33,9 @@ export default defineNuxtConfig({
     // Free key from https://carto.com/basemaps/apikey/ for the real-world map under the Railroader map.
     // Without it, that layer is simply not offered. Redeploy after setting it.
     cartoKey: '',
+    // Vercel deploy hook URL for the public help site. Publishing calls it so the site rebuilds.
+    // Without it, articles still save and publish; the help site just updates on its next deploy.
+    helpDeployHook: '',
     public: {
       mapBackground: Boolean(process.env.NUXT_CARTO_KEY)
     },

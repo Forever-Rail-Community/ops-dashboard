@@ -70,6 +70,21 @@ from the status pages.
 **Database steps** are listed by name in `server/utils/db.ts` and each runs once. Add new steps at the end, and never
 rename one that has shipped.
 
+## Help center
+
+Help articles for the public help site are written here, in the dashboard. The help site itself is a separate project
+that reads published articles from `GET /api/public/help` when it builds.
+
+- **Permissions:** "Write and edit help center drafts" (`help.edit`) and "Publish, unpublish, and delete articles; manage
+  categories" (`help.publish`). Both start on the Admin role; add them to other roles on the Access tab.
+- **Drafts:** each article keeps a draft and a published copy. Saving changes only the draft; the public site shows the
+  published copy until someone publishes. Every publish is kept in the article's history.
+- **Moving a published article** (category, URL, game, section, or order) shows on the public site right away.
+- **Rebuilding the help site:** set `NUXT_HELP_DEPLOY_HOOK` to a deploy hook URL from the help site's Vercel project.
+  Publishing, unpublishing, deleting a published article, category changes, and changes to the name, logo, or color in
+  Admin > Appearance all call it.
+- The help site uses the name, logo, and main color from **Admin > Appearance**, so both sites match.
+
 ## Customizing
 
 - Name, subtitle, logo, color, and wording: Admin > Appearance. No redeploy needed.

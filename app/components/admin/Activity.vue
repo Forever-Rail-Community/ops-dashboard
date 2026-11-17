@@ -8,7 +8,14 @@ const names: Record<string, string> = {
   'access.update': 'Changed roles or Discord access',
   'agents.create': 'Added a game server',
   'agents.key': 'Made a new key for a game server',
-  'agents.delete': 'Removed a game server'
+  'agents.delete': 'Removed a game server',
+  'help.category.create': 'Added a help center category',
+  'help.category.update': 'Changed a help center category',
+  'help.category.delete': 'Removed a help center category',
+  'help.article.publish': 'Published a help article',
+  'help.article.unpublish': 'Unpublished a help article',
+  'help.article.move': 'Moved a published help article',
+  'help.article.delete': 'Deleted a help article'
 }
 const when = (iso: string) => new Date(iso).toLocaleString()
 </script>
