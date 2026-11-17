@@ -289,6 +289,20 @@ export async function publishHelpArticle(articleId: number, actor: Actor): Promi
   })
 }
 
+// Throws away unpublished edits: the draft becomes the published copy again. The public site doesn't change.
+export async function discardHelpDraft(articleId: number, actor: Actor): Promise<HelpArticle> {
+  const sql = await db()
+  const [row] = await sql<ArticleRow[]>`
+    UPDATE help_articles SET draft = published, updated_at = now(), updated_by = ${actor.id}, updated_by_name = ${actor.name}
+    WHERE id = ${articleId} AND published IS NOT NULL AND draft IS DISTINCT FROM published
+    RETURNING *, 'published' AS status`
+  if (!row) {
+    const current = await getHelpArticle(articleId)
+    throw conflict(current.published ? 'There are no unpublished changes to discard' : 'This article has never been published')
+  }
+  return toArticle(row)
+}
+
 // Takes the article off the public site. The draft and the history are kept.
 export async function unpublishHelpArticle(articleId: number): Promise<HelpArticle> {
   const sql = await db()
@@ -328,7 +342,7 @@ export async function listHelpRevisions(articleId: number): Promise<HelpRevision
 // ---------------------------------------------------------------------------------------------------
 // The public help site
 
-// Published articles only, plus the name, logo, and color from Admin > Appearance.
+// Published articles only, plus the help site's settings from Admin > Appearance (HELP_SITE_FIELDS).
 export async function loadPublicHelp(): Promise<PublicHelp> {
   const sql = await db()
   const [site, categories, articles] = await Promise.all([
@@ -345,7 +359,7 @@ export async function loadPublicHelp(): Promise<PublicHelp> {
 
   const slugById = new Map(categories.map((c) => [c.id, c.slug]))
   return {
-    site: { name: site.name, logo: site.logo, brandColor: site.brandColor },
+    site: Object.fromEntries(HELP_SITE_FIELDS.map((k) => [k, site[k]])) as HelpSiteSettings,
     categories: categories.map(({ id: _id, articleCount: _count, ...c }) => c),
     articles: articles.map((a) => ({
       categorySlug: slugById.get(Number(a.category_id))!,

@@ -12,7 +12,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
   modules: ['shadcn-nuxt', 'nuxt-auth-utils'],
-  css: ['~/assets/css/main.css'],
+  // vue-sonner 2 ships its toast styles separately; without them toasts render unstyled, off screen.
+  css: ['~/assets/css/main.css', 'vue-sonner/style.css'],
   vite: { plugins: [tailwindcss()] },
 
   // shadcn-vue components live in app/components/ui and are auto-imported by name (Button, Card, ...).

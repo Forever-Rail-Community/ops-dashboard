@@ -76,12 +76,16 @@ async function save() {
         <CardDescription>Used for buttons, highlights, and the active menu item. Pick a medium or dark color so text on it stays readable.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div class="flex items-center gap-3">
-          <input v-model="form.brandColor" type="color" class="h-9 w-14 cursor-pointer rounded-md border bg-transparent p-1" aria-label="Main color" />
-          <Input v-model="form.brandColor" class="w-32" aria-label="Main color hex value" />
-        </div>
+        <AdminColorField v-model="form.brandColor" label="Main color" />
       </CardContent>
     </Card>
+
+    <AdminHelpSiteLook
+      v-model:light="form.helpLightAccent"
+      v-model:dark="form.helpDarkAccent"
+      v-model:image="form.helpHeroImage"
+      v-model:overlay="form.helpHeroOverlay"
+    />
 
     <Card>
       <CardHeader>

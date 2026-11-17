@@ -22,6 +22,13 @@ export interface SiteSettings {
   subtitle: string
   logo: string // '/logo.svg', an https URL, or a small data: image
   brandColor: string // '#rrggbb'
+  // Accent colors for the public help site, one for light mode and one for dark mode ('#rrggbb').
+  helpLightAccent: string
+  helpDarkAccent: string
+  // Background image for the help site's home page search area ('' for none), and how strongly the
+  // accent color covers it, 0 to 100. The help site raises it if text over the image would be hard to read.
+  helpHeroImage: string
+  helpHeroOverlay: number
   labels: Record<string, string>
 }
 
@@ -30,5 +37,9 @@ export const DEFAULT_SITE: SiteSettings = {
   subtitle: 'Operations',
   logo: '/logo.svg',
   brandColor: '#2f77a5',
+  helpLightAccent: '#f2b134', // the orange in the Forever Rail logo
+  helpDarkAccent: '#8b5cf6',
+  helpHeroImage: '',
+  helpHeroOverlay: 80,
   labels: DEFAULT_LABELS
 }

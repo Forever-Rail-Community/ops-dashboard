@@ -16,5 +16,5 @@ useHead(() => ({
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
-  <Toaster position="top-right" />
+  <Toaster position="bottom-right" />
 </template>

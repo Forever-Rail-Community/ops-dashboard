@@ -12,8 +12,8 @@ export default defineEventHandler(async (event) => {
     (k) => JSON.stringify(next[k]) !== JSON.stringify(before[k])
   )
   await logEvent(user, 'settings.update', { changed })
-  // The help site uses the same name, logo, and color, so it rebuilds when one of those changes.
-  if (changed.some((k) => k === 'name' || k === 'logo' || k === 'brandColor')) {
+  // The help site uses some of these settings, so it rebuilds when one of those changes.
+  if (changed.some(isHelpSiteField)) {
     await rebuildHelpSite('settings.update')
   }
   return next
