@@ -53,10 +53,10 @@ function doc(value: unknown): HelpDoc {
   return d
 }
 
-export const parseCategoryId = (value: unknown) => id(value, 'Category')
-export const parseArticleId = (value: unknown) => id(value, 'Article')
+export const parseHelpCategoryId = (value: unknown) => id(value, 'Category')
+export const parseHelpArticleId = (value: unknown) => id(value, 'Article')
 
-export function parseCategoryInput(body: any): HelpCategoryInput {
+export function parseHelpCategoryInput(body: any): HelpCategoryInput {
   if (!body || typeof body !== 'object') throw bad('Invalid category')
   const icon = typeof body.icon === 'string' && body.icon ? body.icon : 'book-open'
   if (!HELP_ICON.test(icon) || icon.length > 40) throw bad('Icon must be a Lucide icon name, like book-open')
@@ -69,12 +69,12 @@ export function parseCategoryInput(body: any): HelpCategoryInput {
   }
 }
 
-export function parseArticleInput(body: any): HelpArticleInput {
+export function parseHelpArticleInput(body: any): HelpArticleInput {
   if (!body || typeof body !== 'object') throw bad('Invalid article')
   if (!isHelpGame(body.game)) throw bad('Pick a game, or "all games"')
   const d = body.draft ?? {}
   return {
-    categoryId: parseCategoryId(body.categoryId),
+    categoryId: parseHelpCategoryId(body.categoryId),
     slug: slug(body.slug),
     game: body.game,
     section: text(body.section, 'Section', HELP_LIMITS.section, false),
@@ -111,7 +111,7 @@ const toCategory = (r: CategoryRow): HelpCategory => ({
   articleCount: r.article_count
 })
 
-export async function listCategories(): Promise<HelpCategory[]> {
+export async function listHelpCategories(): Promise<HelpCategory[]> {
   const sql = await db()
   const rows = await sql<CategoryRow[]>`
     SELECT c.*, (SELECT count(*)::int FROM help_articles a WHERE a.category_id = c.id) AS article_count
@@ -119,7 +119,7 @@ export async function listCategories(): Promise<HelpCategory[]> {
   return rows.map(toCategory)
 }
 
-export async function createCategory(input: HelpCategoryInput): Promise<HelpCategory> {
+export async function createHelpCategory(input: HelpCategoryInput): Promise<HelpCategory> {
   const sql = await db()
   try {
     const [row] = await sql<CategoryRow[]>`
@@ -134,7 +134,7 @@ export async function createCategory(input: HelpCategoryInput): Promise<HelpCate
   }
 }
 
-export async function updateCategory(categoryId: number, input: HelpCategoryInput): Promise<HelpCategory> {
+export async function updateHelpCategory(categoryId: number, input: HelpCategoryInput): Promise<HelpCategory> {
   const sql = await db()
   try {
     const [row] = await sql<CategoryRow[]>`
@@ -152,7 +152,7 @@ export async function updateCategory(categoryId: number, input: HelpCategoryInpu
 }
 
 // Only empty categories can be deleted, so no article is ever lost by accident.
-export async function deleteCategory(categoryId: number): Promise<HelpCategory> {
+export async function deleteHelpCategory(categoryId: number): Promise<HelpCategory> {
   const sql = await db()
   return sql.begin(async (tx) => {
     const [row] = await tx<CategoryRow[]>`
@@ -208,7 +208,7 @@ const toArticle = (r: ArticleRow): HelpArticle => ({
   createdByName: r.created_by_name
 })
 
-export async function listArticles(): Promise<HelpArticleSummary[]> {
+export async function listHelpArticles(): Promise<HelpArticleSummary[]> {
   const sql = await db()
   const rows = await sql<ArticleRow[]>`
     SELECT *, ${sql.unsafe(STATUS)} AS status FROM help_articles
@@ -216,7 +216,7 @@ export async function listArticles(): Promise<HelpArticleSummary[]> {
   return rows.map(toSummary)
 }
 
-export async function getArticle(articleId: number): Promise<HelpArticle> {
+export async function getHelpArticle(articleId: number): Promise<HelpArticle> {
   const sql = await db()
   const [row] = await sql<ArticleRow[]>`SELECT *, ${sql.unsafe(STATUS)} AS status FROM help_articles WHERE id = ${articleId}`
   if (!row) throw notFound('Article')
@@ -231,7 +231,7 @@ function explainSaveError(err: unknown): never {
   throw err
 }
 
-export async function createArticle(input: HelpArticleInput, actor: Actor): Promise<HelpArticle> {
+export async function createHelpArticle(input: HelpArticleInput, actor: Actor): Promise<HelpArticle> {
   const sql = await db()
   try {
     const [row] = await sql<ArticleRow[]>`
@@ -247,7 +247,7 @@ export async function createArticle(input: HelpArticleInput, actor: Actor): Prom
 }
 
 // Saves the draft and placement. Refuses if someone else saved after the editor loaded the article.
-export async function saveArticle(articleId: number, input: HelpArticleInput, actor: Actor): Promise<HelpArticle> {
+export async function saveHelpArticle(articleId: number, input: HelpArticleInput, actor: Actor): Promise<HelpArticle> {
   const sql = await db()
   try {
     const [row] = await sql<ArticleRow[]>`
@@ -265,12 +265,12 @@ export async function saveArticle(articleId: number, input: HelpArticleInput, ac
     explainSaveError(err)
   }
   // Nothing was updated: either the article is gone, or someone saved it first.
-  const current = await getArticle(articleId)
+  const current = await getHelpArticle(articleId)
   throw conflict(`${current.updatedByName} saved this article while you were editing. Reload to see their changes.`)
 }
 
 // Makes the draft public and keeps a copy of it in the article's history.
-export async function publishArticle(articleId: number, actor: Actor): Promise<HelpArticle> {
+export async function publishHelpArticle(articleId: number, actor: Actor): Promise<HelpArticle> {
   const sql = await db()
   return sql.begin(async (tx) => {
     const [row] = await tx<ArticleRow[]>`
@@ -290,20 +290,20 @@ export async function publishArticle(articleId: number, actor: Actor): Promise<H
 }
 
 // Takes the article off the public site. The draft and the history are kept.
-export async function unpublishArticle(articleId: number): Promise<HelpArticle> {
+export async function unpublishHelpArticle(articleId: number): Promise<HelpArticle> {
   const sql = await db()
   const [row] = await sql<ArticleRow[]>`
     UPDATE help_articles SET published = NULL, published_at = NULL, published_by = NULL, published_by_name = NULL
     WHERE id = ${articleId} AND published IS NOT NULL
     RETURNING *, 'draft' AS status`
   if (!row) {
-    await getArticle(articleId)
+    await getHelpArticle(articleId)
     throw conflict('This article is not published')
   }
   return toArticle(row)
 }
 
-export async function deleteArticle(articleId: number): Promise<HelpArticleSummary> {
+export async function deleteHelpArticle(articleId: number): Promise<HelpArticleSummary> {
   const sql = await db()
   const [row] = await sql<ArticleRow[]>`
     DELETE FROM help_articles WHERE id = ${articleId} RETURNING *, ${sql.unsafe(STATUS)} AS status`
@@ -311,9 +311,9 @@ export async function deleteArticle(articleId: number): Promise<HelpArticleSumma
   return toSummary(row)
 }
 
-export async function listRevisions(articleId: number): Promise<HelpRevision[]> {
+export async function listHelpRevisions(articleId: number): Promise<HelpRevision[]> {
   const sql = await db()
-  await getArticle(articleId)
+  await getHelpArticle(articleId)
   const rows = await sql<{ id: string; title: string; published_at: Date; published_by_name: string }[]>`
     SELECT id, content->>'title' AS title, published_at, published_by_name
     FROM help_revisions WHERE article_id = ${articleId} ORDER BY published_at DESC LIMIT 50`
@@ -333,7 +333,7 @@ export async function loadPublicHelp(): Promise<PublicHelp> {
   const sql = await db()
   const [site, categories, articles] = await Promise.all([
     loadSite(),
-    listCategories(),
+    listHelpCategories(),
     sql<(Pick<ArticleRow, 'category_id' | 'slug' | 'game' | 'section' | 'sort_order' | 'created_by_name'> & {
       published: HelpContent
       published_at: Date

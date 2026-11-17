@@ -2,9 +2,9 @@
 // (new category, URL, game, section, or order) shows on the public site right away.
 export default defineEventHandler(async (event) => {
   const { user } = await requirePermission(event, 'help.edit')
-  const articleId = parseArticleId(getRouterParam(event, 'id'))
-  const before = await getArticle(articleId)
-  const after = await saveArticle(articleId, parseArticleInput(await readBody(event)), user)
+  const articleId = parseHelpArticleId(getRouterParam(event, 'id'))
+  const before = await getHelpArticle(articleId)
+  const after = await saveHelpArticle(articleId, parseHelpArticleInput(await readBody(event)), user)
 
   const placement = (a: HelpPlacement) => [a.categoryId, a.slug, a.game, a.section, a.sortOrder].join('|')
   if (after.published && placement(before) !== placement(after)) {

@@ -24,7 +24,7 @@ export const HELP_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export const HELP_ICON = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 // Suggests a URL slug from a title: "Can't connect?" becomes "cant-connect".
-export function slugify(text: string): string {
+export function helpSlugFromTitle(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFKD')

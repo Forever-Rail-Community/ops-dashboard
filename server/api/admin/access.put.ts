@@ -7,13 +7,25 @@ export default defineEventHandler(async (event) => {
   if (!Array.isArray(body?.roles) || !Array.isArray(body?.mappings)) throw bad('Invalid request')
   if (body.roles.length > 30 || body.mappings.length > 200) throw bad('Too many roles or mappings')
 
+  const sql = await db()
+
+  // A role may already hold a permission this version doesn't know, for example after rolling back from a
+  // newer version. Keeping it lets the page still save; only permissions the role doesn't already have
+  // must be known ones.
+  const stored = new Map(
+    (await sql<{ key: string; permissions: string[] }[]>`SELECT key, permissions FROM roles`).map((r) => [r.key, r.permissions])
+  )
+
   const roles: RoleDef[] = body.roles.map((r: any) => {
     const key = String(r?.key ?? '')
     const label = String(r?.label ?? '').trim()
     if (!/^[a-z][a-z0-9-]{1,40}$/.test(key)) throw bad('Invalid role key')
     if (!label || label.length > 40) throw bad('Role names must be 1 to 40 characters')
     const permissions = Array.isArray(r.permissions) ? r.permissions.map(String) : []
-    if (permissions.some((p: string) => !ALL_PERMISSION_KEYS.includes(p))) throw bad('Unknown permission')
+    const alreadyHas = stored.get(key) ?? []
+    if (permissions.some((p: string) => !ALL_PERMISSION_KEYS.includes(p) && !alreadyHas.includes(p))) {
+      throw bad('Unknown permission')
+    }
     return { key, label, permissions: [...new Set(permissions)] as string[] }
   })
 
@@ -41,7 +53,6 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const sql = await db()
   await sql.begin(async (tx) => {
     await tx`DELETE FROM role_mappings`
     for (const [i, r] of roles.entries()) {
