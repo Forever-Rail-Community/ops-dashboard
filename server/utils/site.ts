@@ -31,8 +31,16 @@ export function validateSite(body: any): SiteSettings {
   const name = text(body.name, 'Name', 60)
   const subtitle = text(body.subtitle, 'Subtitle', 60, false)
 
-  const brandColor = String(body.brandColor ?? '')
-  if (!/^#[0-9a-fA-F]{6}$/.test(brandColor)) throw bad('Color must look like #2f77a5')
+  // A missing optional color (from an older version of the page) keeps its default.
+  const color = (v: unknown, field: string, fallback?: string) => {
+    if (v === undefined && fallback) return fallback
+    const c = String(v ?? '')
+    if (!/^#[0-9a-fA-F]{6}$/.test(c)) throw bad(`${field} must look like #2f77a5`)
+    return c.toLowerCase()
+  }
+  const brandColor = color(body.brandColor, 'Color')
+  const helpLightAccent = color(body.helpLightAccent, 'Help site light mode color', DEFAULT_SITE.helpLightAccent)
+  const helpDarkAccent = color(body.helpDarkAccent, 'Help site dark mode color', DEFAULT_SITE.helpDarkAccent)
 
   const logo = String(body.logo ?? '')
   const logoOk =
@@ -46,5 +54,5 @@ export function validateSite(body: any): SiteSettings {
     labels[f.key] = text(body.labels?.[f.key] ?? f.fallback, f.title, 40)
   }
 
-  return { name, subtitle, logo, brandColor: brandColor.toLowerCase(), labels }
+  return { name, subtitle, logo, brandColor, helpLightAccent, helpDarkAccent, labels }
 }

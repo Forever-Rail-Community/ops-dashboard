@@ -1,5 +1,4 @@
-import type { HelpGame } from '../utils/help'
-import type { SiteSettings } from '../utils/site'
+import type { HelpGame, HelpSiteSettings } from '../utils/help'
 
 // The editor's document format (Tiptap's JSON). The server only checks its outer shape and size.
 export interface HelpDoc {
@@ -74,7 +73,7 @@ export interface HelpRevision {
 
 // Everything the public help site needs to build, in one response.
 export interface PublicHelp {
-  site: Pick<SiteSettings, 'name' | 'logo' | 'brandColor'>
+  site: HelpSiteSettings
   categories: Omit<HelpCategory, 'id' | 'articleCount'>[]
   articles: {
     categorySlug: string

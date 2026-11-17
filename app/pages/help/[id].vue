@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Ellipsis, EyeOff, Trash2 } from '@lucide/vue'
+import { ArrowLeft, Check, CircleAlert, Ellipsis, EyeOff, LoaderCircle, Trash2 } from '@lucide/vue'
 import { useEventListener } from '@vueuse/core'
 
 // A fresh page for every article, so leaving "new" for the saved article's address starts clean.
@@ -7,18 +7,25 @@ definePageMeta({ title: 'Help center', key: (route) => route.fullPath })
 
 const route = useRoute()
 const id = String(route.params.id)
+const isNewArticle = id === 'new'
 const { user } = useUserSession()
 const canPublish = computed(() => user.value?.permissions?.includes('help.publish') ?? false)
 
-const [{ data: categories }, { data: allArticles }] = await Promise.all([
-  useFetch<HelpCategory[]>('/api/help/categories', { key: 'help-categories', default: () => [] }),
-  useFetch<HelpArticleSummary[]>('/api/help/articles', { key: 'help-articles', default: () => [] })
+// These names differ from the list page's on purpose: pages that share a name share one copy of the data,
+// and the list would then show this page's copy instead of fetching the latest when you go back to it.
+const [{ data: categories }, { data: allArticles }, { data: loaded, error: loadError }] = await Promise.all([
+  useFetch<HelpCategory[]>('/api/help/categories', { key: 'help-editor-categories', default: () => [] }),
+  useFetch<HelpArticleSummary[]>('/api/help/articles', { key: 'help-editor-articles', default: () => [] }),
+  useFetch<HelpArticle>(`/api/help/articles/${id}`, { key: `help-article-${id}`, immediate: !isNewArticle })
 ])
+if (!isNewArticle && (loadError.value || !loaded.value)) {
+  throw createError({ statusCode: loadError.value?.statusCode ?? 404, statusMessage: 'Article not found', fatal: true })
+}
 
-const { isNew, article, form, dirty, busy, slugTouched, save, publish, unpublish, remove } = await useHelpArticle(
-  id,
-  () => categories.value[0]?.id
-)
+const {
+  isNew, article, form, dirty, busy, saveState, saveProblem, unpublishedChanges, slugTouched,
+  save, flush, publish, discard, reload, unpublish, remove
+} = useHelpArticle(isNewArticle ? null : loaded.value!, categories.value[0]?.id)
 
 const { data: revisions, refresh: refreshRevisions } = await useFetch<HelpRevision[]>(`/api/help/articles/${id}/revisions`, {
   key: `help-revisions-${id}`,
@@ -38,16 +45,21 @@ const sections = computed(() => [
   ...new Set(allArticles.value.filter((a) => a.categoryId === form.categoryId && a.section).map((a) => a.section))
 ])
 
-const status = computed<HelpStatus>(() => {
-  const s = article.value?.status ?? 'draft'
-  return s === 'published' && dirty.value ? 'changed' : s
-})
-const canPublishNow = computed(() => !busy.value && form.draft.title.trim() !== '' && status.value !== 'published')
+const status = computed<HelpStatus>(() => (unpublishedChanges.value ? 'changed' : (article.value?.status ?? 'draft')))
+const canPublishNow = computed(() => !busy.value && !saveProblem.value && saveState.value !== 'conflict' && status.value !== 'published')
 const publishLabel = computed(() => (article.value?.published ? 'Publish changes' : 'Publish'))
+
+// What the save indicator next to the buttons says.
+const saveLabel = computed(() => {
+  if (saveState.value === 'saving') return 'Saving…'
+  if (saveState.value === 'failed') return "Couldn't save"
+  if (saveState.value === 'unsaved') return saveProblem.value ?? 'Unsaved changes'
+  return 'Saved'
+})
 
 const when = (iso: string) => new Date(iso).toLocaleString()
 
-// Ctrl+S / Cmd+S saves the draft.
+// Ctrl+S / Cmd+S saves right away.
 useEventListener('keydown', (e: KeyboardEvent) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
@@ -55,9 +67,13 @@ useEventListener('keydown', (e: KeyboardEvent) => {
   }
 })
 
-// Don't lose unsaved work by leaving the page or closing the tab.
-const LEAVE_WARNING = 'You have unsaved changes. Leave without saving?'
-onBeforeRouteLeave(() => (dirty.value ? confirm(LEAVE_WARNING) : true))
+// Leaving the page saves first. Only if that fails (or a new article was never saved) does it ask.
+onBeforeRouteLeave(async () => {
+  if (!dirty.value) return true
+  if (!isNew && (await flush())) return true
+  return confirm(isNew ? 'This article has not been saved. Leave without saving?' : 'Your latest changes could not be saved. Leave anyway?')
+})
+// Closing the tab can't wait for a save, so the browser asks while anything is unsaved.
 useEventListener('beforeunload', (e: BeforeUnloadEvent) => {
   if (dirty.value) e.preventDefault()
 })
@@ -71,8 +87,14 @@ useEventListener('beforeunload', (e: BeforeUnloadEvent) => {
       </Button>
       <div class="flex flex-wrap items-center gap-2">
         <HelpStatusBadge :status="status" />
-        <span v-if="dirty" class="text-xs text-muted-foreground">Not saved</span>
-        <Button variant="outline" :disabled="busy || (!dirty && !isNew)" @click="save">Save draft</Button>
+        <Button v-if="isNew" variant="outline" :disabled="busy || !dirty || !!saveProblem" @click="save">Save draft</Button>
+        <span v-else class="flex items-center gap-1.5 text-xs text-muted-foreground" role="status" aria-live="polite">
+          <LoaderCircle v-if="saveState === 'saving'" class="size-3.5 animate-spin" />
+          <Check v-else-if="saveState === 'saved'" class="size-3.5" />
+          <CircleAlert v-else-if="saveState === 'failed'" class="size-3.5 text-destructive" />
+          {{ saveLabel }}
+          <Button v-if="saveState === 'failed'" variant="link" size="sm" class="h-auto p-0 text-xs" @click="flush">Retry</Button>
+        </span>
         <Button v-if="canPublish" :disabled="!canPublishNow" @click="publish">{{ publishLabel }}</Button>
         <DropdownMenu v-if="canPublish && article">
           <DropdownMenuTrigger as-child>
@@ -87,6 +109,31 @@ useEventListener('beforeunload', (e: BeforeUnloadEvent) => {
       </div>
     </div>
 
+    <Alert v-if="saveState === 'conflict'" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>Someone else saved this article while you were editing</AlertTitle>
+      <AlertDescription class="flex flex-wrap items-center justify-between gap-3">
+        <span>Your edits since then haven't been saved. Reload to see their version, then make your changes again.</span>
+        <Button size="sm" variant="outline" :disabled="busy" @click="reload">Reload</Button>
+      </AlertDescription>
+    </Alert>
+
+    <Alert v-else-if="unpublishedChanges" class="border-amber-600/30 bg-amber-500/10">
+      <CircleAlert class="text-amber-600 dark:text-amber-400" />
+      <AlertTitle>This article has unpublished changes</AlertTitle>
+      <AlertDescription class="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          The help site still shows the last published version. Your edits are saved as a draft{{
+            canPublish ? '' : ' until someone who can publish articles publishes them'
+          }}.
+        </span>
+        <span class="flex gap-2">
+          <Button size="sm" variant="outline" :disabled="busy" @click="discard">Discard changes</Button>
+          <Button v-if="canPublish" size="sm" :disabled="!canPublishNow" @click="publish">Publish changes</Button>
+        </span>
+      </AlertDescription>
+    </Alert>
+
     <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <section class="flex min-w-0 flex-col gap-4" aria-label="Article">
         <div class="grid gap-1">
@@ -100,7 +147,10 @@ useEventListener('beforeunload', (e: BeforeUnloadEvent) => {
           />
         </div>
         <HelpRichText v-model="form.draft.body" />
-        <p class="text-xs text-muted-foreground">Ctrl+S (Cmd+S on a Mac) saves the draft. Nothing changes on the help site until you publish.</p>
+        <p class="text-xs text-muted-foreground">
+          {{ isNew ? 'Save the draft once (Ctrl+S or Cmd+S); after that it saves as you type.' : 'Drafts save as you type.' }}
+          Nothing changes on the help site until you publish.
+        </p>
       </section>
 
       <aside class="flex flex-col gap-4" aria-label="Article settings">

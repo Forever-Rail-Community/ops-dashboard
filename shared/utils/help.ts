@@ -1,4 +1,5 @@
 import { GAME_KEYS } from './gameKeys'
+import type { SiteSettings } from './site'
 
 // Rules for help center content. The editor uses them to show limits; the server enforces them.
 
@@ -35,3 +36,8 @@ export function helpSlugFromTitle(text: string): string {
     .slice(0, HELP_LIMITS.slug)
     .replace(/-+$/, '')
 }
+
+// The Appearance settings the public help site uses. The feed sends these, and changing one rebuilds the site.
+export const HELP_SITE_FIELDS = ['name', 'logo', 'brandColor', 'helpLightAccent', 'helpDarkAccent'] as const satisfies readonly (keyof SiteSettings)[]
+export type HelpSiteSettings = Pick<SiteSettings, (typeof HELP_SITE_FIELDS)[number]>
+export const isHelpSiteField = (key: string) => (HELP_SITE_FIELDS as readonly string[]).includes(key)

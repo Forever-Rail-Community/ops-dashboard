@@ -76,9 +76,25 @@ async function save() {
         <CardDescription>Used for buttons, highlights, and the active menu item. Pick a medium or dark color so text on it stays readable.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div class="flex items-center gap-3">
-          <input v-model="form.brandColor" type="color" class="h-9 w-14 cursor-pointer rounded-md border bg-transparent p-1" aria-label="Main color" />
-          <Input v-model="form.brandColor" class="w-32" aria-label="Main color hex value" />
+        <AdminColorField v-model="form.brandColor" label="Main color" />
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Help site colors</CardTitle>
+        <CardDescription>
+          A light touch of color on the public help site: icons, highlights, and links. The help site rebuilds when you save.
+        </CardDescription>
+      </CardHeader>
+      <CardContent class="grid gap-6 sm:grid-cols-2">
+        <div class="grid gap-2">
+          <Label>Light mode</Label>
+          <AdminColorField v-model="form.helpLightAccent" label="Help site light mode color" />
+        </div>
+        <div class="grid gap-2">
+          <Label>Dark mode</Label>
+          <AdminColorField v-model="form.helpDarkAccent" label="Help site dark mode color" />
         </div>
       </CardContent>
     </Card>

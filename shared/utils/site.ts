@@ -22,6 +22,9 @@ export interface SiteSettings {
   subtitle: string
   logo: string // '/logo.svg', an https URL, or a small data: image
   brandColor: string // '#rrggbb'
+  // Accent colors for the public help site, one for light mode and one for dark mode ('#rrggbb').
+  helpLightAccent: string
+  helpDarkAccent: string
   labels: Record<string, string>
 }
 
@@ -30,5 +33,7 @@ export const DEFAULT_SITE: SiteSettings = {
   subtitle: 'Operations',
   logo: '/logo.svg',
   brandColor: '#2f77a5',
+  helpLightAccent: '#f2b134', // the orange in the Forever Rail logo
+  helpDarkAccent: '#8b5cf6',
   labels: DEFAULT_LABELS
 }
