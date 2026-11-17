@@ -230,6 +230,44 @@ saved with their account (`user_preferences` table, `GET`/`PUT /api/me/preferenc
 heights, speeds, the map's scale bar and train tags. The default is miles and feet. Formatting is in
 `shared/utils/units.ts`; components use `useUnits()`.
 
+## What's new
+
+People with **Write, publish, and delete What's new updates** (Admin > Access; admins have it) get **Manage > What's
+new**. An update is a title and a list of changes, each tagged with the part of the dashboard it's in. Updates stay
+drafts until published.
+
+- **Members** see What's new open by itself the next time they sign in after an update is published: the newest in
+  full, and the five before it. Unticking **Show this when there's an update** stops that; a megaphone button then
+  appears in the top bar, with a dot when there's an update they haven't seen. Both are saved with their account.
+- **Discord:** with `NUXT_DISCORD_UPDATES_WEBHOOK` set to the announcements channel's webhook (Discord channel > Edit channel >
+  Integrations > Webhooks > New webhook > Copy webhook URL), publishing can also post the update there. Editing a
+  posted update edits the Discord message; deleting it deletes the message. Mentions in update text never ping
+  anyone. If Discord refuses, the update still saves and the editor says so.
+- **Code:** `server/utils/updates.ts`, `app/pages/updates.vue`, `app/components/updates/`.
+- Permissions are read at sign-in, so people need to sign out and back in to see the new menu item.
+
+## Roadmap and feature requests
+
+**Community > Roadmap**, for everyone signed in: what's **Planned**, **In progress** and **Complete**, each item tagged
+Run8, Railroader or Dashboard, and filterable by that. Complete shows the latest eight, with more on request.
+
+- **Feature requests:** anyone can suggest one (up to 5 a day) and give each request one vote; the person asking
+  votes for it automatically. The form lists existing requests with similar titles, so people vote instead of
+  repeating them. Sort by most wanted or newest.
+- **Staff** (the **Manage the roadmap and answer feature requests** permission; admins have it) add, edit, move and
+  remove roadmap items, and for each request can:
+  - **Accept** it: it becomes a Planned roadmap item, keeping its votes and who asked;
+  - **Decline** it with a reason the person sees, or **Reopen** a declined one;
+  - **Merge** it into another request: its votes move there (one per person), and it leaves the list;
+  - **Reply**, shown on the request; **Hide** it from members (staff still see it).
+  Removing a roadmap item that came from a request opens that request again.
+- **What's new:** completed items not yet in an update are offered in the update editor; adding one adds it as a
+  change, and publishing marks the item "Shipped in" that update on the roadmap.
+- **Discord:** moving an item between columns can be announced in the announcements channel
+  (`NUXT_DISCORD_UPDATES_WEBHOOK`); every new request goes to a staff channel (`NUXT_DISCORD_STAFF_WEBHOOK`). Both
+  optional. Webhook code is shared in `server/utils/discord.ts`.
+- **Code:** `server/utils/roadmap.ts`, `app/pages/roadmap.vue`, `app/components/roadmap/`.
+
 ## Status in the header
 
 With `NUXT_PUBLIC_STATUS_URL` set to the status page's address (for example `https://status.example.com`), the top bar

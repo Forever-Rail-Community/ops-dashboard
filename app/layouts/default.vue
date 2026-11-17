@@ -19,8 +19,10 @@ const title = computed(() =>
         <h1 class="text-sm font-medium">{{ title }}</h1>
         <div class="ml-auto flex items-center gap-1">
           <StatusWidget />
+          <UpdatesWhatsNewButton />
           <ThemeToggle />
         </div>
+        <UpdatesWhatsNewDialog />
       </header>
       <main class="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <slot />

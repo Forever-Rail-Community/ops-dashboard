@@ -15,7 +15,17 @@ const names: Record<string, string> = {
   'help.article.publish': 'Published a help article',
   'help.article.unpublish': 'Unpublished a help article',
   'help.article.move': 'Moved a published help article',
-  'help.article.delete': 'Deleted a help article'
+  'help.article.delete': 'Deleted a help article',
+  'update.publish': "Published a What's new update",
+  'update.edit': "Edited a published What's new update",
+  'update.delete': "Deleted a published What's new update",
+  'roadmap.add': 'Added a roadmap item',
+  'roadmap.move': 'Moved a roadmap item',
+  'roadmap.remove': 'Removed a roadmap item',
+  'request.accept': 'Accepted a feature request onto the roadmap',
+  'request.decline': 'Declined a feature request',
+  'request.merge': 'Merged a feature request into another',
+  'request.reopen': 'Reopened a feature request'
 }
 const when = (iso: string) => new Date(iso).toLocaleString()
 </script>

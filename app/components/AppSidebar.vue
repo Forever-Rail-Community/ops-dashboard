@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, Check, ChevronsUpDown, Gamepad2, LogOut, ShieldCheck } from '@lucide/vue'
+import { BookOpen, Check, ChevronsUpDown, Gamepad2, LogOut, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
 
 const { user, clear } = useUserSession()
 const { site } = useSite()
@@ -8,6 +8,7 @@ const { current, labelOf } = useGame()
 
 const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith('admin.')) ?? false)
 const canEditHelp = computed(() => user.value?.permissions?.includes('help.edit') ?? false)
+const canPostUpdates = computed(() => user.value?.permissions?.includes('updates.post') ?? false)
 const features = computed(() => (current.value ? visibleFeatures(current.value, user.value?.permissions) : []))
 const { prefs, update } = usePreferences()
 const setUnits = (value: unknown) => {
@@ -83,7 +84,23 @@ async function signOut() {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <SidebarGroup v-if="isAdmin || canEditHelp">
+      <SidebarGroup>
+        <SidebarGroupLabel>Community</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton as-child :is-active="route.path.startsWith('/roadmap')" tooltip="Roadmap">
+                <NuxtLink to="/roadmap">
+                  <Milestone />
+                  <span>Roadmap</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarGroup v-if="isAdmin || canEditHelp || canPostUpdates">
         <SidebarGroupLabel>Manage</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
@@ -92,6 +109,14 @@ async function signOut() {
                 <NuxtLink to="/help">
                   <BookOpen />
                   <span>Help center</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem v-if="canPostUpdates">
+              <SidebarMenuButton as-child :is-active="route.path.startsWith('/updates')" tooltip="What's new">
+                <NuxtLink to="/updates">
+                  <Megaphone />
+                  <span>What's new</span>
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

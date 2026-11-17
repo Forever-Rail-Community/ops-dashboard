@@ -45,6 +45,10 @@ export default defineNuxtConfig({
     },
     discord: {
       guildId: '',
+      // Optional channel webhook URLs (see server/utils/discord.ts): announcements get published What's new updates and
+      // roadmap status changes (NUXT_DISCORD_UPDATES_WEBHOOK); staff get new feature requests (NUXT_DISCORD_STAFF_WEBHOOK).
+      updatesWebhook: '',
+      staffWebhook: '',
       // The three role-ID lists below are only used once, to fill in the starting Access settings.
       adminRoleIds: '',
       dispatcherRoleIds: '',
