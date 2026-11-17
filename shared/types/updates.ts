@@ -13,6 +13,7 @@ export interface Update {
   publishedAt: string | null // null while a draft
   updatedAt: string
   onDiscord: boolean // posted to the Discord channel
+  roadmapItemIds: number[] // completed roadmap items it covers; publishing marks them as shipped in it
 }
 
 // The parts of the dashboard an update can be about; editors pick one per change.

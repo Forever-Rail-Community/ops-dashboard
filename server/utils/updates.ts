@@ -1,9 +1,18 @@
 // What's new updates: written as drafts by people with "updates.post", then published. Publishing can also post the
-// update to a Discord channel through a webhook (NUXT_DISCORD_UPDATES_WEBHOOK); editing or deleting a posted update
-// changes or removes that message too. Discord failing never stops the update itself from saving.
+// update to the Discord announcements channel (see discord.ts); editing or deleting a posted update changes or
+// removes that message too.
 
 type Actor = { id: string; name: string }
-type Row = { id: number; title: string; changes: UpdateChange[]; published_at: Date | null; updated_at: Date; discord_message_id: string | null }
+type Row = {
+  id: number
+  title: string
+  changes: UpdateChange[]
+  published_at: Date | null
+  updated_at: Date
+  discord_message_id: string | null
+  roadmap_item_ids: number[]
+}
+type UpdateInput = { title: string; changes: UpdateChange[]; roadmapItemIds: number[] }
 
 const bad = (message: string) => createError({ statusCode: 400, statusMessage: message })
 const notFound = () => createError({ statusCode: 404, statusMessage: 'Update not found' })
@@ -14,7 +23,8 @@ const toUpdate = (r: Row): Update => ({
   changes: r.changes,
   publishedAt: r.published_at?.toISOString() ?? null,
   updatedAt: r.updated_at.toISOString(),
-  onDiscord: Boolean(r.discord_message_id)
+  onDiscord: Boolean(r.discord_message_id),
+  roadmapItemIds: r.roadmap_item_ids
 })
 
 export function parseUpdateId(value: unknown): number {
@@ -23,7 +33,7 @@ export function parseUpdateId(value: unknown): number {
   return n
 }
 
-export function parseUpdateInput(body: any): { title: string; changes: UpdateChange[] } {
+export function parseUpdateInput(body: any): UpdateInput {
   const title = typeof body?.title === 'string' ? body.title.trim() : ''
   if (!title || title.length > UPDATE_LIMITS.title) throw bad(`The title must be 1 to ${UPDATE_LIMITS.title} characters`)
   if (!Array.isArray(body?.changes) || body.changes.length > UPDATE_LIMITS.changes) throw bad(`Up to ${UPDATE_LIMITS.changes} changes`)
@@ -34,10 +44,14 @@ export function parseUpdateInput(body: any): { title: string; changes: UpdateCha
     if (!UPDATE_AREAS.includes(area)) throw bad(`Change ${i + 1} needs one of the listed areas`)
     return { area, text }
   })
-  return { title, changes }
+  const ids = body?.roadmapItemIds ?? []
+  if (!Array.isArray(ids) || ids.length > 50 || !ids.every((n: unknown) => Number.isSafeInteger(n) && (n as number) > 0)) {
+    throw bad('roadmapItemIds must be a list of roadmap item ids')
+  }
+  return { title, changes, roadmapItemIds: [...new Set(ids as number[])] }
 }
 
-const COLUMNS = 'id, title, changes, published_at, updated_at, discord_message_id'
+const COLUMNS = 'id, title, changes, published_at, updated_at, discord_message_id, roadmap_item_ids'
 
 // Everything, drafts first, then newest published: for the people who post updates.
 export async function listAllUpdates(): Promise<Update[]> {
@@ -60,22 +74,25 @@ async function getRow(id: number): Promise<Row> {
   return row
 }
 
-export async function createUpdate(input: { title: string; changes: UpdateChange[] }, actor: Actor): Promise<Update> {
+export async function createUpdate(input: UpdateInput, actor: Actor): Promise<Update> {
   const sql = await db()
   const [row] = await sql<Row[]>`
-    INSERT INTO updates (title, changes, created_by) VALUES (${input.title}, ${sql.json(input.changes)}, ${actor.id})
-    RETURNING id, title, changes, published_at, updated_at, discord_message_id`
+    INSERT INTO updates (title, changes, roadmap_item_ids, created_by)
+    VALUES (${input.title}, ${sql.json(input.changes)}, ${input.roadmapItemIds}, ${actor.id})
+    RETURNING ${sql.unsafe(COLUMNS)}`
   return toUpdate(row!)
 }
 
 // Saves the title and changes; a posted update's Discord message is edited to match.
-export async function saveUpdate(id: number, input: { title: string; changes: UpdateChange[] }, origin: string) {
+export async function saveUpdate(id: number, input: UpdateInput, origin: string) {
   const sql = await db()
   const [row] = await sql<Row[]>`
-    UPDATE updates SET title = ${input.title}, changes = ${sql.json(input.changes)}, updated_at = now() WHERE id = ${id}
-    RETURNING id, title, changes, published_at, updated_at, discord_message_id`
+    UPDATE updates SET title = ${input.title}, changes = ${sql.json(input.changes)}, roadmap_item_ids = ${input.roadmapItemIds}, updated_at = now()
+    WHERE id = ${id}
+    RETURNING ${sql.unsafe(COLUMNS)}`
   if (!row) throw notFound()
-  const discord: DiscordOutcome = row.discord_message_id ? await discordEdit(row, origin) : 'unchanged'
+  if (row.published_at) await markShipped(row.id, row.roadmap_item_ids)
+  const discord: DiscordOutcome = row.discord_message_id ? await discordEdit('announcements', row.discord_message_id, await updateEmbed(row, origin)) : 'unchanged'
   return { update: toUpdate(row), discord }
 }
 
@@ -87,15 +104,16 @@ export async function publishUpdate(id: number, toDiscord: boolean, origin: stri
   const sql = await db()
   let [row] = await sql<Row[]>`
     UPDATE updates SET published_at = now(), updated_at = now() WHERE id = ${id}
-    RETURNING id, title, changes, published_at, updated_at, discord_message_id`
+    RETURNING ${sql.unsafe(COLUMNS)}`
+  await markShipped(id, row!.roadmap_item_ids)
   let discord: DiscordOutcome = 'unchanged'
   if (toDiscord) {
-    const posted = await discordPost(row!, origin)
+    const posted = await discordPost('announcements', await updateEmbed(row!, origin))
     discord = posted.outcome
     if (posted.messageId) {
       ;[row] = await sql<Row[]>`
         UPDATE updates SET discord_message_id = ${posted.messageId} WHERE id = ${id}
-        RETURNING id, title, changes, published_at, updated_at, discord_message_id`
+        RETURNING ${sql.unsafe(COLUMNS)}`
     }
   }
   return { update: toUpdate(row!), discord }
@@ -104,63 +122,20 @@ export async function publishUpdate(id: number, toDiscord: boolean, origin: stri
 // Deletes an update, and its Discord message if it has one.
 export async function deleteUpdate(id: number) {
   const row = await getRow(id)
-  const discord: DiscordOutcome = row.discord_message_id ? await discordDelete(row.discord_message_id) : 'unchanged'
+  const discord: DiscordOutcome = row.discord_message_id ? await discordDelete('announcements', row.discord_message_id) : 'unchanged'
   const sql = await db()
   await sql`DELETE FROM updates WHERE id = ${id}`
   return { update: toUpdate(row), discord }
 }
 
-// ---- Discord: one message per published update, through the channel webhook ----
+// ---- Discord: one message per published update, in the announcements channel ----
 
-const webhook = () => (useRuntimeConfig().discord.updatesWebhook as string) || ''
-
-async function discordMessage(row: Row, origin: string) {
-  const site = await loadSite()
+async function updateEmbed(row: Row, origin: string): Promise<DiscordEmbed> {
   return {
-    allowed_mentions: { parse: [] }, // never ping anyone from update text
-    embeds: [
-      {
-        title: `What's new: ${row.title}`,
-        url: origin,
-        color: Number.parseInt(site.brandColor.slice(1), 16),
-        description: row.changes.map((c) => `**${c.area}**\n${c.text}`).join('\n\n'),
-        timestamp: row.published_at?.toISOString()
-      }
-    ]
+    title: `What's new: ${row.title}`,
+    url: origin,
+    color: await brandColor(),
+    description: row.changes.map((c) => `**${c.area}**\n${c.text}`).join('\n\n'),
+    timestamp: row.published_at?.toISOString()
   }
 }
-
-async function discordPost(row: Row, origin: string): Promise<{ outcome: DiscordOutcome; messageId?: string }> {
-  if (!webhook()) return { outcome: 'off' }
-  try {
-    const message = await $fetch<{ id: string }>(`${webhook()}?wait=true`, { method: 'POST', body: await discordMessage(row, origin) })
-    return { outcome: 'posted', messageId: message.id }
-  } catch (err) {
-    console.error('Discord post for an update failed', err)
-    return { outcome: 'failed' }
-  }
-}
-
-async function discordEdit(row: Row, origin: string): Promise<DiscordOutcome> {
-  if (!webhook()) return 'off'
-  try {
-    await $fetch(`${webhook()}/messages/${row.discord_message_id}`, { method: 'PATCH', body: await discordMessage(row, origin) })
-    return 'updated'
-  } catch (err) {
-    console.error('Discord edit for an update failed', err)
-    return 'failed'
-  }
-}
-
-async function discordDelete(messageId: string): Promise<DiscordOutcome> {
-  if (!webhook()) return 'off'
-  try {
-    await $fetch(`${webhook()}/messages/${messageId}`, { method: 'DELETE' })
-    return 'removed'
-  } catch (err) {
-    console.error('Discord delete for an update failed', err)
-    return 'failed'
-  }
-}
-
-export const discordUpdatesEnabled = () => Boolean(webhook())

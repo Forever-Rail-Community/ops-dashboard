@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { ArrowDown, ArrowUp, Plus, Send, Trash2 } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Plus, Send, Trash2, X } from '@lucide/vue'
 
 // Writing What's new updates: drafts until published; publishing can also post to Discord. Needs "updates.post".
 definePageMeta({ title: "What's new" })
@@ -9,13 +9,14 @@ interface Manage {
   updates: Update[]
   discord: boolean
   areas: string[]
+  completed: RoadmapItem[] // complete roadmap items not yet in a published update
 }
-const { data, refresh } = await useFetch<Manage>('/api/updates/manage', { default: () => ({ updates: [], discord: false, areas: [] }) })
+const { data, refresh } = await useFetch<Manage>('/api/updates/manage', { default: () => ({ updates: [], discord: false, areas: [], completed: [] }) })
 
 const selectedId = ref<number | 'new' | null>(data.value.updates[0]?.id ?? 'new')
 const selected = computed(() => data.value.updates.find((u) => u.id === selectedId.value))
-const blank = () => ({ title: '', changes: [{ area: data.value.areas[0] ?? '', text: '' }] })
-const draft = ref<{ title: string; changes: UpdateChange[] }>(blank())
+const blank = () => ({ title: '', changes: [{ area: data.value.areas[0] ?? '', text: '' }], roadmapItemIds: [] as number[] })
+const draft = ref<{ title: string; changes: UpdateChange[]; roadmapItemIds: number[] }>(blank())
 const toDiscord = ref(true)
 const busy = ref(false)
 const confirmDelete = ref(false)
@@ -23,7 +24,7 @@ const confirmDelete = ref(false)
 watch(
   selected,
   (u) => {
-    draft.value = u ? { title: u.title, changes: u.changes.map((c) => ({ ...c })) } : blank()
+    draft.value = u ? { title: u.title, changes: u.changes.map((c) => ({ ...c })), roadmapItemIds: [...u.roadmapItemIds] } : blank()
   },
   { immediate: true }
 )
@@ -97,6 +98,19 @@ function move(i: number, by: -1 | 1) {
 }
 const addChange = () => draft.value.changes.push({ area: draft.value.changes.at(-1)?.area ?? data.value.areas[0] ?? '', text: '' })
 
+// Completed roadmap items: add one as a change, and publishing marks it as shipped in this update.
+const AREA_FOR: Record<RoadmapScope, string> = { run8: 'Run8', railroader: 'Railroader', dashboard: 'Dashboard' }
+const linked = computed(() => data.value.completed.filter((i) => draft.value.roadmapItemIds.includes(i.id)))
+const offered = computed(() => data.value.completed.filter((i) => !draft.value.roadmapItemIds.includes(i.id)))
+function addFromRoadmap(item: RoadmapItem) {
+  const empty = draft.value.changes.length === 1 && !draft.value.changes[0]!.text.trim()
+  const change = { area: AREA_FOR[item.scope], text: item.title }
+  if (empty) draft.value.changes = [change]
+  else draft.value.changes.push(change)
+  draft.value.roadmapItemIds.push(item.id)
+}
+const unlink = (id: number) => (draft.value.roadmapItemIds = draft.value.roadmapItemIds.filter((x) => x !== id))
+
 const canSave = computed(() => draft.value.title.trim() && draft.value.changes.every((c) => c.text.trim()))
 </script>
 
@@ -155,6 +169,17 @@ const canSave = computed(() => draft.value.title.trim() && draft.value.changes.e
               </div>
             </div>
             <Button v-if="draft.changes.length < UPDATE_LIMITS.changes" variant="ghost" size="sm" class="justify-self-start" @click="addChange"><Plus />Add a change</Button>
+          </div>
+          <div v-if="offered.length || linked.length" class="grid gap-2 rounded-lg border border-dashed p-3">
+            <p class="text-sm font-medium">From the roadmap</p>
+            <p class="text-xs text-muted-foreground">Completed items not yet in an update. Adding one adds it as a change; publishing marks it as shipped in this update.</p>
+            <div class="flex flex-wrap gap-1.5">
+              <button v-for="i in offered" :key="i.id" class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs hover:bg-accent" @click="addFromRoadmap(i)"><Plus class="size-3" />{{ i.title }}</button>
+              <span v-for="i in linked" :key="i.id" class="flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs">
+                Ships: {{ i.title }}
+                <button class="-mr-1 rounded-full p-0.5 hover:bg-background" :aria-label="`Don't mark ${i.title} as shipped in this update`" @click="unlink(i.id)"><X class="size-3" /></button>
+              </span>
+            </div>
           </div>
           <label v-if="!selected?.publishedAt" class="flex items-center gap-2 text-sm" :class="{ 'text-muted-foreground': !data.discord }">
             <Checkbox v-model="toDiscord" :disabled="!data.discord" />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, Check, ChevronsUpDown, Gamepad2, LogOut, Megaphone, ShieldCheck } from '@lucide/vue'
+import { BookOpen, Check, ChevronsUpDown, Gamepad2, LogOut, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
 
 const { user, clear } = useUserSession()
 const { site } = useSite()
@@ -77,6 +77,22 @@ async function signOut() {
                 <NuxtLink :to="feature.to">
                   <component :is="feature.icon" />
                   <span>{{ labelOf(feature) }}</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarGroup>
+        <SidebarGroupLabel>Community</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton as-child :is-active="route.path.startsWith('/roadmap')" tooltip="Roadmap">
+                <NuxtLink to="/roadmap">
+                  <Milestone />
+                  <span>Roadmap</span>
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
