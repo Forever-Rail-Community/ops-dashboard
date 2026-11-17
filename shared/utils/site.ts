@@ -33,6 +33,8 @@ export interface SiteSettings {
   // background with what's running on the servers is shown. It's public, so admins can turn it off.
   memberRole: string
   loginLive: boolean
+  // A notice across the top of every page, the sign-in page included ('' for none).
+  notice: string
   labels: Record<string, string>
 }
 
@@ -47,5 +49,6 @@ export const DEFAULT_SITE: SiteSettings = {
   helpHeroOverlay: 80,
   memberRole: 'Community Member',
   loginLive: true,
+  notice: 'The Operations Center is still in early development. Things may break, and features will change as we build it.',
   labels: DEFAULT_LABELS
 }

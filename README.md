@@ -315,6 +315,13 @@ as trains start and stop, named signals change and servers come up. When nothing
 - **Code:** `server/api/public/pulse.get.ts`, `app/composables/usePulseFeed.ts`, `app/pages/login.vue`,
   `app/components/login/`.
 
+## Notice banner
+
+A banner across the top of every page, the sign-in page included, for things like "still in early development".
+Admins set the text in Admin > Appearance > Notice; empty hides it. People can close it, which lasts until the text
+changes (kept in a cookie, so it doesn't flash on load). Signed-in people also get a "Report a bug" link.
+Code: `app/components/NoticeBanner.vue`.
+
 ## Light and dark mode
 
 The sun/moon button in the top bar (and on the sign-in page) switches between Light, Dark, and System, which follows the device setting. The choice is remembered in that browser only. The dark colors are the `.dark` block in `app/assets/css/main.css`; the logic is `app/composables/useTheme.ts`. The brand color from Admin > Appearance is used in both themes. The map has its own dark colors: both palettes are in `app/utils/mapStyle.ts`.

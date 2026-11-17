@@ -105,6 +105,18 @@ async function save() {
       </CardContent>
     </Card>
 
+    <Card>
+      <CardHeader>
+        <CardTitle>Notice</CardTitle>
+        <CardDescription>A banner across the top of every page, the sign-in page included. Leave it empty to hide it.</CardDescription>
+      </CardHeader>
+      <CardContent class="grid gap-2">
+        <Label for="site-notice" class="sr-only">Notice</Label>
+        <Textarea id="site-notice" v-model="form.notice" rows="2" maxlength="300" />
+        <p class="text-xs text-muted-foreground">People can close it; it comes back for everyone when you change the text. Signed-in people also get a "Report a bug" link.</p>
+      </CardContent>
+    </Card>
+
     <AdminHelpSiteLook
       v-model:light="form.helpLightAccent"
       v-model:dark="form.helpDarkAccent"
