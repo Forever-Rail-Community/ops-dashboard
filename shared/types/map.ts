@@ -26,12 +26,12 @@ export interface MapTurntable {
   bridge: [number, number, number, number] // x1, z1, x2, z2: the two ends of the bridge across the pit
 }
 
-// Coordinates are the game's own: x runs east, z runs north. Nodes are [x, z, yaw]: yaw is the track's heading through the node, in degrees clockwise from north.
+// Coordinates are the game's own: x runs east, z runs north. Nodes are [x, z, yaw, height]: yaw is the track's heading through the node, in degrees clockwise from north; height is in meters.
 // Segments are [nodeIndexA, nodeIndexB, speedLimit (0 = none set)].
 export interface MapData {
   version: number
   bounds: [number, number, number, number]
-  nodes: [number, number, number][]
+  nodes: [number, number, number, number][]
   segments: [number, number, number][]
   segmentIds: string[] // the game's id for each segment, same order
   switches: number[]
