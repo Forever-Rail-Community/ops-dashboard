@@ -40,6 +40,7 @@ export function useLiveMap(map: Ref<MapData | null | undefined>) {
       stale: data.value?.trainsAge.stale ?? false,
       switches: data.value?.switches ?? {},
       switchesStale: data.value?.switchesAge.stale ?? false,
+      switchLegs: signalLayout.value?.switchLegs ?? {},
       industries: data.value?.industries ?? { cars: {}, passengers: {} },
       industriesStale: data.value?.industriesAge?.stale ?? false,
       industriesReported: (data.value?.industriesAge?.ageSec ?? null) !== null,

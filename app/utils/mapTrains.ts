@@ -21,11 +21,13 @@ function trackIndex(map: MapData): TrackIndex {
   return index
 }
 
+// The map's index for a piece of track, by the game's id for it.
+export const pieceById = (map: MapData, id: string) => trackIndex(map).segmentById.get(id)
+// The map's index for the piece of track the train's lead end is on.
+export const pieceOf = (map: MapData, train: LiveTrain) => (train.track ? pieceById(map, train.track.segment) : undefined)
+
 // The game's positions are exact, but the map's curves are an approximation, so on a curve a train would sit
 // beside the drawn line. This moves it onto the line at the same distance along the same piece of track.
-// The map's index for the piece of track the train's lead end is on.
-export const pieceOf = (map: MapData, train: LiveTrain) => (train.track ? trackIndex(map).segmentById.get(train.track.segment) : undefined)
-
 export function placeOnTrack(map: MapData, train: LiveTrain): LiveTrain {
   const piece = pieceOf(map, train)
   if (piece === undefined || !train.track) return train

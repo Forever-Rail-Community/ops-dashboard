@@ -4,7 +4,7 @@
 type Ctx = CanvasRenderingContext2D
 
 export type MapSymbol =
-  | 'place' | 'industry' | 'stop' | 'switch' | 'switchOpen' | 'switchClosed' | 'turntable' | 'trainMoving' | 'trainStopped'
+  | 'place' | 'industry' | 'stop' | 'switch' | 'switchLined' | 'turntable' | 'trainMoving' | 'trainStopped'
   | 'signalStop' | 'signalApproach' | 'signalClear' | 'signalRestricting' | 'blockOccupied'
 
 // Size of each symbol in pixels: the distance from its center to its edge.
@@ -13,8 +13,7 @@ export const SYMBOL_RADIUS: Record<MapSymbol, number> = {
   industry: 4.5,
   stop: 7.5,
   switch: 5.5,
-  switchOpen: 5.5,
-  switchClosed: 5.5,
+  switchLined: 10, // used by the key only
   turntable: 7, // used by the key only; on the map a turntable is drawn at its real size
   trainMoving: 9,
   trainStopped: 9,
@@ -48,12 +47,31 @@ export interface SignalPose {
 const SIGNAL_FOOT = 5 // half the foot's length, px
 const SIGNAL_MAST = 11 // mast length, px
 const SIGNAL_RING = 2.5 // the target ring around the lamp, px
+const SIGNAL_STROKE = 2.25 // the foot and mast's line width, px
 
 // Where a signal's lamp is drawn: what the pointer has to be near.
 export const signalLamp = (pose: SignalPose, scale = 1) => {
   const reach = SIGNAL_MAST + SYMBOL_RADIUS.signalStop * scale + SIGNAL_RING
   return { x: pose.x + pose.alongX * reach, y: pose.y + pose.alongY * reach }
 }
+
+// How far (px, py) is from a signal as drawn by drawSignalShape, to its nearest part (foot, mast or lamp): `distance`
+// in pixels, 0 or less when on it, and `size`, that part's half-thickness (the lamp's radius).
+export function signalShapeDistance(pose: SignalPose, px: number, py: number, scale = 1) {
+  const { x, y, alongX, alongY } = pose
+  const lamp = signalLamp(pose, scale)
+  const half = SIGNAL_STROKE / 2
+  const radius = SYMBOL_RADIUS.signalStop * scale + SIGNAL_RING / 2
+  const parts = [
+    { distance: distToSegment(px, py, x - alongY * SIGNAL_FOOT, y + alongX * SIGNAL_FOOT, x + alongY * SIGNAL_FOOT, y - alongX * SIGNAL_FOOT) - half, size: half },
+    { distance: distToSegment(px, py, x, y, x + alongX * SIGNAL_MAST, y + alongY * SIGNAL_MAST) - half, size: half },
+    { distance: Math.hypot(px - lamp.x, py - lamp.y) - radius, size: radius }
+  ]
+  return parts.reduce((best, part) => (part.distance / part.size < best.distance / best.size ? part : best))
+}
+
+// How much a switch's ring grows close in, where the track is drawn to scale.
+export const switchRingScale = (view: MapViewState) => Math.max(1, view.s / DETAIL_SCALE)
 
 export function drawSignalShape(ctx: Ctx, pose: SignalPose, aspect: SignalAspect, palette: MapPalette, scale = 1) {
   const { x, y, alongX, alongY } = pose
@@ -63,7 +81,7 @@ export function drawSignalShape(ctx: Ctx, pose: SignalPose, aspect: SignalAspect
 
   ctx.save()
   ctx.strokeStyle = palette.ink
-  ctx.lineWidth = 2.25
+  ctx.lineWidth = SIGNAL_STROKE
   ctx.lineCap = 'round'
   ctx.beginPath()
   ctx.moveTo(x - alongY * SIGNAL_FOOT, y + alongX * SIGNAL_FOOT) // the foot, across the mast
@@ -136,42 +154,40 @@ export function drawTrainShape(ctx: Ctx, x: number, y: number, heading: number, 
   ctx.restore()
 }
 
-// A switch: a disc in its state's color with a bar along the track's direction (`angle`, degrees clockwise from
-// north). Straight bar: lined straight. Slanted bar: thrown to the diverging route. Hollow ring: not reported.
-// The shape tells the states apart as well as the color does.
-function drawSwitchShape(ctx: Ctx, symbol: 'switch' | 'switchOpen' | 'switchClosed', x: number, y: number, r: number, angle: number, palette: MapPalette) {
+// A switch that can't show which way it's lined: a hollow ring.
+function drawSwitchRing(ctx: Ctx, x: number, y: number, r: number, palette: MapPalette) {
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  paint(ctx, palette.outline, palette.switch, 2)
+}
+
+// For the key: a switch as the map shows it, track coming in from the left and lined straight on, with the
+// diverging leg faint.
+function drawLinedSwitch(ctx: Ctx, x: number, y: number, r: number, palette: MapPalette) {
   ctx.save()
-  ctx.translate(x, y)
-  ctx.rotate((angle * Math.PI) / 180)
-  ctx.beginPath()
-  ctx.arc(0, 0, r, 0, Math.PI * 2)
-  if (symbol === 'switch') {
-    paint(ctx, palette.outline, palette.switch, 2)
-    return ctx.restore()
-  }
-  paint(ctx, symbol === 'switchOpen' ? palette.switchOpen : palette.switchClosed, palette.outline, 1.5)
-  ctx.beginPath()
-  if (symbol === 'switchOpen') {
-    ctx.moveTo(0, -r * 0.62)
-    ctx.lineTo(0, r * 0.62)
-  } else {
-    ctx.moveTo(-r * 0.42, r * 0.5)
-    ctx.lineTo(r * 0.42, -r * 0.5)
-  }
-  ctx.strokeStyle = palette.outline
-  ctx.lineWidth = Math.max(1.5, r * 0.3)
+  ctx.strokeStyle = palette.track
   ctx.lineCap = 'round'
+  ctx.lineWidth = 2.5 * FAINT_WIDTH
+  ctx.globalAlpha = FAINT_ALPHA
+  ctx.beginPath()
+  ctx.moveTo(x - r * 0.3, y + 3)
+  ctx.quadraticCurveTo(x + r * 0.3, y + 3, x + r, y - r * 0.7)
+  ctx.stroke()
+  ctx.globalAlpha = 1
+  ctx.lineWidth = 2.5
+  ctx.beginPath()
+  ctx.moveTo(x - r, y + 3)
+  ctx.lineTo(x + r, y + 3)
   ctx.stroke()
   ctx.restore()
 }
 
 export interface SymbolOptions {
-  angle?: number // turns symbols that follow the track (switches), degrees clockwise from north
   scale?: number // enlarges a symbol when zoomed far in
   fill?: string // an industry's color (its main type); otherwise the palette's
 }
 
-export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, palette: MapPalette, { angle = 0, scale = 1, fill }: SymbolOptions = {}) {
+export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, palette: MapPalette, { scale = 1, fill }: SymbolOptions = {}) {
   const r = SYMBOL_RADIUS[symbol] * scale
   ctx.beginPath()
   switch (symbol) {
@@ -189,9 +205,9 @@ export function drawSymbol(ctx: Ctx, symbol: MapSymbol, x: number, y: number, pa
       ctx.closePath()
       return paint(ctx, fill ?? palette.industry.passenger, palette.outline, 1.5)
     case 'switch':
-    case 'switchOpen':
-    case 'switchClosed':
-      return drawSwitchShape(ctx, symbol, x, y, r, angle, palette)
+      return drawSwitchRing(ctx, x, y, r, palette)
+    case 'switchLined':
+      return drawLinedSwitch(ctx, x, y, r, palette)
     case 'turntable':
       return drawTurntableShape(ctx, x, y, r, [x - r, y, x + r, y], palette)
     case 'trainMoving':

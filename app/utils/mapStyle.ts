@@ -11,9 +11,7 @@ export interface MapPalette {
   ballast: string // the bed under the track when zoomed in
   tie: string // ties, when track is drawn to scale
   turntable: string
-  switch: string // position not reported
-  switchOpen: string // lined straight (normal)
-  switchClosed: string // thrown to the diverging route
+  switch: string // a switch that can't show which way it's lined
   industry: Record<IndustryType, string> // industry markers and highlighted track, by main type (passenger: the diamonds)
   marker: string // the ring on town dots
   outline: string // ring around markers (and the fill of town dots)
@@ -34,8 +32,6 @@ const LIGHT_PALETTE: MapPalette = {
   tie: '#b8b8c0',
   turntable: '#3f3f46',
   switch: '#2563eb',
-  switchOpen: '#16a34a',
-  switchClosed: '#dc2626',
   industry: { passenger: '#1d4ed8', repair: '#db2777', interchange: '#4d7c0f', loads: '#0f766e', unloads: '#b45309', team: '#52525b', other: '#71717a' },
   marker: '#18181b',
   outline: '#ffffff',
@@ -56,8 +52,6 @@ const DARK_PALETTE: MapPalette = {
   tie: '#47474e',
   turntable: '#a1a1aa',
   switch: '#60a5fa',
-  switchOpen: '#4ade80',
-  switchClosed: '#f87171',
   industry: { passenger: '#60a5fa', repair: '#f472b6', interchange: '#a3e635', loads: '#2dd4bf', unloads: '#fbbf24', team: '#a1a1aa', other: '#71717a' },
   marker: '#e4e4e7',
   outline: '#18181b',
@@ -142,9 +136,8 @@ export const MAP_KEY: MapKeyRow[] = [
     layer: 'switches',
     label: 'Switches (zoom in)',
     items: [
-      { symbol: 'switchOpen', label: 'Open, lined straight' },
-      { symbol: 'switchClosed', label: 'Closed, thrown to the diverging route' },
-      { symbol: 'switch', label: 'Position not reported' }
+      { symbol: 'switchLined', label: 'Lined route solid, other way faint' },
+      { symbol: 'switch', label: 'Not reported' }
     ]
   },
   {
@@ -197,13 +190,25 @@ export const ASPECT_TEXT: Record<SignalAspect, string> = {
   restricting: 'Restricting',
   unknown: 'Aspect not reported'
 }
-export const signalHit = (s: SignalDef): MapHit => ({ type: 'signal', id: s.id, name: s.name || 'Signal', x: s.x, z: s.z })
+// "Absolute signal", "Intermediate signal", or just "Signal" from mods that don't say.
+export const signalKindText = (s: SignalDef) =>
+  s.intermediate === undefined ? 'Signal' : s.intermediate ? 'Intermediate signal' : 'Absolute signal'
+
+// The way a signal's trains run, to the nearest of eight compass points ("Northbound trains"). The game's z axis
+// points north (about true north). Empty when the game doesn't give a direction.
+const COMPASS = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest']
+export function signalFacingText(s: SignalDef) {
+  if (!s.dx && !s.dz) return ''
+  const degrees = (Math.atan2(s.dx, s.dz) * 180) / Math.PI // clockwise from north
+  const point = COMPASS[Math.round((degrees + 360) / 45) % 8]!
+  return `${point}${point.length > 5 ? '-' : ''}bound trains`
+}
+
+export const signalHit = (s: SignalDef): MapHit => ({ type: 'signal', id: s.id, name: s.name || signalKindText(s), x: s.x, z: s.z })
 
 export const switchHit = (gameId: string, x: number, z: number): MapHit => ({ type: 'switch', id: gameId, name: 'Switch', x, z })
 
-// A switch's position in plain words, and its symbol. thrown is undefined when the game hasn't reported it.
-export const switchSymbol = (thrown: boolean | undefined): MapSymbol =>
-  thrown === undefined ? 'switch' : thrown ? 'switchClosed' : 'switchOpen'
+// A switch's position in plain words. thrown is undefined when the game hasn't reported it.
 export const switchText = (thrown: boolean | undefined) =>
   thrown === undefined ? 'Position not reported' : thrown ? 'Closed: thrown to the diverging route' : 'Open: lined straight'
 // A train slower than this is shown as stopped (speeds drift a little while standing).
