@@ -13,7 +13,6 @@ const title = computed(() =>
   <SidebarProvider :default-open="true">
     <AppSidebar />
     <SidebarInset>
-      <NoticeBanner />
       <header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
         <SidebarTrigger class="-ml-1" />
         <Separator orientation="vertical" class="mr-2 data-[orientation=vertical]:h-4" />
@@ -26,6 +25,7 @@ const title = computed(() =>
         <UpdatesWhatsNewDialog />
       </header>
       <main class="flex flex-1 flex-col gap-6 p-4 md:p-6">
+        <NoticeBanner />
         <slot />
       </main>
     </SidebarInset>

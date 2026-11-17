@@ -6,7 +6,9 @@ definePageMeta({ layout: false })
 
 const route = useRoute()
 const { site } = useSite()
-const { helpUrl, statusUrl } = useRuntimeConfig().public as { helpUrl: string; statusUrl: string }
+const config = useRuntimeConfig().public as { helpUrl: string; statusUrl: string }
+const helpUrl = absoluteUrl(config.helpUrl)
+const statusUrl = absoluteUrl(config.statusUrl)
 
 const messages: Record<string, string> = {
   'not-member': "Your Discord account isn't in the Forever Rail server. Join the server, then sign in again.",
@@ -24,7 +26,10 @@ const spots = computed(() => SPOTS.map((_, i) => cards.value.find((c) => c.key %
 
 <template>
   <div class="flex min-h-svh flex-col bg-background text-foreground">
-    <NoticeBanner />
+    <!-- Hidden when there's no notice, so it leaves no gap. -->
+    <div class="mx-auto w-full max-w-3xl px-4 pt-4 empty:hidden">
+      <NoticeBanner />
+    </div>
     <div class="relative grid flex-1 place-items-center overflow-hidden px-4 py-20">
       <template v-if="live.on.value">
         <!-- The drawing is about twice as wide as tall, so it's at most 190svh wide: the whole railroad, trains at its
