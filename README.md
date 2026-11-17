@@ -206,6 +206,37 @@ It moves made-up trains along the real track and throws switches now and then, p
 **After rebuilding the map data,** also refresh the tracker pack's switch list:
 `node tools/write-switch-ids.mjs path/to/server/assets/map.json` in the tracker pack's folder.
 
+## Grade on the Railroader map
+
+Grades come from the track heights in the map data (`server/assets/map.json`, version 4 and up). Between two track
+points the height is taken to change evenly.
+
+- **A train's card** shows the grade under its lead end, a profile of where it has been and the track ahead (2, 5 or
+  10 miles or km), and the steepest climb and descent, the top of the climb and the next town ahead. The track ahead
+  follows the switches as they're lined, so it needs the switch legs from the Forever Rail Signals mod 0.2.0 or
+  newer; without them it stops at the first switch and says why.
+- **Where it has been** is the train's real path: the server keeps 30 minutes of it in the `train_history` table,
+  one sample of every train per server at most every 20 seconds. Old samples are dropped by the same statement, so
+  the table stays small. `GET /api/railroader/train-history?agent=<server>&train=<train id>` returns it.
+- **Map key > Color track by steepness** colors all track by how steep it is, either way. It replaces the speed
+  limit colors while it's on.
+- **Code:** `app/utils/mapGrade.ts`, `app/components/map/MapGradePanel.vue`, `server/utils/trainHistory.ts`.
+- Not yet checked against a real train: that "climbing" matches the direction a train is actually going.
+
+## Units
+
+Everyone picks **Miles and feet** or **Kilometers and meters** in the account menu (bottom of the sidebar). It's
+saved with their account (`user_preferences` table, `GET`/`PUT /api/me/preferences`) and applies to distances,
+heights, speeds, the map's scale bar and train tags. The default is miles and feet. Formatting is in
+`shared/utils/units.ts`; components use `useUnits()`.
+
+## Status in the header
+
+With `NUXT_PUBLIC_STATUS_URL` set to the status page's address (for example `https://status.example.com`), the top bar
+shows the overall status next to the theme button; hovering lists each group's main components, and clicking opens
+the status page. It reads the status page's public `/api/summary` once a minute (the status page caches it for 60
+seconds). Without the setting, nothing is shown. Redeploy after setting it. Code: `app/components/StatusWidget.vue`.
+
 ## Light and dark mode
 
 The sun/moon button in the top bar (and on the sign-in page) switches between Light, Dark, and System, which follows the device setting. The choice is remembered in that browser only. The dark colors are the `.dark` block in `app/assets/css/main.css`; the logic is `app/composables/useTheme.ts`. The brand color from Admin > Appearance is used in both themes. The map has its own dark colors: both palettes are in `app/utils/mapStyle.ts`.
