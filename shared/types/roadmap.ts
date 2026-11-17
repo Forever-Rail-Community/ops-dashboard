@@ -24,6 +24,7 @@ export interface RoadmapItem {
   votes: number // from the feature request it came from, if any
   requestedBy: string | null // who asked for it, when it came from a request
   shippedIn: { id: number; title: string; publishedAt: string } | null // the What's new update it went out in
+  bugFix: boolean // a bug report is linked to it
   updatedAt: string
 }
 

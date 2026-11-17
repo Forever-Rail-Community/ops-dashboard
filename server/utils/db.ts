@@ -205,6 +205,34 @@ const STEPS: { name: string; sql: string }[] = [
       ALTER TABLE updates ADD COLUMN IF NOT EXISTS roadmap_item_ids integer[] NOT NULL DEFAULT '{}';`
   },
   { name: 'grant-roadmap-manage', sql: grantPermission('roadmap.manage', ['admin']) },
+  // Bug reports and their screenshots (server/utils/bugs.ts; the files are in a private Blob store).
+  {
+    name: 'bug-report-tables',
+    sql: `
+      CREATE TABLE IF NOT EXISTS bug_reports (
+        id serial PRIMARY KEY,
+        title text NOT NULL,
+        body text NOT NULL,
+        area text NOT NULL,
+        author_id text NOT NULL,
+        author_name text NOT NULL,
+        status text NOT NULL DEFAULT 'new',
+        reply text NOT NULL DEFAULT '',
+        roadmap_item_id integer REFERENCES roadmap_items(id) ON DELETE SET NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS bug_reports_author ON bug_reports (author_id, created_at);
+      CREATE TABLE IF NOT EXISTS bug_screenshots (
+        id serial PRIMARY KEY,
+        report_id integer NOT NULL REFERENCES bug_reports(id) ON DELETE CASCADE,
+        pathname text NOT NULL,
+        content_type text NOT NULL,
+        size integer NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );`
+  },
+  { name: 'grant-bugs-manage', sql: grantPermission('bugs.manage', ['admin']) },
   { name: 'train-history-at-index', sql: `CREATE INDEX IF NOT EXISTS train_history_at ON train_history (at)` }
 ]
 

@@ -25,7 +25,9 @@ const names: Record<string, string> = {
   'request.accept': 'Accepted a feature request onto the roadmap',
   'request.decline': 'Declined a feature request',
   'request.merge': 'Merged a feature request into another',
-  'request.reopen': 'Reopened a feature request'
+  'request.reopen': 'Reopened a feature request',
+  'bug.status': "Changed a bug report's status",
+  'bug.delete': 'Deleted a bug report'
 }
 const when = (iso: string) => new Date(iso).toLocaleString()
 </script>

@@ -5,6 +5,7 @@ export const PERMISSIONS = [
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
   { key: 'help.edit', label: 'Write and edit help center drafts', group: 'Help center' },
   { key: 'help.publish', label: 'Publish, unpublish, and delete articles; manage categories', group: 'Help center' },
+  { key: 'bugs.manage', label: 'See and answer all bug reports', group: 'Bug reports' },
   { key: 'roadmap.manage', label: 'Manage the roadmap and answer feature requests', group: 'Roadmap' },
   { key: 'updates.post', label: "Write, publish, and delete What's new updates", group: "What's new" },
   { key: 'admin.settings', label: 'Change appearance and wording', group: 'Admin' },

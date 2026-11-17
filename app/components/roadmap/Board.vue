@@ -84,6 +84,7 @@ async function remove() {
         <p v-if="item.description" class="line-clamp-3 text-sm text-muted-foreground">{{ item.description }}</p>
         <div class="flex flex-wrap items-center gap-2 text-xs">
           <RoadmapScopeTag :scope="item.scope" />
+          <span v-if="item.bugFix" class="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">Bug fix</span>
           <span v-if="item.votes" class="flex items-center gap-0.5 text-muted-foreground"><ChevronUp class="size-3.5" />{{ item.votes }}</span>
           <span v-if="item.requestedBy" class="text-muted-foreground">Requested by {{ item.requestedBy }}</span>
         </div>

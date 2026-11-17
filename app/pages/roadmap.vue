@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus } from '@lucide/vue'
+import { Bug, Plus } from '@lucide/vue'
 
 // What's planned, being built and shipped, and feature requests with votes.
 definePageMeta({ title: 'Roadmap' })
@@ -34,7 +34,10 @@ async function posted() {
         <h2 class="text-2xl font-semibold tracking-tight">Roadmap</h2>
         <p class="text-sm text-muted-foreground">What's planned, being built and shipped. Suggest a feature, or vote for the ones you want.</p>
       </div>
-      <Button @click="suggest"><Plus />Suggest a feature</Button>
+      <div class="flex gap-2">
+        <Button variant="outline" as-child><NuxtLink to="/bugs"><Bug />Report a bug</NuxtLink></Button>
+        <Button @click="suggest"><Plus />Suggest a feature</Button>
+      </div>
     </div>
 
     <Tabs v-model="tab">

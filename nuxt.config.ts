@@ -37,6 +37,8 @@ export default defineNuxtConfig({
     // Vercel deploy hook URL for the public help site. Publishing calls it so the site rebuilds.
     // Without it, articles still save and publish; the help site just updates on its next deploy.
     helpDeployHook: '',
+    // Read-write token of the private Vercel Blob store for bug report screenshots (NUXT_BUGS_BLOB_TOKEN).
+    bugsBlobToken: '',
     public: {
       mapBackground: Boolean(process.env.NUXT_CARTO_KEY),
       // The Forever Rail status page's address (e.g. https://status.example.com), for the status in the header.
@@ -46,7 +48,8 @@ export default defineNuxtConfig({
     discord: {
       guildId: '',
       // Optional channel webhook URLs (see server/utils/discord.ts): announcements get published What's new updates and
-      // roadmap status changes (NUXT_DISCORD_UPDATES_WEBHOOK); staff get new feature requests (NUXT_DISCORD_STAFF_WEBHOOK).
+      // roadmap status changes (NUXT_DISCORD_UPDATES_WEBHOOK); staff get new feature requests and bug reports
+      // (NUXT_DISCORD_STAFF_WEBHOOK).
       updatesWebhook: '',
       staffWebhook: '',
       // The three role-ID lists below are only used once, to fill in the starting Access settings.
