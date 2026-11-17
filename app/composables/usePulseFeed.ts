@@ -35,7 +35,7 @@ export function usePulseFeed(shown: number, on: Readonly<Ref<boolean>>) {
     kind: 'train',
     about: `train:${t.id}`,
     title,
-    detail: t.speedMph > 0 ? `${t.speedMph} mph near ${t.near}, ${t.cars} cars` : `Near ${t.near}, ${t.cars} cars`,
+    detail: `${t.speedMph > 0 ? `${t.speedMph} mph near` : 'Near'} ${t.near}, ${t.cars} ${t.cars === 1 ? 'car' : 'cars'}`,
     place: t
   })
   const signalCard = (s: PulseSignal): NewCard => ({

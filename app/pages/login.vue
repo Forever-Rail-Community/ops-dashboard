@@ -27,7 +27,9 @@ const spots = computed(() => SPOTS.map((_, i) => cards.value.find((c) => c.key %
     <NoticeBanner />
     <div class="relative grid flex-1 place-items-center overflow-hidden px-4 py-20">
       <template v-if="live.on.value">
-        <div class="pointer-events-none absolute top-1/2 left-1/2 w-[max(1100px,105vw)] -translate-1/2">
+        <!-- The drawing is about twice as wide as tall, so it's at most 190svh wide: the whole railroad, trains at its
+             far ends included, stays in the window. -->
+        <div class="pointer-events-none absolute top-1/2 left-1/2 w-[max(1100px,min(105vw,190svh))] -translate-1/2">
           <LoginLiveTrack :trains="pulse?.trains ?? []" :marked="cards.at(-1)?.place" />
         </div>
         <!-- Clears the track behind the sign-in, so the card and headline read cleanly. -->
