@@ -29,6 +29,10 @@ export interface SiteSettings {
   // accent color covers it, 0 to 100. The help site raises it if text over the image would be hard to read.
   helpHeroImage: string
   helpHeroOverlay: number
+  // The sign-in page: the Discord role members need (named in the note under the button), and whether the live
+  // background with what's running on the servers is shown. It's public, so admins can turn it off.
+  memberRole: string
+  loginLive: boolean
   labels: Record<string, string>
 }
 
@@ -41,5 +45,7 @@ export const DEFAULT_SITE: SiteSettings = {
   helpDarkAccent: '#8b5cf6',
   helpHeroImage: '',
   helpHeroOverlay: 80,
+  memberRole: 'Community Member',
+  loginLive: true,
   labels: DEFAULT_LABELS
 }
