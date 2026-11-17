@@ -14,6 +14,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (to.path.startsWith('/admin') && !user.value.permissions.some((p) => p.startsWith('admin.'))) {
     return navigateTo('/')
   }
+  if (to.path.startsWith('/help') && !user.value.permissions.includes('help.edit')) {
+    return navigateTo('/')
+  }
 
   // Entering a game's section remembers that game; "/" then goes straight back to it instead of the picker.
   const { remembered, remember } = useGame()

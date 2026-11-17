@@ -42,3 +42,6 @@ export const gameByKey = (key: GameKey) => GAMES.find((g) => g.key === key)!
 // The features of a game this person's role can use.
 export const visibleFeatures = (game: Game, permissions: string[] = []) =>
   game.features.filter((f) => permissions.includes(f.permission))
+
+// How a help article's game reads: a game's name, or "All games".
+export const helpGameName = (game: HelpGame) => (game === 'all' ? 'All games' : gameByKey(game).name)
