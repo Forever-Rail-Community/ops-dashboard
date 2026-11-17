@@ -166,6 +166,45 @@ const STEPS: { name: string; sql: string }[] = [
       ADD COLUMN IF NOT EXISTS whats_new_auto boolean NOT NULL DEFAULT true,
       ADD COLUMN IF NOT EXISTS whats_new_seen integer NOT NULL DEFAULT 0`
   },
+  // The roadmap and feature requests (server/utils/roadmap.ts).
+  {
+    name: 'roadmap-tables',
+    sql: `
+      CREATE TABLE IF NOT EXISTS feature_requests (
+        id serial PRIMARY KEY,
+        title text NOT NULL,
+        body text NOT NULL DEFAULT '',
+        scope text NOT NULL,
+        author_id text NOT NULL,
+        author_name text NOT NULL,
+        status text NOT NULL DEFAULT 'open',
+        reply text NOT NULL DEFAULT '',
+        merged_into integer REFERENCES feature_requests(id) ON DELETE SET NULL,
+        hidden boolean NOT NULL DEFAULT false,
+        discord_message_id text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS feature_requests_author ON feature_requests (author_id, created_at);
+      CREATE TABLE IF NOT EXISTS feature_votes (
+        request_id integer NOT NULL REFERENCES feature_requests(id) ON DELETE CASCADE,
+        user_id text NOT NULL,
+        PRIMARY KEY (request_id, user_id)
+      );
+      CREATE TABLE IF NOT EXISTS roadmap_items (
+        id serial PRIMARY KEY,
+        title text NOT NULL,
+        description text NOT NULL DEFAULT '',
+        scope text NOT NULL,
+        status text NOT NULL DEFAULT 'planned',
+        request_id integer REFERENCES feature_requests(id) ON DELETE SET NULL,
+        update_id integer REFERENCES updates(id) ON DELETE SET NULL,
+        created_by text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      ALTER TABLE updates ADD COLUMN IF NOT EXISTS roadmap_item_ids integer[] NOT NULL DEFAULT '{}';`
+  },
+  { name: 'grant-roadmap-manage', sql: grantPermission('roadmap.manage', ['admin']) },
   { name: 'train-history-at-index', sql: `CREATE INDEX IF NOT EXISTS train_history_at ON train_history (at)` }
 ]
 
