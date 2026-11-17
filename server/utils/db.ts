@@ -61,7 +61,64 @@ const STEPS: { name: string; sql: string }[] = [
       created_at timestamptz NOT NULL DEFAULT now()
     )`
   },
-  { name: 'grant-admin-agents', sql: grantPermission('admin.agents', ['admin']) }
+  { name: 'grant-admin-agents', sql: grantPermission('admin.agents', ['admin']) },
+  // Help center. Categories group articles on the public help site.
+  {
+    name: 'help-categories-table',
+    sql: `CREATE TABLE IF NOT EXISTS help_categories (
+      id bigserial PRIMARY KEY,
+      slug text NOT NULL UNIQUE,
+      name text NOT NULL,
+      description text NOT NULL DEFAULT '',
+      icon text NOT NULL DEFAULT 'book-open',
+      sort_order int NOT NULL DEFAULT 0,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )`
+  },
+  // An article keeps two copies of its words: the draft staff are editing, and the published copy the
+  // public site shows. Where it lives (category, URL, game, section, order) applies to both.
+  {
+    name: 'help-articles-table',
+    sql: `CREATE TABLE IF NOT EXISTS help_articles (
+      id bigserial PRIMARY KEY,
+      category_id bigint NOT NULL REFERENCES help_categories(id) ON DELETE RESTRICT,
+      slug text NOT NULL,
+      game text NOT NULL DEFAULT 'all',
+      section text NOT NULL DEFAULT '',
+      sort_order int NOT NULL DEFAULT 0,
+      draft jsonb NOT NULL,
+      published jsonb,
+      published_at timestamptz,
+      published_by text,
+      published_by_name text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      created_by text NOT NULL,
+      created_by_name text NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      updated_by text NOT NULL,
+      updated_by_name text NOT NULL,
+      UNIQUE (category_id, slug)
+    )`
+  },
+  // A copy of an article each time it is published, newest last.
+  {
+    name: 'help-revisions-table',
+    sql: `CREATE TABLE IF NOT EXISTS help_revisions (
+      id bigserial PRIMARY KEY,
+      article_id bigint NOT NULL REFERENCES help_articles(id) ON DELETE CASCADE,
+      content jsonb NOT NULL,
+      published_at timestamptz NOT NULL DEFAULT now(),
+      published_by text NOT NULL,
+      published_by_name text NOT NULL
+    )`
+  },
+  {
+    name: 'help-revisions-index',
+    sql: `CREATE INDEX IF NOT EXISTS help_revisions_article ON help_revisions (article_id, published_at DESC)`
+  },
+  { name: 'grant-help-edit', sql: grantPermission('help.edit', ['admin']) },
+  { name: 'grant-help-publish', sql: grantPermission('help.publish', ['admin']) }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

@@ -3,6 +3,8 @@ export const PERMISSIONS = [
   { key: 'status.view', label: 'View route status', group: 'Status' },
   { key: 'status.detail', label: 'See CPU, memory, process IDs, and server stats', group: 'Status' },
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
+  { key: 'help.edit', label: 'Write and edit help center drafts', group: 'Help center' },
+  { key: 'help.publish', label: 'Publish, unpublish, and delete articles; manage categories', group: 'Help center' },
   { key: 'admin.settings', label: 'Change appearance and wording', group: 'Admin' },
   { key: 'admin.roles', label: 'Manage roles and Discord access', group: 'Admin' },
   { key: 'admin.activity', label: 'View the activity log', group: 'Admin' },
