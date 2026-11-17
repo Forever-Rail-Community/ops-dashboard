@@ -56,10 +56,10 @@ export function usePulseFeed(shown: number, on: Readonly<Ref<boolean>>) {
       else if (t.speedMph > 0 && was.speedMph === 0) news.push(trainCard(t, `${t.name} departed`))
       else if (t.speedMph === 0 && was.speedMph > 0) news.push(trainCard(t, `${t.name} stopped`))
     }
-    for (const s of now.signals) {
+    // Signals only count as news when they change; what they show on arrival comes up between trains instead.
+    for (const s of before ? now.signals : []) {
       const was = before?.signals.find((x) => x.id === s.id)
-      // On the first pulse, only signals showing a proceed aspect: a wall of red says nothing.
-      if (was ? was.aspect !== s.aspect : s.aspect !== 'stop' && s.aspect !== 'unknown') {
+      if (was && was.aspect !== s.aspect) {
         signalNews.delete(s.id) // re-added at the end, so it waits its turn again
         signalNews.set(s.id, signalCard(s))
       }

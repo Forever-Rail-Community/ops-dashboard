@@ -23,8 +23,9 @@ export interface PulseTrain extends PulsePlace {
   cars: number
 }
 
+// A named place's signals, as one: its most open aspect (several signals can share a name, one per track).
 export interface PulseSignal extends PulsePlace {
-  id: string
+  id: string // the name
   name: string
   aspect: SignalAspect
 }
@@ -32,5 +33,5 @@ export interface PulseSignal extends PulsePlace {
 export interface Pulse {
   games: PulseGame[]
   trains: PulseTrain[] // Railroader only; Run8 doesn't report trains
-  signals: PulseSignal[] // named (absolute) signals only
+  signals: PulseSignal[] // named (absolute) signals only, one per name
 }

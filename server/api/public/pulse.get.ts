@@ -29,15 +29,26 @@ export default defineEventHandler(async (event): Promise<Pulse> => {
     id: t.id, name: t.name, speedMph: Math.round(t.speedMph), cars: t.cars, ...placeOf(t.x, t.z)
   }))
 
+  // A named place has a signal for each track and direction ("Alarka Junction East" can be three signals). It's
+  // shown once, with its most open aspect: a card then says a route is lined there, not one head of several.
   const aspects: Record<string, SignalAspect> = Object.assign({}, ...fresh(signalReports).map((r) => r.aspects))
-  const signals = layoutReports.flatMap(({ stored }) => stored.data.signals)
-    .filter((s) => s.name && !s.intermediate && aspects[s.id])
-    .map((s): PulseSignal => ({ id: s.id, name: s.name, aspect: aspects[s.id]!, ...placeOf(s.x, s.z) }))
+  const byName = new Map<string, PulseSignal>()
+  for (const s of layoutReports.flatMap(({ stored }) => stored.data.signals)) {
+    const aspect = aspects[s.id]
+    if (!s.name || s.intermediate || !aspect) continue
+    const seen = byName.get(s.name)
+    if (!seen) byName.set(s.name, { id: s.name, name: s.name, aspect, ...placeOf(s.x, s.z) })
+    else if (OPENNESS.indexOf(aspect) > OPENNESS.indexOf(seen.aspect)) seen.aspect = aspect
+  }
+  const signals = [...byName.values()]
 
   // Short, so a page left open stays current without every visitor reading the database each time.
   setHeader(event, 'Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10')
   return { games, trains, signals }
 })
+
+// From least to most open.
+const OPENNESS: SignalAspect[] = ['unknown', 'stop', 'restricting', 'divergingApproach', 'approach', 'divergingClear', 'clear']
 
 function nearestTown(map: MapData, x: number, z: number) {
   const dist = (area: MapArea) => Math.hypot(area.x - x, area.z - z)
