@@ -18,7 +18,8 @@ export const DETAIL_SCALE = 4
 // Below this zoom (relative to the whole-railroad view) there is no ballast bed: the lines are too close together.
 const BED_ZOOM = 6
 export const FAINT_ALPHA = 0.3
-export const FAINT_WIDTH = 0.6 // of the normal line width, when not drawn to scale
+// Of the normal line width, when not drawn to scale.
+export const FAINT_WIDTH = 0.6
 
 // Line width in pixels when not drawn to scale: grows as you zoom in, and never narrower than a 1.8 m band,
 // so it meets the to-scale drawing without a jump.

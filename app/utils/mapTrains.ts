@@ -26,22 +26,29 @@ export const pieceById = (map: MapData, id: string) => trackIndex(map).segmentBy
 // The map's index for the piece of track the train's lead end is on.
 export const pieceOf = (map: MapData, train: LiveTrain) => (train.track ? pieceById(map, train.track.segment) : undefined)
 
+// Where a place the game reports is on the map's drawn track: the piece, meters from its end A, the point and the
+// direction of the line there (from A toward B), and whether `heading` (degrees clockwise from north) points
+// toward end B. Undefined when the piece isn't in the map data.
+export function trackPosition(map: MapData, location: TrackLocation, heading: number) {
+  const piece = pieceById(map, location.segment)
+  if (piece === undefined) return undefined
+  const [a, b] = map.segments[piece]!
+  const { length, at } = measureCurve(curveBetween(map, a, b))
+  const fromA = Math.min(length, Math.max(0, location.end === 'A' ? location.distance : length - location.distance))
+  const { point, direction } = at(fromA)
+  const rad = (heading * Math.PI) / 180
+  const towardB = direction[0] * Math.sin(rad) + direction[1] * Math.cos(rad) >= 0
+  return { piece, length, fromA, point, direction, towardB }
+}
+
 // The game's positions are exact, but the map's curves are an approximation, so on a curve a train would sit
 // beside the drawn line. This moves it onto the line at the same distance along the same piece of track.
 export function placeOnTrack(map: MapData, train: LiveTrain): LiveTrain {
-  const piece = pieceOf(map, train)
-  if (piece === undefined || !train.track) return train
-
-  const [a, b] = map.segments[piece]!
-  const { length, at } = measureCurve(curveBetween(map, a, b))
-  const fromA = train.track.end === 'A' ? train.track.distance : length - train.track.distance
-  const { point, direction } = at(fromA)
-
-  // The line runs from end A to end B; turn it round if the train is heading the other way.
-  const rad = (train.heading * Math.PI) / 180
-  const flip = direction[0] * Math.sin(rad) + direction[1] * Math.cos(rad) < 0 ? -1 : 1
-  const heading = ((Math.atan2(direction[0] * flip, direction[1] * flip) * 180) / Math.PI + 360) % 360
-  return { ...train, x: point[0], z: point[1], heading }
+  const at = train.track && trackPosition(map, train.track, train.heading)
+  if (!at) return train
+  const flip = at.towardB ? 1 : -1
+  const heading = ((Math.atan2(at.direction[0] * flip, at.direction[1] * flip) * 180) / Math.PI + 360) % 360
+  return { ...train, x: at.point[0], z: at.point[1], heading }
 }
 
 // "At Bryson Freight House" when it's on an industry's track, otherwise "Near <closest town>".

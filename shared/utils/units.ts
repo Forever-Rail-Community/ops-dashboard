@@ -6,7 +6,8 @@ export const UNIT_SYSTEMS: { value: UnitSystem; label: string }[] = [
   { value: 'imperial', label: 'Miles and feet' },
   { value: 'metric', label: 'Kilometers and meters' }
 ]
-export const DEFAULT_UNITS: UnitSystem = 'imperial' // the railroads are American, and the game posts limits in mph
+// The railroads are American and the game posts its limits in mph.
+export const DEFAULT_UNITS: UnitSystem = 'imperial'
 export const isUnitSystem = (value: unknown): value is UnitSystem => value === 'imperial' || value === 'metric'
 
 const FOOT = 0.3048
