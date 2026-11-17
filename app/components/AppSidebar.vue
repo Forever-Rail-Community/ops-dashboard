@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronsUpDown, Gamepad2, LogOut, ShieldCheck } from '@lucide/vue'
+import { BookOpen, Check, ChevronsUpDown, Gamepad2, LogOut, ShieldCheck } from '@lucide/vue'
 
 const { user, clear } = useUserSession()
 const { site } = useSite()
@@ -7,6 +7,7 @@ const route = useRoute()
 const { current, labelOf } = useGame()
 
 const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith('admin.')) ?? false)
+const canEditHelp = computed(() => user.value?.permissions?.includes('help.edit') ?? false)
 const features = computed(() => (current.value ? visibleFeatures(current.value, user.value?.permissions) : []))
 const initials = computed(() => (user.value?.name ?? '?').slice(0, 2).toUpperCase())
 
@@ -78,11 +79,19 @@ async function signOut() {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <SidebarGroup v-if="isAdmin">
+      <SidebarGroup v-if="isAdmin || canEditHelp">
         <SidebarGroupLabel>Manage</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            <SidebarMenuItem>
+            <SidebarMenuItem v-if="canEditHelp">
+              <SidebarMenuButton as-child :is-active="route.path.startsWith('/help')" tooltip="Help center">
+                <NuxtLink to="/help">
+                  <BookOpen />
+                  <span>Help center</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem v-if="isAdmin">
               <SidebarMenuButton as-child :is-active="route.path.startsWith('/admin')" tooltip="Admin">
                 <NuxtLink to="/admin">
                   <ShieldCheck />

@@ -84,6 +84,10 @@ that reads published articles from `GET /api/public/help` when it builds.
   Publishing, unpublishing, deleting a published article, category changes, and changes to the name, logo, or color in
   Admin > Appearance all call it.
 - The help site uses the name, logo, and main color from **Admin > Appearance**, so both sites match.
+- **Writing articles:** **Help center** in the sidebar (shown to anyone with `help.edit`). The Categories tab is shown to
+  people with `help.publish`. In the editor, Ctrl+S (Cmd+S) saves the draft.
+- **Images in articles** are stored in Vercel Blob. In Vercel, open **Storage** and add a **Blob** store to this project;
+  it sets `BLOB_READ_WRITE_TOKEN`. Without it, everything else works and the Image button explains what's missing.
 
 ## Customizing
 
