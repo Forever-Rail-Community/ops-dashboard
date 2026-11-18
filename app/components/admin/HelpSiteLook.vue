@@ -1,10 +1,11 @@
 <script setup lang="ts">
-// Appearance > Help site: the accent colors and the home page hero image of the public help site.
+// Appearance > Help site: the colors and the home page hero image of the public help site. The accent is stored
+// as helpLightAccent and the dark mode header color as helpDarkAccent.
 import { ImagePlus, X } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
-const lightColor = defineModel<string>('light', { required: true })
-const darkColor = defineModel<string>('dark', { required: true })
+const accent = defineModel<string>('light', { required: true })
+const darkHeader = defineModel<string>('dark', { required: true })
 const heroImage = defineModel<string>('image', { required: true })
 const overlay = defineModel<number>('overlay', { required: true })
 
@@ -29,10 +30,9 @@ async function onImage(event: Event) {
   }
 }
 
-// Roughly what the band looks like over the image in each mode. Like the help site (its src/lib/colors.ts), the
-// dark mode band starts from a deep shade of the color, 55% of the way to the dark background. The help site may
-// adjust the shade or cover the image more strongly if text over it would be hard to read.
-const bandColors = computed(() => ({ Light: lightColor.value, Dark: `color-mix(in srgb, ${darkColor.value} 45%, #09090b)` }))
+// Roughly what the band looks like over the image in each mode. The help site (its src/lib/colors.ts) may deepen
+// a bright dark mode header or cover the image more strongly if text over it would be hard to read.
+const bandColors = computed(() => ({ Light: accent.value, Dark: darkHeader.value }))
 const preview = (band: string) => {
   const cover = `color-mix(in srgb, ${band} ${overlay.value}%, transparent)`
   return { backgroundImage: `linear-gradient(${cover}, ${cover}), url("${heroImage.value}")` }
@@ -50,12 +50,14 @@ const preview = (band: string) => {
     <CardContent class="grid gap-8">
       <div class="grid gap-6 sm:grid-cols-2">
         <div class="grid gap-2">
-          <Label>Light mode color</Label>
-          <AdminColorField v-model="lightColor" label="Help site light mode color" />
+          <Label>Accent color</Label>
+          <AdminColorField v-model="accent" label="Help site accent color" />
+          <p class="text-xs text-muted-foreground">Links, icons, and highlights in both modes, and the light mode header.</p>
         </div>
         <div class="grid gap-2">
-          <Label>Dark mode color</Label>
-          <AdminColorField v-model="darkColor" label="Help site dark mode color" />
+          <Label>Dark mode header</Label>
+          <AdminColorField v-model="darkHeader" label="Help site dark mode header color" />
+          <p class="text-xs text-muted-foreground">The header and home page search in dark mode.</p>
         </div>
       </div>
 

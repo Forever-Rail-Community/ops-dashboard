@@ -193,6 +193,15 @@ export function useHelpArticle(loaded: HelpArticle | null, firstCategoryId: numb
     }, 'Could not unpublish')
   }
 
+  // Features the article on the help site's home page, or stops. Independent of the draft, so no save first.
+  async function feature(featured: boolean) {
+    if (!article.value) return
+    await act(async () => {
+      remember(await $fetch<HelpArticle>(`/api/help/articles/${article.value!.id}/feature`, { method: 'POST', body: { featured } }), savedJson.value)
+      toast.success(featured ? 'Featured on the help site home page' : 'No longer featured')
+    }, featured ? 'Could not feature the article' : 'Could not stop featuring the article')
+  }
+
   async function remove() {
     if (!article.value || !confirm(`Delete "${article.value.title}" and its history? This can't be undone.`)) return
     clearTimeout(timer)
@@ -209,6 +218,6 @@ export function useHelpArticle(loaded: HelpArticle | null, firstCategoryId: numb
 
   return {
     isNew, article, form, dirty, busy, saveState, saveProblem, unpublishedChanges, slugTouched,
-    save, flush, publish, discard, reload, unpublish, remove
+    save, flush, publish, discard, reload, unpublish, feature, remove
   }
 }

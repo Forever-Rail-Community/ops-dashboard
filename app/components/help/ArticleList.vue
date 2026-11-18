@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Every article, newest edits first, with search and filters.
-import { Search } from '@lucide/vue'
+import { Search, Star } from '@lucide/vue'
 
 const props = defineProps<{ articles: HelpArticleSummary[]; categories: HelpCategory[] }>()
 
@@ -70,6 +70,7 @@ const updated = (iso: string) => formatAge(Math.round((Date.now() - Date.parse(i
           <TableRow v-for="a in shown" :key="a.id">
             <TableCell class="font-medium">
               <NuxtLink :to="`/help/${a.id}`" class="hover:underline">{{ a.title }}</NuxtLink>
+              <Star v-if="a.featuredAt" class="ml-1.5 inline size-3.5 fill-current align-[-2px] text-amber-500" aria-label="Featured" />
               <div v-if="a.section" class="text-xs font-normal text-muted-foreground">{{ a.section }}</div>
             </TableCell>
             <TableCell>{{ categoryName.get(a.categoryId) }}</TableCell>

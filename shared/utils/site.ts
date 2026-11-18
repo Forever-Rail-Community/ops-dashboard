@@ -43,8 +43,8 @@ export const DEFAULT_SITE: SiteSettings = {
   subtitle: 'Operations',
   logo: '/logo.svg',
   brandColor: '#2f77a5',
-  helpLightAccent: '#f2b134', // the orange in the Forever Rail logo
-  helpDarkAccent: '#8b5cf6',
+  helpLightAccent: '#fc8300', // the accent: Forever Rail Dark Orange (brand guidelines)
+  helpDarkAccent: '#00144f', // the dark mode header: Forever Rail Sapphire
   helpHeroImage: '',
   helpHeroOverlay: 80,
   memberRole: 'Community Member',

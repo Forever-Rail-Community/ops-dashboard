@@ -15,6 +15,8 @@ const names: Record<string, string> = {
   'help.article.publish': 'Published a help article',
   'help.article.unpublish': 'Unpublished a help article',
   'help.article.move': 'Moved a published help article',
+  'help.article.feature': 'Featured a help article',
+  'help.article.unfeature': 'Stopped featuring a help article',
   'help.article.delete': 'Deleted a help article',
   'update.publish': "Published a What's new update",
   'update.edit': "Edited a published What's new update",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, CircleAlert, Ellipsis, EyeOff, LoaderCircle, Trash2 } from '@lucide/vue'
+import { ArrowLeft, Check, CircleAlert, Ellipsis, EyeOff, LoaderCircle, Star, StarOff, Trash2 } from '@lucide/vue'
 import { useEventListener } from '@vueuse/core'
 
 // A fresh page for every article, so leaving "new" for the saved article's address starts clean.
@@ -24,7 +24,7 @@ if (!isNewArticle && (loadError.value || !loaded.value)) {
 
 const {
   isNew, article, form, dirty, busy, saveState, saveProblem, unpublishedChanges, slugTouched,
-  save, flush, publish, discard, reload, unpublish, remove
+  save, flush, publish, discard, reload, unpublish, feature, remove
 } = useHelpArticle(isNewArticle ? null : loaded.value!, categories.value[0]?.id)
 
 const { data: revisions, refresh: refreshRevisions } = await useFetch<HelpRevision[]>(`/api/help/articles/${id}/revisions`, {
@@ -87,6 +87,7 @@ useEventListener('beforeunload', (e: BeforeUnloadEvent) => {
       </Button>
       <div class="flex flex-wrap items-center gap-2">
         <HelpStatusBadge :status="status" />
+        <Badge v-if="article?.featuredAt" variant="outline" class="gap-1"><Star class="size-3" /> Featured</Badge>
         <Button v-if="isNew" variant="outline" :disabled="busy || !dirty || !!saveProblem" @click="save">Save draft</Button>
         <span v-else class="flex items-center gap-1.5 text-xs text-muted-foreground" role="status" aria-live="polite">
           <LoaderCircle v-if="saveState === 'saving'" class="size-3.5 animate-spin" />
@@ -101,6 +102,8 @@ useEventListener('beforeunload', (e: BeforeUnloadEvent) => {
             <Button variant="ghost" size="icon" aria-label="More actions"><Ellipsis /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem v-if="article.featuredAt" :disabled="busy" @select="feature(false)"><StarOff /> Stop featuring</DropdownMenuItem>
+            <DropdownMenuItem v-else :disabled="busy" @select="feature(true)"><Star /> Feature on home page</DropdownMenuItem>
             <DropdownMenuItem :disabled="!article.published || busy" @select="unpublish"><EyeOff /> Unpublish</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem class="text-destructive focus:text-destructive" :disabled="busy" @select="remove"><Trash2 /> Delete article</DropdownMenuItem>
