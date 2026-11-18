@@ -18,7 +18,7 @@ export interface MapFrame {
 
 interface Scene extends MapFrame {
   ctx: Ctx
-  unlined: Map<string, number> // the piece each switch isn't lined for, by switch id; empty when switches are hidden
+  unlined: Map<string, OpenLeg> // the leg each switch isn't lined for, by switch id; empty when switches are hidden
   accent: string // the brand color, used for the selection ring
   p: Projector
   zoom: number // how far in we are relative to the whole-railroad view
@@ -196,14 +196,14 @@ export function drawMap(ctx: Ctx, frame: MapFrame, dpr: number) {
 
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111'
   const switchesShown = switchesVisible(view, layers)
-  const unlined = switchesShown ? unlinedPieces(map, live.switchLegs, live.switches) : new Map<string, number>()
+  const unlined = switchesShown ? unlinedPieces(map, live.switchLegs, live.switches) : new Map<string, OpenLeg>()
   const scene: Scene = { ...frame, ctx, accent, unlined, p: projector(view), zoom: view.s / view.fit }
 
   if (layers.background && tiles) drawBackground(ctx, map, view, scene.p, palette.tiles, tiles)
   const signalsShown = signalsVisible(view, layers)
   if (signalsShown) drawOccupiedBlocks(ctx, view, scene.p, live.signals, palette)
   const coloring = layers.grade ? 'grade' : layers.speed ? 'speed' : 'plain'
-  drawTrack(ctx, map, view, scene.p, coloring, palette, new Set(unlined.values()))
+  drawTrack(ctx, map, view, scene.p, coloring, palette, [...unlined.values()])
   if (highlight) drawTrackHighlight(ctx, map, view, scene.p, highlight.track, palette.industry[industryType(highlight)])
   if (layers.turntables) drawTurntables(scene)
   if (switchesShown) drawUnreportedSwitches(scene)
