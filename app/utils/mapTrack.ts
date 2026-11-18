@@ -1,7 +1,7 @@
 // Draws the track. Far out it is a line colored by speed limit or steepness; closer in it sits on a ballast bed so crossing and
 // neighboring tracks stay distinct; close in it is drawn to scale, with two rails and ties.
-// Pieces a switch isn't lined for are drawn faint (thinner too, when not to scale), so the route each switch is
-// lined for reads as the one continuous line.
+// The leg a switch isn't lined for is drawn open, with a gap, so the route each switch is lined for reads as the one
+// continuous line through it (see mapSwitches.ts).
 
 type Ctx = CanvasRenderingContext2D
 type Projector = ReturnType<typeof projector>
@@ -17,9 +17,9 @@ const BED_WIDTH = 3.4
 export const DETAIL_SCALE = 4
 // Below this zoom (relative to the whole-railroad view) there is no ballast bed: the lines are too close together.
 const BED_ZOOM = 6
-export const FAINT_ALPHA = 0.3
-// Of the normal line width, when not drawn to scale.
-export const FAINT_WIDTH = 0.6
+// An open leg's gap: this many pixels long, and never shorter than this many meters.
+const GAP_PIXELS = 10
+const GAP_METERS = 2.5
 
 // Line width in pixels when not drawn to scale: grows as you zoom in, and never narrower than a 1.8 m band,
 // so it meets the to-scale drawing without a jump.
@@ -96,21 +96,44 @@ function byColor(pieces: Piece[], colorOf: (piece: Piece) => string) {
 // What the track's color shows: its speed limit, how steep it is, or nothing.
 export type TrackColoring = 'speed' | 'grade' | 'plain'
 
-export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, coloring: TrackColoring, palette: MapPalette, faint: Set<number>) {
-  const pieces = visiblePieces(map, p, view.w, view.h)
+// `open`: the legs switches aren't lined for, drawn with a gap.
+export function drawTrack(ctx: Ctx, map: MapData, view: MapViewState, p: Projector, coloring: TrackColoring, palette: MapPalette, open: OpenLeg[]) {
+  const openBy = new Map(open.map((leg) => [leg.piece, leg]))
+  const pieces = visiblePieces(map, p, view.w, view.h).flatMap((piece) => {
+    const leg = openBy.get(piece.index)
+    return leg ? openPiece(map, view, piece, leg) : [piece]
+  })
   const grades = coloring === 'grade' ? pieceGrades(map) : undefined
   const colorOf = (piece: Piece) =>
     grades ? palette.climbs[gradeClass(grades[piece.index]!)]! : coloring === 'speed' ? speedColor(palette, piece.speed) : palette.track
   ctx.save()
-  ctx.globalAlpha = FAINT_ALPHA
-  drawPieces(ctx, view, pieces.filter((piece) => faint.has(piece.index)), colorOf, palette, FAINT_WIDTH)
-  ctx.globalAlpha = 1
-  drawPieces(ctx, view, pieces.filter((piece) => !faint.has(piece.index)), colorOf, palette, 1)
+  drawPieces(ctx, view, pieces, colorOf, palette)
   ctx.restore()
 }
 
-// `widthFactor` narrows the line when not drawn to scale.
-function drawPieces(ctx: Ctx, view: MapViewState, pieces: Piece[], colorOf: (piece: Piece) => string, palette: MapPalette, widthFactor: number) {
+// How wide the track is drawn, in meters: the line (with its bed, closer in), or the bed when drawn to scale.
+function drawnWidth(view: MapViewState) {
+  if (view.s >= DETAIL_SCALE) return BED_WIDTH
+  const zoom = view.s / view.fit
+  return (trackLineWidth(view.s, zoom) + (zoom >= BED_ZOOM ? 4 : 0)) / view.s
+}
+
+// An open leg as the parts either side of its gap. The gap starts where the leg is clear of the lined one by a little
+// more than the track's drawn width, so it shows at any zoom.
+function openPiece(map: MapData, view: MapViewState, piece: Piece, leg: OpenLeg): Piece[] {
+  const [a, b] = map.segments[piece.index]!
+  const curve = curveBetween(map, a, b)
+  const { length } = measureCurve(curve)
+  const start = openFrom(map, leg, drawnWidth(view) + 2 / view.s, length)
+  const end = start + Math.max(GAP_METERS, GAP_PIXELS / view.s)
+  // Distances are from the switch; the curve runs from a to b, so from b they're measured from its other end.
+  const t = (fromSwitch: number) => tAtDistance(curve, Math.min(length, a === leg.node ? fromSwitch : length - fromSwitch))
+  const [t0, t1] = a === leg.node ? [t(start), t(end)] : [t(end), t(start)]
+  const part = (from: number, to: number): Piece[] => (to - from > 0.001 ? [{ ...piece, curve: subCurve(piece.curve, from, to) }] : [])
+  return [...part(0, t0), ...part(t1, 1)]
+}
+
+function drawPieces(ctx: Ctx, view: MapViewState, pieces: Piece[], colorOf: (piece: Piece) => string, palette: MapPalette) {
   if (!pieces.length) return
   const zoom = view.s / view.fit
   const all = pathOf(pieces)
@@ -118,7 +141,7 @@ function drawPieces(ctx: Ctx, view: MapViewState, pieces: Piece[], colorOf: (pie
   ctx.lineJoin = 'round'
 
   if (view.s < DETAIL_SCALE) {
-    const width = trackLineWidth(view.s, zoom) * widthFactor
+    const width = trackLineWidth(view.s, zoom)
     if (zoom >= BED_ZOOM) {
       ctx.strokeStyle = palette.ballast
       ctx.lineWidth = width + 4

@@ -162,22 +162,20 @@ function drawSwitchRing(ctx: Ctx, x: number, y: number, r: number, palette: MapP
 }
 
 // For the key: a switch as the map shows it, track coming in from the left and lined straight on, with the
-// diverging leg faint.
+// diverging leg open (a gap where it leaves the route).
 function drawLinedSwitch(ctx: Ctx, x: number, y: number, r: number, palette: MapPalette) {
   ctx.save()
   ctx.strokeStyle = palette.track
-  ctx.lineCap = 'round'
-  ctx.lineWidth = 2.5 * FAINT_WIDTH
-  ctx.globalAlpha = FAINT_ALPHA
-  ctx.beginPath()
-  ctx.moveTo(x - r * 0.3, y + 3)
-  ctx.quadraticCurveTo(x + r * 0.3, y + 3, x + r, y - r * 0.7)
-  ctx.stroke()
-  ctx.globalAlpha = 1
+  ctx.lineCap = 'butt'
   ctx.lineWidth = 2.5
   ctx.beginPath()
   ctx.moveTo(x - r, y + 3)
   ctx.lineTo(x + r, y + 3)
+  // The diverging leg: off the route, a gap, then on.
+  ctx.moveTo(x - r * 0.35, y + 3)
+  ctx.quadraticCurveTo(x - r * 0.1, y + 3, x + r * 0.1, y + 0.5)
+  ctx.moveTo(x + r * 0.45, y - r * 0.2)
+  ctx.lineTo(x + r, y - r * 0.75)
   ctx.stroke()
   ctx.restore()
 }
