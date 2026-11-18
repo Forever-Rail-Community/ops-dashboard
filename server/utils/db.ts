@@ -233,7 +233,9 @@ const STEPS: { name: string; sql: string }[] = [
       );`
   },
   { name: 'grant-bugs-manage', sql: grantPermission('bugs.manage', ['admin']) },
-  { name: 'train-history-at-index', sql: `CREATE INDEX IF NOT EXISTS train_history_at ON train_history (at)` }
+  { name: 'train-history-at-index', sql: `CREATE INDEX IF NOT EXISTS train_history_at ON train_history (at)` },
+  // Featured help articles show first on the help site's home page, longest featured first. NULL: not featured.
+  { name: 'help-articles-featured', sql: `ALTER TABLE help_articles ADD COLUMN IF NOT EXISTS featured_at timestamptz` }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

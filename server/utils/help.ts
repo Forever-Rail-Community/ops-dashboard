@@ -178,6 +178,7 @@ interface ArticleRow {
   draft: HelpContent
   published: HelpContent | null
   published_at: Date | null
+  featured_at: Date | null
   created_by_name: string
   updated_at: Date
   updated_by_name: string
@@ -198,7 +199,8 @@ const toSummary = (r: ArticleRow): HelpArticleSummary => ({
   status: r.status,
   updatedAt: r.updated_at.toISOString(),
   updatedByName: r.updated_by_name,
-  publishedAt: r.published_at?.toISOString() ?? null
+  publishedAt: r.published_at?.toISOString() ?? null,
+  featuredAt: r.featured_at?.toISOString() ?? null
 })
 
 const toArticle = (r: ArticleRow): HelpArticle => ({
@@ -303,6 +305,18 @@ export async function discardHelpDraft(articleId: number, actor: Actor): Promise
   return toArticle(row)
 }
 
+// Features the article on the help site's home page, or stops featuring it. Featuring again keeps its place.
+// Leaves updated_at alone: it isn't an edit, so it never makes someone's open editor think it was saved over.
+export async function featureHelpArticle(articleId: number, featured: boolean): Promise<HelpArticle> {
+  const sql = await db()
+  const [row] = await sql<ArticleRow[]>`
+    UPDATE help_articles SET featured_at = CASE WHEN ${featured} THEN coalesce(featured_at, now()) END
+    WHERE id = ${articleId}
+    RETURNING *, ${sql.unsafe(STATUS)} AS status`
+  if (!row) throw notFound('Article')
+  return toArticle(row)
+}
+
 // Takes the article off the public site. The draft and the history are kept.
 export async function unpublishHelpArticle(articleId: number): Promise<HelpArticle> {
   const sql = await db()
@@ -348,11 +362,11 @@ export async function loadPublicHelp(): Promise<PublicHelp> {
   const [site, categories, articles] = await Promise.all([
     loadSite(),
     listHelpCategories(),
-    sql<(Pick<ArticleRow, 'category_id' | 'slug' | 'game' | 'section' | 'sort_order' | 'created_by_name'> & {
+    sql<(Pick<ArticleRow, 'category_id' | 'slug' | 'game' | 'section' | 'sort_order' | 'featured_at' | 'created_by_name'> & {
       published: HelpContent
       published_at: Date
     })[]>`
-      SELECT category_id, slug, game, section, sort_order, published, published_at, created_by_name
+      SELECT category_id, slug, game, section, sort_order, published, published_at, featured_at, created_by_name
       FROM help_articles WHERE published IS NOT NULL
       ORDER BY category_id, section, sort_order, published->>'title'`
   ])
@@ -371,7 +385,8 @@ export async function loadPublicHelp(): Promise<PublicHelp> {
       summary: a.published.summary,
       body: a.published.body,
       authorName: a.created_by_name,
-      updatedAt: a.published_at.toISOString()
+      updatedAt: a.published_at.toISOString(),
+      featuredAt: a.featured_at?.toISOString() ?? null
     }))
   }
 }

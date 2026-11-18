@@ -50,6 +50,7 @@ export interface HelpArticleSummary extends HelpPlacement {
   updatedAt: string
   updatedByName: string
   publishedAt: string | null
+  featuredAt: string | null // when it was featured on the help site's home page; null when it isn't
 }
 
 export interface HelpArticle extends HelpArticleSummary {
@@ -86,5 +87,6 @@ export interface PublicHelp {
     body: HelpDoc
     authorName: string
     updatedAt: string
+    featuredAt: string | null // featured on the home page since then; null when not featured
   }[]
 }
