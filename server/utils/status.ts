@@ -11,5 +11,5 @@ export async function readStatusReports<G extends GameKey>(event: H3Event, game:
     status: stored.data,
     base: { agentId: stored.agentId, ageSec, stale, system: detailed ? stored.data.system : null } as AgentBase
   }))
-  return { detailed, reports }
+  return { detailed, permissions, reports }
 }

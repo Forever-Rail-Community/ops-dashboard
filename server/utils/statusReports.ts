@@ -31,6 +31,11 @@ function parseRailroader(raw: any): RailroaderReport {
       gameMode: text(raw.api.gameMode)
     }
   }
+  if (raw.multiplayer && typeof raw.multiplayer === 'object') {
+    // A join code is short letters and digits; anything else is dropped rather than shown.
+    const code = text(raw.multiplayer.joinCode, 16)
+    report.multiplayer = { joinCode: code && /^[A-Za-z0-9]+$/.test(code) ? code : null }
+  }
   return report
 }
 

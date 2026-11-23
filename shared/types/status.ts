@@ -33,6 +33,11 @@ export interface RailroaderReport {
     railroadName?: string | null
     gameMode?: string | null
   }
+  // From the Forever Rail Signals mod (0.4.0+). Left out when it isn't reporting; joinCode is null when the railroad
+  // isn't open to multiplayer. Only sent to people with the "multiplayer.joinCode" permission.
+  multiplayer?: {
+    joinCode: string | null
+  }
 }
 
 // The "status" part of a server's report, one shape per game.

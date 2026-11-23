@@ -3,6 +3,7 @@ export const PERMISSIONS = [
   { key: 'status.view', label: 'View route status', group: 'Status' },
   { key: 'status.detail', label: 'See CPU, memory, process IDs, and server stats', group: 'Status' },
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
+  { key: 'multiplayer.joinCode', label: 'See the Railroader multiplayer join code', group: 'Status' },
   { key: 'help.edit', label: 'Write and edit help center drafts', group: 'Help center' },
   { key: 'help.publish', label: 'Publish, unpublish, and delete articles; manage categories', group: 'Help center' },
   { key: 'bugs.manage', label: 'See and answer all bug reports', group: 'Bug reports' },
@@ -28,7 +29,7 @@ export interface RoleMapping {
 }
 
 export const DEFAULT_ROLES: RoleDef[] = [
-  { key: 'member', label: 'Member', permissions: ['status.view', 'map.view'] },
-  { key: 'dispatcher', label: 'Dispatcher', permissions: ['status.view', 'status.detail', 'map.view'] },
+  { key: 'member', label: 'Member', permissions: ['status.view', 'map.view', 'multiplayer.joinCode'] },
+  { key: 'dispatcher', label: 'Dispatcher', permissions: ['status.view', 'status.detail', 'map.view', 'multiplayer.joinCode'] },
   { key: 'admin', label: 'Admin', permissions: [...ALL_PERMISSION_KEYS] }
 ]
