@@ -62,6 +62,10 @@ const ready = computed(() => loaded.value && !error.value && agents.value.length
               <div class="text-muted-foreground">Railroad</div>
               <div class="font-medium">{{ agent.railroader.api.railroadName }}</div>
             </div>
+            <StatusJoinCode
+              v-if="agent.railroader.multiplayer && agent.railroader.api.sessionState === 'active'"
+              :code="agent.railroader.multiplayer.joinCode"
+            />
             <div v-if="agent.railroader.api.gameMode">
               <div class="text-muted-foreground">Game mode</div>
               <div class="font-medium">{{ agent.railroader.api.gameMode }}</div>
