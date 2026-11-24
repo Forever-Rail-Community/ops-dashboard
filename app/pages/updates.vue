@@ -99,7 +99,7 @@ function move(i: number, by: -1 | 1) {
 const addChange = () => draft.value.changes.push({ area: draft.value.changes.at(-1)?.area ?? data.value.areas[0] ?? '', text: '' })
 
 // Completed roadmap items: add one as a change, and publishing marks it as shipped in this update.
-const AREA_FOR: Record<RoadmapScope, string> = { run8: 'Run8', railroader: 'Railroader', dashboard: 'Dashboard' }
+const AREA_FOR: Record<RoadmapScope, string> = { run8: 'Run8', railroader: 'Railroader', dashboard: 'Dashboard', map: 'Railroader map', help: 'Help center' }
 const linked = computed(() => data.value.completed.filter((i) => draft.value.roadmapItemIds.includes(i.id)))
 const offered = computed(() => data.value.completed.filter((i) => !draft.value.roadmapItemIds.includes(i.id)))
 function addFromRoadmap(item: RoadmapItem) {
