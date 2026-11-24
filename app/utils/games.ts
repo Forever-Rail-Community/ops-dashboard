@@ -1,4 +1,4 @@
-import { Map as MapIcon, Server, TrainFront } from '@lucide/vue'
+import { LayoutDashboard, Map as MapIcon, Server, TrainFront } from '@lucide/vue'
 import type { Component } from 'vue'
 
 // The games the dashboard supports. Each has its own section of the site (/run8, /railroader)
@@ -31,8 +31,9 @@ export const GAMES: Game[] = [
     name: 'Railroader',
     description: 'Railroader sessions and the railroad map',
     features: [
-      { to: '/railroader', label: 'Game status', icon: TrainFront, permission: 'status.view' },
-      { to: '/railroader/map', label: 'Map', icon: MapIcon, permission: 'map.view' }
+      { to: '/railroader', label: 'Overview', icon: LayoutDashboard, permission: 'overview.view' },
+      { to: '/railroader/map', label: 'Map', icon: MapIcon, permission: 'map.view' },
+      { to: '/railroader/status', label: 'Game status', icon: TrainFront, permission: 'status.view' }
     ]
   }
 ]

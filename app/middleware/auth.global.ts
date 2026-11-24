@@ -21,9 +21,18 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/')
   }
 
-  // Entering a game's section remembers that game; "/" then goes straight back to it instead of the picker.
+  // Entering a game's section remembers that game; "/" then goes straight back to it instead of the picker. A game page
+  // this person's role can't use sends them to the first one it can (or the picker), so nobody lands on an empty page.
   const { remembered, remember } = useGame()
   const section = to.path.split('/')[1]
-  if (isGameKey(section)) remember(section)
-  else if (to.path === '/' && isGameKey(remembered.value)) return navigateTo(`/${remembered.value}`)
+  const permissions = user.value.permissions
+  const firstPage = (key: GameKey) => visibleFeatures(gameByKey(key), permissions)[0]?.to
+  if (isGameKey(section)) {
+    remember(section)
+    const feature = gameByKey(section).features.find((f) => f.to === to.path)
+    if (feature && !permissions.includes(feature.permission)) return navigateTo(firstPage(section) ?? '/')
+  } else if (to.path === '/' && isGameKey(remembered.value)) {
+    const page = firstPage(remembered.value)
+    if (page) return navigateTo(page)
+  }
 })

@@ -49,8 +49,3 @@ export default defineEventHandler(async (event): Promise<Pulse> => {
 
 // From least to most open.
 const OPENNESS: SignalAspect[] = ['unknown', 'stop', 'restricting', 'divergingApproach', 'approach', 'divergingClear', 'clear']
-
-function nearestTown(map: MapData, x: number, z: number) {
-  const dist = (area: MapArea) => Math.hypot(area.x - x, area.z - z)
-  return map.areas.reduce<MapArea | undefined>((best, area) => (!best || dist(area) < dist(best) ? area : best), undefined)?.name ?? 'the railroad'
-}
