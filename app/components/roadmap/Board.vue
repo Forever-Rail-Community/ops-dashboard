@@ -76,7 +76,7 @@ async function remove(item: RoadmapItem) {
 
     <RoadmapItemPanel
       :item="openItem" :staff="staff" @close="openId = null" @vote="openItem && vote(openItem)"
-      @edit="openItem && edit(openItem)" @move="(status) => openItem && move(openItem, status)" @remove="openItem && remove(openItem)"
+      @edit="openItem && edit(openItem)" @move="(status) => openItem && move(openItem, status)" @remove="openItem && remove(openItem)" @changed="emit('changed')"
     />
     <RoadmapItemDialog v-model:open="editing.open" :item="editing.item" :status="editing.status" @saved="emit('changed')" />
   </div>

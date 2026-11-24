@@ -34,7 +34,17 @@ export interface RoadmapItem {
   shippedIn: { id: number; title: string; publishedAt: string } | null // the What's new update it went out in
   bugReports: number // confirmed bug reports linked to it; more than 0 makes it a bug fix
   history: { status: RoadmapStatus; at: string }[] // each column it has been in, oldest first
+  comments: number
   updatedAt: string
+}
+
+export interface RoadmapComment {
+  id: number
+  author: string
+  staff: boolean // the author could manage the roadmap when they wrote it
+  mine: boolean
+  body: string
+  createdAt: string
 }
 
 export type RequestStatus = 'open' | 'accepted' | 'declined' | 'merged'
@@ -55,4 +65,4 @@ export interface FeatureRequest {
   hidden: boolean // only staff see hidden requests
 }
 
-export const ROADMAP_LIMITS = { title: 120, body: 2000, reply: 1000, requestsPerDay: 5 }
+export const ROADMAP_LIMITS = { title: 120, body: 2000, reply: 1000, requestsPerDay: 5, comment: 1000, commentsPerDay: 30 }
