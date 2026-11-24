@@ -30,9 +30,9 @@ export async function listComments(itemId: number, viewerId: string): Promise<Ro
 
 export async function addComment(itemId: number, text: string, actor: Actor, staff: boolean): Promise<RoadmapComment> {
   const sql = await db()
-  const [{ n }] = await sql<{ n: number }[]>`
+  const [today] = await sql<{ n: number }[]>`
     SELECT count(*)::int AS n FROM roadmap_comments WHERE author_id = ${actor.id} AND created_at > now() - interval '1 day'`
-  if (!staff && n >= ROADMAP_LIMITS.commentsPerDay) throw bad('That’s the most comments for today. Try again tomorrow.')
+  if (!staff && (today?.n ?? 0) >= ROADMAP_LIMITS.commentsPerDay) throw bad('That’s the most comments for today. Try again tomorrow.')
   const [row] = await sql<Row[]>`
     INSERT INTO roadmap_comments (item_id, author_id, author_name, staff, body)
     SELECT ${itemId}, ${actor.id}, ${actor.name}, ${staff}, ${text} WHERE EXISTS (SELECT 1 FROM roadmap_items WHERE id = ${itemId})
