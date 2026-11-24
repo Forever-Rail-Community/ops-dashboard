@@ -1,0 +1,19 @@
+# How GitHub groups pull requests in a release's "What's Changed" notes. Each pull request gets its type label from
+# its title (see workflows/pr-labels.yml); release pull requests from Release Please are left out.
+changelog:
+  exclude:
+    authors:
+      - github-actions[bot]
+  categories:
+    - title: ✨ New features
+      labels: [feature]
+    - title: 🐛 Fixes
+      labels: [bug]
+    - title: ⚡ Performance
+      labels: [performance]
+    - title: 🔧 Maintenance
+      labels: [chore]
+    - title: 📚 Documentation
+      labels: [documentation]
+    - title: Other changes
+      labels: ["*"]

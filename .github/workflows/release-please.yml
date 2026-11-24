@@ -1,5 +1,6 @@
 # Keeps a release pull request open with everything merged since the last release. Merging it bumps the version
-# in package.json, updates CHANGELOG.md, and tags and publishes the GitHub release. See CONTRIBUTING.md.
+# in package.json, updates CHANGELOG.md, and tags and publishes the GitHub release, whose notes are then written in
+# GitHub's "What's Changed" format (.github/release.yml). See CONTRIBUTING.md.
 name: Release Please
 
 on:
@@ -15,6 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      # A new release gets GitHub's "What's Changed" notes and our header in place of Release Please's.
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
+      - name: Write the release notes
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: .github/scripts/release-notes.sh "$TAG" "Operations Center $TAG"
