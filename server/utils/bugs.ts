@@ -141,14 +141,21 @@ export async function screenshotFile(screenshotId: number, viewerId: string, sta
   return file
 }
 
+// Only a bug staff have confirmed (reproduced) goes on the roadmap; one marked "won't fix" or set back to new leaves it.
+const ON_ROADMAP: BugStatus[] = ['confirmed', 'fixed']
+
 export async function triageBug(id: number, changes: ReturnType<typeof parseBugTriage>, actor: Actor) {
   const before = await getBug(id, actor.id, true)
+  const status = changes.status ?? before.status
+  const wanted = changes.roadmapItemId === undefined ? (before.roadmapItem?.id ?? null) : changes.roadmapItemId
+  if (changes.roadmapItemId && !ON_ROADMAP.includes(status)) throw bad('Confirm the bug before putting it on the roadmap')
+  const roadmapItemId = ON_ROADMAP.includes(status) ? wanted : null
   const sql = await db()
   await sql`
     UPDATE bug_reports SET
-      status = ${changes.status ?? before.status},
+      status = ${status},
       reply = ${changes.reply ?? before.reply},
-      roadmap_item_id = ${changes.roadmapItemId === undefined ? (before.roadmapItem?.id ?? null) : changes.roadmapItemId},
+      roadmap_item_id = ${roadmapItemId},
       updated_at = now()
     WHERE id = ${id}`
   return { before, report: await getBug(id, actor.id, true) }

@@ -60,12 +60,16 @@ type ItemRow = {
   scope: RoadmapScope
   status: RoadmapStatus
   updated_at: Date
+  request_id: number | null
   votes: number
+  voted: boolean
   requested_by: string | null
+  requested_at: Date | null
   update_id: number | null
   update_title: string | null
   update_published_at: Date | null
-  bug_fix: boolean
+  bug_reports: number
+  history: { status: RoadmapStatus; at: string }[]
 }
 
 const toItem = (r: ItemRow): RoadmapItem => ({
@@ -74,35 +78,43 @@ const toItem = (r: ItemRow): RoadmapItem => ({
   description: r.description,
   scope: r.scope,
   status: r.status,
+  requestId: r.request_id,
   votes: r.votes,
+  voted: r.voted,
   requestedBy: r.requested_by,
+  requestedAt: r.requested_at?.toISOString() ?? null,
   shippedIn: r.update_id && r.update_published_at ? { id: r.update_id, title: r.update_title!, publishedAt: r.update_published_at.toISOString() } : null,
-  bugFix: r.bug_fix,
+  bugReports: r.bug_reports,
+  history: r.history,
   updatedAt: r.updated_at.toISOString()
 })
 
+// $1 is whoever is looking, for "voted".
 const ITEM_SELECT = `
-  SELECT i.id, i.title, i.description, i.scope, i.status, i.updated_at,
+  SELECT i.id, i.title, i.description, i.scope, i.status, i.updated_at, i.history, i.request_id,
     (SELECT count(*)::int FROM feature_votes v WHERE v.request_id = i.request_id) AS votes,
-    r.author_name AS requested_by,
+    EXISTS (SELECT 1 FROM feature_votes v WHERE v.request_id = i.request_id AND v.user_id = $1) AS voted,
+    r.author_name AS requested_by, r.created_at AS requested_at,
     u.id AS update_id, u.title AS update_title, u.published_at AS update_published_at,
-    EXISTS (SELECT 1 FROM bug_reports b WHERE b.roadmap_item_id = i.id) AS bug_fix
+    (SELECT count(*)::int FROM bug_reports b WHERE b.roadmap_item_id = i.id) AS bug_reports
   FROM roadmap_items i
   LEFT JOIN feature_requests r ON r.id = i.request_id
   LEFT JOIN updates u ON u.id = i.update_id`
 
 // Every item; within a column, the most recently changed first.
-export async function listRoadmap(): Promise<RoadmapItem[]> {
+export async function listRoadmap(viewerId: string): Promise<RoadmapItem[]> {
   const sql = await db()
-  return (await sql.unsafe<ItemRow[]>(`${ITEM_SELECT} ORDER BY i.updated_at DESC`)).map(toItem)
+  return (await sql.unsafe<ItemRow[]>(`${ITEM_SELECT} ORDER BY i.updated_at DESC`, [viewerId])).map(toItem)
 }
 
-async function getItem(id: number): Promise<RoadmapItem> {
+async function getItem(id: number, viewerId = ''): Promise<RoadmapItem> {
   const sql = await db()
-  const [row] = await sql.unsafe<ItemRow[]>(`${ITEM_SELECT} WHERE i.id = $1`, [id])
+  const [row] = await sql.unsafe<ItemRow[]>(`${ITEM_SELECT} WHERE i.id = $2`, [viewerId, id])
   if (!row) throw notFound('Roadmap item')
   return toItem(row)
 }
+
+const historyEntry = (status: RoadmapStatus) => ({ status, at: new Date().toISOString() })
 
 // A status change worth announcing: "Grade panel is now In progress".
 async function announceStatus(item: RoadmapItem, origin: string): Promise<DiscordOutcome> {
@@ -119,22 +131,24 @@ async function announceStatus(item: RoadmapItem, origin: string): Promise<Discor
 export async function createRoadmapItem(input: ReturnType<typeof parseRoadmapItemInput>, actor: Actor, requestId: number | null = null) {
   const sql = await db()
   const [{ id } = { id: 0 }] = await sql<{ id: number }[]>`
-    INSERT INTO roadmap_items (title, description, scope, status, request_id, created_by)
-    VALUES (${input.title}, ${input.description}, ${input.scope}, ${input.status}, ${requestId}, ${actor.id})
+    INSERT INTO roadmap_items (title, description, scope, status, request_id, created_by, history)
+    VALUES (${input.title}, ${input.description}, ${input.scope}, ${input.status}, ${requestId}, ${actor.id},
+      ${sql.json([historyEntry(input.status)])})
     RETURNING id`
-  return getItem(id)
+  return getItem(id, actor.id)
 }
 
 // Saves an item. Moving it to another column is announced on Discord when `announce` is set.
-export async function saveRoadmapItem(id: number, input: ReturnType<typeof parseRoadmapItemInput>, announce: boolean, origin: string) {
+export async function saveRoadmapItem(id: number, input: ReturnType<typeof parseRoadmapItemInput>, announce: boolean, origin: string, actor: Actor) {
   const before = await getItem(id)
   const sql = await db()
+  const moved = before.status !== input.status
   await sql`
     UPDATE roadmap_items SET title = ${input.title}, description = ${input.description}, scope = ${input.scope},
-      status = ${input.status}, updated_at = now()
+      status = ${input.status}, updated_at = now(),
+      history = ${moved ? sql`history || ${sql.json([historyEntry(input.status)])}` : sql`history`}
     WHERE id = ${id}`
-  const item = await getItem(id)
-  const moved = before.status !== item.status
+  const item = await getItem(id, actor.id)
   const discord: DiscordOutcome = moved && announce ? await announceStatus(item, origin) : 'unchanged'
   return { item, moved, discord }
 }
@@ -151,7 +165,7 @@ export async function deleteRoadmapItem(id: number) {
 // Complete items not yet in a What's new update: what the update editor offers to add.
 export async function listUnshippedComplete(): Promise<RoadmapItem[]> {
   const sql = await db()
-  return (await sql.unsafe<ItemRow[]>(`${ITEM_SELECT} WHERE i.status = 'complete' AND i.update_id IS NULL ORDER BY i.updated_at DESC`)).map(toItem)
+  return (await sql.unsafe<ItemRow[]>(`${ITEM_SELECT} WHERE i.status = 'complete' AND i.update_id IS NULL ORDER BY i.updated_at DESC`, [''])).map(toItem)
 }
 
 // When an update is published, the roadmap items it covers are marked as shipped in it.
@@ -237,7 +251,7 @@ export async function createRequest(input: ReturnType<typeof parseRequestInput>,
   await sql`INSERT INTO feature_votes (request_id, user_id) VALUES (${id}, ${actor.id}) ON CONFLICT DO NOTHING`
   const { messageId } = await discordPost('staff', {
     title: `New feature request: ${input.title}`,
-    url: `${origin}/roadmap?tab=requests`,
+    url: `${origin}/roadmap/requests`,
     color: await brandColor(),
     description: input.body || undefined,
     footer: { text: `${scopeLabel(input.scope)} · from ${actor.name}` }
