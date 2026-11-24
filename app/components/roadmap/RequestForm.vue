@@ -1,35 +1,41 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { Lightbulb, Send } from '@lucide/vue'
 
-// Suggesting a feature. Shows existing requests with similar titles, so people vote instead of repeating them.
+// Suggesting a feature, beside the list. As you type it points out a request that looks the same, with its vote
+// button, so votes stay together instead of being split across repeats.
 const props = defineProps<{ requests: FeatureRequest[] }>()
-const emit = defineEmits<{ done: []; posted: [request: FeatureRequest] }>()
+const emit = defineEmits<{ posted: [request: FeatureRequest]; vote: [] }>()
 
-const form = ref({ title: '', body: '', scope: 'dashboard' as RoadmapScope })
+const blank = () => ({ title: '', body: '', scope: 'dashboard' as RoadmapScope })
+const form = ref(blank())
 const busy = ref(false)
 
-// Requests sharing at least two words of four letters or more with the title.
+// The open request sharing the most words of four letters or more with the title (at least two).
 const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [])
 const similar = computed(() => {
   const mine = words(form.value.title)
-  if (mine.size < 2 && form.value.title.trim().length < 6) return []
+  if (mine.size < 2 && form.value.title.trim().length < 6) return null
   return props.requests
     .filter((r) => r.status === 'open' || r.status === 'accepted')
     .map((r) => ({ r, shared: [...words(r.title)].filter((w) => mine.has(w)).length }))
     .filter((x) => x.shared >= Math.min(2, mine.size))
-    .sort((a, b) => b.shared - a.shared || b.r.votes - a.r.votes)
-    .slice(0, 3)
-    .map((x) => x.r)
+    .sort((a, b) => b.shared - a.shared || b.r.votes - a.r.votes)[0]?.r ?? null
 })
+
+async function voteSimilar(r: FeatureRequest) {
+  if (await voteForRequest(r.id, !r.voted)) emit('vote')
+}
 
 async function post() {
   busy.value = true
   try {
     const request = await $fetch<FeatureRequest>('/api/requests', { method: 'POST', body: form.value })
-    toast.success('Request posted', { description: "You've voted for it. Others can vote too." })
+    toast.success('Suggestion sent', { description: "You've voted for it. Others can vote too." })
+    form.value = blank()
     emit('posted', request)
   } catch (err) {
-    toast.error('Not posted', { description: errorText(err) })
+    toast.error('Not sent', { description: errorText(err) })
   } finally {
     busy.value = false
   }
@@ -37,36 +43,32 @@ async function post() {
 </script>
 
 <template>
-  <Card class="gap-4">
-    <CardHeader>
-      <CardTitle class="text-base">Suggest a feature</CardTitle>
-      <CardDescription>Describe what you'd like and why. Others can vote for it, and staff reply here.</CardDescription>
-    </CardHeader>
-    <CardContent class="grid gap-3">
+  <PageSection :icon="Lightbulb" title="Suggest a feature" description="Members vote on it, and staff move popular ideas onto the roadmap.">
+    <form class="grid gap-3.5 border-t pt-3.5 pb-4" @submit.prevent="post">
       <div class="grid gap-1.5">
-        <Label for="request-title">What would you like?</Label>
-        <Input id="request-title" v-model="form.title" :maxlength="ROADMAP_LIMITS.title" placeholder="e.g. Show which crew is on each train" />
+        <Label for="request-title">Your idea</Label>
+        <Input id="request-title" v-model="form.title" :maxlength="ROADMAP_LIMITS.title" placeholder="Show which crew is on each train" />
       </div>
-      <p v-if="similar.length" class="text-sm text-muted-foreground">
-        Similar requests:
-        <template v-for="(r, i) in similar" :key="r.id">{{ i ? ', ' : '' }}<span class="font-medium text-foreground">{{ r.title }}</span> ({{ r.votes }} {{ r.votes === 1 ? 'vote' : 'votes' }})</template>.
-        Vote there instead if it's the same idea.
-      </p>
+      <div v-if="similar" role="status" class="grid gap-2 rounded-[10px] border border-sky-500/25 bg-sky-500/8 p-3 text-[13px]">
+        <span class="text-sky-700 dark:text-sky-200">This looks like one that’s already been suggested:</span>
+        <span class="flex items-center gap-2.5">
+          <span class="min-w-0 flex-1 truncate font-semibold">{{ similar.title }}</span>
+          <RoadmapVoteButton :votes="similar.votes" :voted="similar.voted" :title="similar.title" @toggle="voteSimilar(similar)" />
+        </span>
+        <span class="text-muted-foreground">Vote for it instead, so the votes stay together.</span>
+      </div>
       <div class="grid gap-1.5">
-        <Label for="request-body">Why would it help? <span class="font-normal text-muted-foreground">(optional)</span></Label>
-        <Textarea id="request-body" v-model="form.body" rows="3" :maxlength="ROADMAP_LIMITS.body" placeholder="What you'd use it for" />
+        <Label for="request-body">Details <span class="font-normal text-muted-foreground">(optional)</span></Label>
+        <Textarea id="request-body" v-model="form.body" rows="3" :maxlength="ROADMAP_LIMITS.body" placeholder="What would it help you do?" />
       </div>
-      <div class="grid gap-1.5 sm:max-w-xs">
-        <Label>For</Label>
+      <div class="grid gap-1.5">
+        <Label for="request-scope">Area</Label>
         <Select v-model="form.scope">
-          <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="request-scope" class="w-full"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem v-for="s in ROADMAP_SCOPES" :key="s.value" :value="s.value">{{ s.label }}</SelectItem></SelectContent>
         </Select>
       </div>
-      <div class="flex gap-2">
-        <Button :disabled="busy || !form.title.trim()" @click="post">Post request</Button>
-        <Button variant="ghost" @click="emit('done')">Cancel</Button>
-      </div>
-    </CardContent>
-  </Card>
+      <Button type="submit" :disabled="busy || !form.title.trim()"><Send />Send suggestion</Button>
+    </form>
+  </PageSection>
 </template>

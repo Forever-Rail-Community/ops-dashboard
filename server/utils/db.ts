@@ -245,7 +245,14 @@ const STEPS: { name: string; sql: string }[] = [
   },
   // Train history is now kept by the agent and stored in Redis (server/utils/trainHistory.ts), so the database can
   // go idle while a game server is running.
-  { name: 'drop-train-history', sql: `DROP TABLE IF EXISTS train_history` }
+  { name: 'drop-train-history', sql: `DROP TABLE IF EXISTS train_history` },
+  // Each column a roadmap item has been in, for its progress. Existing items start with the column they're in now.
+  {
+    name: 'roadmap-history',
+    sql: `ALTER TABLE roadmap_items ADD COLUMN IF NOT EXISTS history jsonb NOT NULL DEFAULT '[]'::jsonb;
+          UPDATE roadmap_items SET history = jsonb_build_array(jsonb_build_object('status', status, 'at', updated_at))
+          WHERE history = '[]'::jsonb`
+  }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

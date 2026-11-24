@@ -1,42 +1,43 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { ChevronUp, EyeOff, MoreHorizontal, Search } from '@lucide/vue'
+import { EyeOff, MoreHorizontal } from '@lucide/vue'
 import type { DialogAction } from './RequestActionDialog.vue'
 
 // Feature requests with votes. Staff can accept (onto the roadmap), decline, merge, reply, hide or reopen.
-const props = defineProps<{ requests: FeatureRequest[]; staff: boolean; scope: RoadmapScope | 'all' }>()
+const props = defineProps<{ requests: FeatureRequest[]; staff: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
+const { scope, matchesQuery } = useRoadmapFilters()
 
-const query = ref('')
-const sort = ref<'votes' | 'new'>('votes')
-const STATUS_TAG: Partial<Record<RequestStatus, { label: string; cls: string }>> = {
-  accepted: { label: 'On the roadmap', cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
-  declined: { label: 'Declined', cls: 'bg-muted text-muted-foreground' }
+type Sort = 'votes' | 'new' | 'mine'
+const sort = ref<Sort>('votes')
+const SORTS: { value: Sort; label: string }[] = [
+  { value: 'votes', label: 'Most votes' },
+  { value: 'new', label: 'Newest' },
+  { value: 'mine', label: 'Yours' }
+]
+const STATUS: Record<RequestStatus, { label: string; tone: PillTone }> = {
+  open: { label: 'Under review', tone: 'blue' },
+  accepted: { label: 'On the roadmap', tone: 'green' },
+  declined: { label: 'Declined', tone: 'red' },
+  merged: { label: 'Merged', tone: 'gray' }
 }
 
-const shown = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  return props.requests
-    .filter((r) => (props.scope === 'all' || r.scope === props.scope) && (!q || `${r.title} ${r.body}`.toLowerCase().includes(q)))
+const shown = computed(() =>
+  props.requests
+    .filter((r) => (scope.value === 'all' || r.scope === scope.value) && (sort.value !== 'mine' || r.mine) && matchesQuery(`${r.title} ${r.body}`))
     .sort((a, b) =>
       // Declined requests sink to the bottom either way.
       Number(a.status === 'declined') - Number(b.status === 'declined') ||
       (sort.value === 'votes' ? b.votes - a.votes : 0) ||
       b.createdAt.localeCompare(a.createdAt)
     )
-})
+)
 
 const pending = ref(new Set<number>())
 async function vote(r: FeatureRequest) {
   pending.value.add(r.id)
-  try {
-    await $fetch(`/api/requests/${r.id}/vote`, { method: 'POST', body: { vote: !r.voted } })
-    emit('changed')
-  } catch (err) {
-    toast.error('Vote not saved', { description: errorText(err) })
-  } finally {
-    pending.value.delete(r.id)
-  }
+  if (await voteForRequest(r.id, !r.voted)) emit('changed')
+  pending.value.delete(r.id)
 }
 
 async function act(r: FeatureRequest, body: Record<string, unknown>, done: string) {
@@ -55,43 +56,32 @@ const canVote = (r: FeatureRequest) => r.status === 'open' || r.status === 'acce
 </script>
 
 <template>
-  <div class="grid gap-3">
-    <div class="flex flex-wrap items-center gap-2">
-      <div class="relative w-full max-w-xs">
-        <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input v-model="query" class="pl-9" placeholder="Find a request" aria-label="Find a request" />
-      </div>
-      <div class="ml-auto flex rounded-md border p-0.5 text-sm" role="group" aria-label="Sort">
-        <button class="rounded px-2.5 py-1" :class="sort === 'votes' ? 'bg-accent font-medium' : 'text-muted-foreground'" :aria-pressed="sort === 'votes'" @click="sort = 'votes'">Most wanted</button>
-        <button class="rounded px-2.5 py-1" :class="sort === 'new' ? 'bg-accent font-medium' : 'text-muted-foreground'" :aria-pressed="sort === 'new'" @click="sort = 'new'">Newest</button>
+  <section aria-labelledby="requests-title" class="min-w-0 rounded-2xl border bg-card px-6 pt-5 pb-1.5 text-card-foreground">
+    <div class="flex flex-wrap items-center gap-3 pb-3.5">
+      <h2 id="requests-title" class="text-[17px] font-semibold">Ideas</h2>
+      <span class="inline-flex h-5 items-center rounded-full border bg-muted px-2 text-xs font-semibold tabular-nums">{{ shown.length }}</span>
+      <div role="group" aria-label="Sort" class="ml-auto inline-flex gap-0.5 rounded-[10px] border bg-background p-1">
+        <button
+          v-for="s in SORTS" :key="s.value" type="button" class="h-8 rounded-lg px-3 text-[13px] font-medium"
+          :class="sort === s.value ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'" :aria-pressed="sort === s.value" @click="sort = s.value"
+        >{{ s.label }}</button>
       </div>
     </div>
 
-    <p v-if="!requests.length" class="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No requests yet. Be the first to suggest something.</p>
-    <p v-else-if="!shown.length" class="px-1 text-sm text-muted-foreground">No request matches.</p>
+    <p v-if="!requests.length" class="border-t py-6 text-center text-sm text-muted-foreground">No requests yet. Be the first to suggest something.</p>
+    <p v-else-if="!shown.length" class="border-t py-6 text-center text-sm text-muted-foreground">{{ sort === 'mine' ? 'You haven’t suggested anything yet.' : 'No request matches.' }}</p>
 
-    <ul class="grid gap-2">
-      <li v-for="r in shown" :key="r.id" class="flex gap-4 rounded-xl border bg-card p-4" :class="{ 'opacity-70': r.status === 'declined' || r.hidden }">
-        <button
-          class="flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-lg border text-sm font-semibold disabled:opacity-60"
-          :class="r.voted ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent'"
-          :disabled="!canVote(r) || pending.has(r.id)"
-          :aria-pressed="r.voted"
-          :aria-label="`${r.voted ? 'Take back your vote for' : 'Vote for'} ${r.title}, ${r.votes} ${r.votes === 1 ? 'vote' : 'votes'}`"
-          @click="vote(r)"
-        >
-          <ChevronUp class="size-4" />{{ r.votes }}
-        </button>
-        <div class="grid min-w-0 flex-1 gap-1">
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex flex-wrap items-center gap-2">
-              <p class="font-medium">{{ r.title }}</p>
-              <span v-if="STATUS_TAG[r.status]" class="rounded-full px-2 py-0.5 text-xs" :class="STATUS_TAG[r.status]!.cls">{{ STATUS_TAG[r.status]!.label }}</span>
-              <span v-if="r.hidden" class="flex items-center gap-1 text-xs text-muted-foreground"><EyeOff class="size-3.5" />Hidden</span>
-            </div>
+    <article v-for="r in shown" :key="r.id" class="flex items-start gap-4 border-t py-4" :class="{ 'opacity-70': r.status === 'declined' || r.hidden }">
+      <RoadmapVoteButton size="box" :votes="r.votes" :voted="r.voted" :title="r.title" :disabled="!canVote(r) || pending.has(r.id)" @toggle="vote(r)" />
+      <div class="grid min-w-0 flex-1 gap-1">
+        <div class="flex items-start gap-2.5">
+          <h3 class="text-[15px] font-semibold">{{ r.title }}</h3>
+          <span class="ml-auto flex shrink-0 items-center gap-1.5">
+            <span v-if="r.hidden" class="flex items-center gap-1 text-xs text-muted-foreground"><EyeOff class="size-3.5" />Hidden</span>
+            <PagePill :tone="STATUS[r.status].tone">{{ STATUS[r.status].label }}</PagePill>
             <DropdownMenu v-if="staff">
               <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon" class="-mt-1 -mr-1 size-7 shrink-0" :aria-label="`Actions for ${r.title}`"><MoreHorizontal /></Button>
+                <Button variant="ghost" size="icon" class="-my-1 size-7" :aria-label="`Actions for ${r.title}`"><MoreHorizontal /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem v-if="r.status === 'open'" @select="act(r, { action: 'accept' }, 'Added to the roadmap as Planned')">Accept onto the roadmap</DropdownMenuItem>
@@ -103,17 +93,18 @@ const canVote = (r: FeatureRequest) => r.status === 'open' || r.status === 'acce
                 <DropdownMenuItem @select="act(r, { action: 'hide', hidden: !r.hidden }, r.hidden ? 'Shown again' : 'Hidden from members')">{{ r.hidden ? 'Show to members' : 'Hide from members' }}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-          <p v-if="r.body" class="text-sm whitespace-pre-line text-muted-foreground">{{ r.body }}</p>
-          <p v-if="r.reply" class="rounded-lg bg-muted p-2.5 text-sm"><span class="font-medium">Staff:</span> {{ r.reply }}</p>
-          <div class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <RoadmapScopeTag :scope="r.scope" />
-            <span>{{ r.mine ? 'You' : r.author }} · {{ shortDate(r.createdAt) }}</span>
-          </div>
+          </span>
         </div>
-      </li>
-    </ul>
+        <p v-if="r.body" class="text-[13px] whitespace-pre-line text-muted-foreground">{{ r.body }}</p>
+        <p v-if="r.reply" class="mt-1 rounded-lg bg-muted px-3 py-2 text-[13px]"><span class="font-semibold">Staff:</span> {{ r.reply }}</p>
+        <div class="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
+          <RoadmapScopeTag :scope="r.scope" />
+          <RoadmapPerson :name="r.mine ? 'You' : r.author" />
+          <span>{{ shortDate(r.createdAt) }}</span>
+        </div>
+      </div>
+    </article>
 
     <RoadmapRequestActionDialog v-model:open="dialog.open" :request="dialog.request" :action="dialog.action" :requests="requests" @done="emit('changed')" />
-  </div>
+  </section>
 </template>
