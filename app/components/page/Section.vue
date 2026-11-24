@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 
-// A section of the Overview: icon, title with a count, one line saying what it holds, an optional link (the `action`
-// slot), then its rows. Rows are a fixed height (`rowHeight`, in px) so the list shows exactly five, then scrolls.
-const props = withDefaults(defineProps<{ icon: Component; title: string; description: string; count?: number; rowHeight: number }>(), {
-  count: 0
+// A card on a page: icon, title with a count, one line saying what it holds, an optional link or button (the `action`
+// slot), then its rows (PageRow). With `rowHeight` (px), every row is that tall and the list shows five, then
+// scrolls. With `count` 0 and an `empty` slot, that shows instead. Content that isn't rows (a form, details) goes in
+// the default slot with no `empty` slot.
+const props = withDefaults(defineProps<{ icon: Component; title: string; description: string; count?: number; rowHeight?: number }>(), {
+  count: 0,
+  rowHeight: undefined
 })
 const VISIBLE_ROWS = 5
-const listStyle = computed(() => (props.count > VISIBLE_ROWS ? { maxHeight: `${props.rowHeight * VISIBLE_ROWS}px` } : undefined))
+const listStyle = computed(() =>
+  props.rowHeight && props.count > VISIBLE_ROWS ? { maxHeight: `${props.rowHeight * VISIBLE_ROWS}px` } : undefined
+)
+if (props.rowHeight) provide(PAGE_ROW_HEIGHT, props.rowHeight)
 const id = useId()
 </script>
 
@@ -25,7 +31,7 @@ const id = useId()
       </div>
     </div>
     <p class="mt-1.5 mb-2 text-[13px] text-muted-foreground">{{ description }}</p>
-    <div v-if="count" class="overflow-y-auto overscroll-contain [scrollbar-width:thin]" :style="listStyle">
+    <div v-if="count || !$slots.empty" class="overflow-y-auto overscroll-contain [scrollbar-width:thin]" :style="listStyle">
       <slot />
     </div>
     <div v-else class="border-t py-4 text-sm text-muted-foreground">
