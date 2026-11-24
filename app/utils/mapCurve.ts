@@ -76,6 +76,31 @@ export function measureCurve(curve: Curve, steps = 32) {
   return { length, at }
 }
 
+// Where along a curve, as its parameter (0 at its start, 1 at its end), `distance` from its start lies.
+export function tAtDistance(curve: Curve, distance: number, steps = 32) {
+  const points = flatten(curve, steps)
+  let along = 0
+  for (let i = 1; i < points.length; i++) {
+    const step = Math.hypot(points[i]![0] - points[i - 1]![0], points[i]![1] - points[i - 1]![1])
+    if (along + step >= distance) return (i - 1 + (step ? (distance - along) / step : 0)) / steps
+    along += step
+  }
+  return 1
+}
+
+// The part of a cubic curve between parameters t0 and t1, as its own four points (start, two handles, end).
+export function subCurve([a, b, c, d]: [Point, Point, Point, Point], t0: number, t1: number): [Point, Point, Point, Point] {
+  const lerp = (p: Point, q: Point, t: number): Point => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]
+  // Split at t: the curve's two halves, each as four points.
+  const split = (p: [Point, Point, Point, Point], t: number) => {
+    const ab = lerp(p[0], p[1], t), bc = lerp(p[1], p[2], t), cd = lerp(p[2], p[3], t)
+    const abc = lerp(ab, bc, t), bcd = lerp(bc, cd, t), mid = lerp(abc, bcd, t)
+    return [[p[0], ab, abc, mid], [mid, bcd, cd, p[3]]] as [[Point, Point, Point, Point], [Point, Point, Point, Point]]
+  }
+  const tail = t0 > 0 ? split([a, b, c, d], t0)[1] : [a, b, c, d] as [Point, Point, Point, Point]
+  return t1 < 1 ? split(tail, (t1 - t0) / (1 - t0))[0] : tail
+}
+
 // Pixels from (px, py) to the straight line from a to b.
 export function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
   const dx = bx - ax

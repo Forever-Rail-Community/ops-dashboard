@@ -163,8 +163,10 @@ The map shows what the Railroader server's agent reports, refreshed every 5 seco
   train is placed on the drawn line at the same distance along the same piece of track (`app/utils/mapTrains.ts`).
   Its card says where it is: "At <industry>" when it's on track that belongs to an industry (from the map data's
   track spans), otherwise "Near <closest town>".
-- **Switches:** shown on the track itself once zoomed in, like Smokey's live map: the piece a switch isn't lined for
-  is drawn faint, so the lined route is the one continuous line (`app/utils/mapSwitches.ts`). The position comes
+- **Switches:** shown on the track itself once zoomed in, the way US CTC screens do: the leg a switch isn't lined
+  for is drawn open, with a short gap, so the lined route is the one continuous line through it
+  (`app/utils/mapSwitches.ts`). The map is to scale, so close to the points both legs overlap; the gap goes where
+  the open leg has pulled clear of the lined one, by a little more than the track's drawn width at that zoom. The position comes
   from the tracker pack; which piece is the normal leg and which the reverse comes from the Forever Rail Signals
   mod 0.2.0 or newer (the game's own decoding, sent with the signal layout). A switch missing either shows a
   hollow blue ring.
@@ -202,7 +204,7 @@ It moves made-up trains along the real track and throws switches now and then, p
 
 **Code:** `server/utils/trainReports.ts` checks reports, `server/api/railroader/live.get.ts` serves them,
 `app/composables/useLiveMap.ts` polls and places trains, and the drawing is in `app/utils/mapDraw.ts`
-(`drawTrains`, `drawUnreportedSwitches`), `app/utils/mapTrack.ts` (faint legs), `app/utils/mapTrainTags.ts` and `app/utils/mapSymbols.ts`. The agent's setup checks its key with
+(`drawTrains`, `drawUnreportedSwitches`), `app/utils/mapTrack.ts` (open legs), `app/utils/mapTrainTags.ts` and `app/utils/mapSymbols.ts`. The agent's setup checks its key with
 `server/api/agent/whoami.get.ts`.
 
 **After rebuilding the map data,** also refresh the tracker pack's switch list:

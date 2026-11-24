@@ -143,7 +143,7 @@ export const MAP_KEY: MapKeyRow[] = [
     layer: 'switches',
     label: 'Switches (zoom in)',
     items: [
-      { symbol: 'switchLined', label: 'Lined route solid, other way faint' },
+      { symbol: 'switchLined', label: 'Lined route solid, other way open' },
       { symbol: 'switch', label: 'Not reported' }
     ]
   },

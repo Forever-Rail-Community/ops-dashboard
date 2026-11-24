@@ -8,7 +8,7 @@
 // - otherwise the track under or near the pointer, which sits beneath everything.
 
 const SLACK = 4 // pixels of forgiveness around a drawn shape
-const BARE_SWITCH_RADIUS = 5 // a switch shown only by its faint leg has no ring; this much around its point counts
+const BARE_SWITCH_RADIUS = 5 // a switch shown only by its open leg has no ring; this much around its point counts
 
 // Top to bottom, as drawn (mapDraw.ts): the order that settles overlaps.
 const LAYER = { train: 0, place: 1, industry: 2, signal: 3, switch: 4 } as const
