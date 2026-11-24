@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { KeyRound, Plus, Users, X } from '@lucide/vue'
 
 interface AccessData { roles: RoleDef[]; mappings: RoleMapping[] }
 
@@ -8,6 +9,7 @@ const { data } = await useFetch<AccessData>('/api/admin/access', { key: 'admin-a
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 const state = reactive<AccessData>(clone(data.value ?? { roles: [], mappings: [] }))
 const saving = ref(false)
+const { dirty, markSaved, discard } = useUnsavedChanges(state)
 
 const groups = computed(() => {
   const out: Record<string, (typeof PERMISSIONS)[number][]> = {}
@@ -39,6 +41,7 @@ async function save() {
   try {
     const result = await $fetch<AccessData>('/api/admin/access', { method: 'PUT', body: state })
     Object.assign(state, clone(result))
+    markSaved()
     toast.success('Saved')
   } catch (err: any) {
     toast.error('Could not save', { description: err?.data?.statusMessage ?? 'Try again.' })
@@ -50,72 +53,62 @@ async function save() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <Card>
-      <CardHeader>
-        <CardTitle>Roles</CardTitle>
-        <CardDescription>
-          A role is a named set of things a person can do. People can hold several roles and get everything from all of them.
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="flex flex-col gap-4">
-        <div v-for="role in state.roles" :key="role.key" class="flex flex-col gap-4 rounded-lg border p-4">
-          <div class="flex items-center justify-between gap-3">
-            <Input v-model="role.label" class="max-w-64" aria-label="Role name" />
-            <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="removeRole(role.key)">Remove</Button>
-          </div>
-          <div class="grid gap-6 sm:grid-cols-2">
-            <div v-for="(perms, group) in groups" :key="group" class="flex flex-col gap-3">
-              <p class="text-sm font-medium text-muted-foreground">{{ group }}</p>
-              <div v-for="p in perms" :key="p.key" class="flex items-center gap-2">
-                <Checkbox
-                  :id="`${role.key}-${p.key}`"
-                  :model-value="role.permissions.includes(p.key)"
-                  @update:model-value="toggle(role, p.key, $event)"
-                />
-                <Label :for="`${role.key}-${p.key}`" class="font-normal">{{ p.label }}</Label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div><Button variant="outline" @click="addRole">Add a role</Button></div>
-      </CardContent>
-    </Card>
+    <PageSection :icon="KeyRound" title="Roles" description="What each role can do. People can hold several roles and get everything from all of them.">
+      <template #action><Button size="sm" variant="outline" @click="addRole"><Plus />Add a role</Button></template>
+      <div class="-mx-6 overflow-x-auto border-t">
+        <table class="w-full min-w-[560px] border-collapse text-sm">
+          <thead>
+            <tr class="border-b">
+              <th scope="col" class="w-[38%] px-6 py-3 text-left text-xs font-medium text-muted-foreground">Permission</th>
+              <th v-for="role in state.roles" :key="role.key" scope="col" class="px-2 py-2 align-bottom">
+                <div class="flex items-center justify-center gap-0.5">
+                  <Input v-model="role.label" class="h-8 w-28 text-center font-semibold" :aria-label="`Name of the ${role.label} role`" />
+                  <Button variant="ghost" size="icon" class="size-7 text-muted-foreground hover:text-destructive" :aria-label="`Remove the ${role.label} role`" @click="removeRole(role.key)"><X class="size-3.5" /></Button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="(perms, group) in groups" :key="group">
+              <tr><th :colspan="state.roles.length + 1" scope="colgroup" class="bg-muted/50 px-6 py-1.5 text-left text-xs font-semibold text-muted-foreground">{{ group }}</th></tr>
+              <tr v-for="p in perms" :key="p.key" class="border-t">
+                <th scope="row" class="px-6 py-2.5 text-left font-normal">{{ p.label }}</th>
+                <td v-for="role in state.roles" :key="role.key" class="py-2.5 text-center">
+                  <Checkbox
+                    :model-value="role.permissions.includes(p.key)" :aria-label="`${role.label}: ${p.label}`"
+                    @update:model-value="toggle(role, p.key, $event)"
+                  />
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </PageSection>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Discord roles</CardTitle>
-        <CardDescription>
-          Choose which Discord roles get which dashboard role. To find a Discord role ID, turn on Developer Mode in Discord, then
-          right-click the role under Server Settings and choose Copy Role ID. Anyone who isn't in the server, or matches no line
-          here, can't sign in.
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="flex flex-col gap-3">
-        <div v-for="(m, i) in state.mappings" :key="i" class="flex flex-wrap items-center gap-3">
-          <Input
-            v-if="m.discordRoleId !== '*'"
-            v-model="m.discordRoleId"
-            placeholder="Discord role ID"
-            class="w-64"
-            aria-label="Discord role ID"
-          />
-          <span v-else class="w-64 text-sm">Any server member</span>
-          <Button variant="ghost" size="sm" @click="m.discordRoleId = m.discordRoleId === '*' ? '' : '*'">
-            {{ m.discordRoleId === '*' ? 'Use a role ID' : 'Any member' }}
-          </Button>
-          <span class="text-sm text-muted-foreground">gets</span>
-          <Select v-model="m.roleKey">
-            <SelectTrigger class="w-48" aria-label="Dashboard role"><SelectValue placeholder="Choose a role" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="r in state.roles" :key="r.key" :value="r.key">{{ r.label }}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="state.mappings.splice(i, 1)">Remove</Button>
-        </div>
-        <div><Button variant="outline" @click="addMapping">Add a line</Button></div>
-      </CardContent>
-    </Card>
+    <PageSection
+      :icon="Users" title="Discord roles" :count="state.mappings.length"
+      description="Which Discord role gives which dashboard role. Anyone not in the server, or matching no line, can't sign in."
+    >
+      <template #action><Button size="sm" variant="outline" @click="addMapping"><Plus />Add a line</Button></template>
+      <div v-for="(m, i) in state.mappings" :key="i" class="flex flex-wrap items-center gap-3 border-t py-3">
+        <Input v-if="m.discordRoleId !== '*'" v-model="m.discordRoleId" placeholder="Discord role ID" class="w-56" aria-label="Discord role ID" />
+        <span v-else class="w-56 text-sm font-medium">Any server member</span>
+        <Button variant="ghost" size="sm" @click="m.discordRoleId = m.discordRoleId === '*' ? '' : '*'">
+          {{ m.discordRoleId === '*' ? 'Use a role ID' : 'Any member' }}
+        </Button>
+        <span class="text-sm text-muted-foreground">gets</span>
+        <Select v-model="m.roleKey">
+          <SelectTrigger class="w-44" aria-label="Dashboard role"><SelectValue placeholder="Choose a role" /></SelectTrigger>
+          <SelectContent><SelectItem v-for="r in state.roles" :key="r.key" :value="r.key">{{ r.label }}</SelectItem></SelectContent>
+        </Select>
+        <Button variant="ghost" size="icon" class="ml-auto size-8 text-muted-foreground hover:text-destructive" aria-label="Remove this line" @click="state.mappings.splice(i, 1)"><X class="size-4" /></Button>
+      </div>
+      <p class="border-t py-3 text-xs text-muted-foreground">
+        To find a role ID, turn on Developer Mode in Discord, then right-click the role under Server Settings and choose Copy Role ID.
+      </p>
+    </PageSection>
 
-    <div><Button :disabled="saving" @click="save">{{ saving ? 'Saving…' : 'Save access settings' }}</Button></div>
+    <AdminSaveBar :dirty="dirty" :saving="saving" @save="save" @discard="discard" />
   </div>
 </template>

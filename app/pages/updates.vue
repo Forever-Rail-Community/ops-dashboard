@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { ArrowDown, ArrowUp, Plus, Send, Trash2, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Eye, Megaphone, Plus, Send, Trash2, X } from '@lucide/vue'
 
 // Writing What's new updates: drafts until published; publishing can also post to Discord. Needs "updates.post".
 definePageMeta({ title: "What's new" })
@@ -115,34 +115,38 @@ const canSave = computed(() => draft.value.title.trim() && draft.value.changes.e
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
-    <div>
-      <h2 class="text-2xl font-semibold tracking-tight">What's new</h2>
-      <p class="text-sm text-muted-foreground">
-        Updates everyone sees the next time they sign in after you publish.
-        {{ data.discord ? 'Publishing can also post them to Discord.' : 'Posting to Discord is off: set NUXT_DISCORD_UPDATES_WEBHOOK in Vercel to turn it on.' }}
-      </p>
-    </div>
+  <PageBody>
+    <PageHeader
+      title="What’s new"
+      :description="`Updates everyone sees the next time they sign in after you publish. ${data.discord ? 'Publishing can also post them to Discord.' : 'Posting to Discord is off: set NUXT_DISCORD_UPDATES_WEBHOOK in Vercel to turn it on.'}`"
+    />
 
-    <div class="grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)_320px]">
-      <section class="grid content-start gap-2" aria-label="Updates">
-        <Button variant="outline" class="justify-start" @click="selectedId = 'new'"><Plus />New update</Button>
-        <ul class="grid gap-1">
-          <li v-if="selectedId === 'new'">
-            <div class="grid gap-0.5 rounded-lg bg-accent p-2.5 text-sm font-medium">{{ draft.title || 'Untitled' }}<span class="text-xs font-normal text-muted-foreground">New, not saved</span></div>
-          </li>
-          <li v-for="u in data.updates" :key="u.id">
-            <button class="grid w-full gap-0.5 rounded-lg p-2.5 text-left hover:bg-accent" :class="{ 'bg-accent': u.id === selectedId }" @click="selectedId = u.id">
-              <span class="text-sm font-medium">{{ u.title }}</span>
-              <span class="text-xs" :class="u.publishedAt ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'">
-                {{ u.publishedAt ? `Published ${formatDate(u.publishedAt)}` : 'Draft' }}{{ u.onDiscord ? ' · on Discord' : '' }}
-              </span>
-            </button>
-          </li>
-        </ul>
-      </section>
+    <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+      <div class="grid gap-4">
+        <PageSection :icon="Megaphone" title="Updates" description="Published and draft updates, newest first." :count="data.updates.length + (selectedId === 'new' ? 1 : 0)" :row-height="60">
+          <template #action><Button size="sm" @click="selectedId = 'new'"><Plus />New</Button></template>
+          <PageRow v-if="selectedId === 'new'" :title="draft.title || 'Untitled'" detail="New, not saved" class="bg-accent/60">
+            <template #trailing><PagePill tone="amber">Draft</PagePill></template>
+          </PageRow>
+          <PageRow
+            v-for="u in data.updates" :key="u.id" as="button" type="button" :title="u.title"
+            :detail="`${u.publishedAt ? `Published ${formatDate(u.publishedAt)}` : 'Not published'}${u.onDiscord ? ', on Discord' : ''}`"
+            :class="u.id === selectedId ? 'bg-accent/60' : 'hover:bg-accent/40'" @click="selectedId = u.id"
+          >
+            <template #trailing><PagePill :tone="u.publishedAt ? 'green' : 'amber'">{{ u.publishedAt ? 'Live' : 'Draft' }}</PagePill></template>
+          </PageRow>
+        </PageSection>
 
-      <Card class="gap-4">
+        <PageSection :icon="Eye" title="What members see" description="How this update looks in the What’s new window.">
+          <div class="grid gap-2 border-t pt-3.5 pb-3">
+            <p class="font-semibold">{{ draft.title || 'Untitled' }}</p>
+            <UpdatesUpdateChanges :changes="draft.changes.filter((c) => c.text.trim())" />
+            <p v-if="data.discord" class="text-xs text-muted-foreground">On Discord it's posted as "What's new: {{ draft.title || 'Untitled' }}", with each change under its area and a link to the dashboard.</p>
+          </div>
+        </PageSection>
+      </div>
+
+      <Card class="gap-4 rounded-2xl">
         <CardHeader>
           <CardTitle class="text-base">{{ selected?.publishedAt ? 'Edit published update' : selected ? 'Edit draft' : 'New update' }}</CardTitle>
           <CardDescription v-if="selected?.publishedAt">
@@ -152,11 +156,11 @@ const canSave = computed(() => draft.value.title.trim() && draft.value.changes.e
         <CardContent class="grid gap-4">
           <div class="grid gap-1.5">
             <Label for="update-title">Title</Label>
-            <Input id="update-title" v-model="draft.title" :maxlength="UPDATE_LIMITS.title" placeholder="e.g. Grade panel, units and status" />
+            <Input id="update-title" v-model="draft.title" :maxlength="UPDATE_LIMITS.title" placeholder="Grade panel, units and status" />
           </div>
           <div class="grid gap-2">
             <Label>Changes</Label>
-            <div v-for="(change, i) in draft.changes" :key="i" class="grid grid-cols-[190px_minmax(0,1fr)_auto] items-start gap-2">
+            <div v-for="(change, i) in draft.changes" :key="i" class="grid grid-cols-[minmax(0,170px)_minmax(0,1fr)_auto] items-start gap-2">
               <Select v-model="change.area">
                 <SelectTrigger class="w-full" :aria-label="`Change ${i + 1}: area`"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem v-for="a in data.areas" :key="a" :value="a">{{ a }}</SelectItem></SelectContent>
@@ -192,15 +196,6 @@ const canSave = computed(() => draft.value.title.trim() && draft.value.changes.e
           </div>
         </CardContent>
       </Card>
-
-      <section class="grid content-start gap-2" aria-label="Preview">
-        <h3 class="text-sm font-medium text-muted-foreground">What members see</h3>
-        <div class="grid gap-2 rounded-xl border p-4">
-          <p class="font-medium">{{ draft.title || 'Untitled' }}</p>
-          <UpdatesUpdateChanges :changes="draft.changes.filter((c) => c.text.trim())" />
-        </div>
-        <p v-if="data.discord" class="text-xs text-muted-foreground">On Discord it's posted as "What's new: {{ draft.title || 'Untitled' }}", with each change under its area and a link to the dashboard.</p>
-      </section>
     </div>
 
     <Dialog v-model:open="confirmDelete">
@@ -218,5 +213,5 @@ const canSave = computed(() => draft.value.title.trim() && draft.value.changes.e
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </div>
+  </PageBody>
 </template>

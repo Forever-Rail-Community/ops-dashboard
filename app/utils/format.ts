@@ -12,3 +12,6 @@ export function formatDuration(sec?: number | null): string {
 export function formatAge(sec: number): string {
   return sec < 5 ? 'just now' : `${formatDuration(sec)} ago`
 }
+
+// "Nov 23": a date in the same year, short.
+export const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })

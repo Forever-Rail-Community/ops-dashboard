@@ -6,6 +6,7 @@ const { data } = await useFetch<SiteSettings>('/api/admin/settings', { key: 'adm
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 const form = reactive<SiteSettings>(clone(data.value ?? DEFAULT_SITE))
 const saving = ref(false)
+const { dirty, markSaved, discard } = useUnsavedChanges(form)
 
 function onLogo(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
@@ -31,6 +32,7 @@ async function save() {
   saving.value = true
   try {
     await $fetch('/api/admin/settings', { method: 'PUT', body: form })
+    markSaved()
     await refreshNuxtData('site')
     toast.success('Saved')
   } catch (err: any) {
@@ -43,7 +45,7 @@ async function save() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <Card>
+    <Card class="rounded-2xl">
       <CardHeader>
         <CardTitle>Name and logo</CardTitle>
         <CardDescription>Shown in the sidebar and on the sign-in page (the name, beside the logo).</CardDescription>
@@ -70,7 +72,7 @@ async function save() {
       </CardContent>
     </Card>
 
-    <Card>
+    <Card class="rounded-2xl">
       <CardHeader>
         <CardTitle>Color</CardTitle>
         <CardDescription>Used for buttons, highlights, and the active menu item. Pick a medium or dark color so text on it stays readable.</CardDescription>
@@ -80,7 +82,7 @@ async function save() {
       </CardContent>
     </Card>
 
-    <Card>
+    <Card class="rounded-2xl">
       <CardHeader>
         <CardTitle>Sign-in page</CardTitle>
         <CardDescription>What people see before they sign in.</CardDescription>
@@ -105,7 +107,7 @@ async function save() {
       </CardContent>
     </Card>
 
-    <Card>
+    <Card class="rounded-2xl">
       <CardHeader>
         <CardTitle>Notice</CardTitle>
         <CardDescription>A banner across the top of every page, the sign-in page included. Leave it empty to hide it.</CardDescription>
@@ -124,7 +126,7 @@ async function save() {
       v-model:overlay="form.helpHeroOverlay"
     />
 
-    <Card>
+    <Card class="rounded-2xl">
       <CardHeader>
         <CardTitle>Wording</CardTitle>
         <CardDescription>Rename the words the site uses. For example, change "Train" to "Job".</CardDescription>
@@ -137,9 +139,7 @@ async function save() {
       </CardContent>
     </Card>
 
-    <div class="flex items-center gap-3">
-      <Button :disabled="saving" @click="save">{{ saving ? 'Saving…' : 'Save changes' }}</Button>
-      <Button variant="ghost" @click="resetDefaults">Reset to defaults</Button>
-    </div>
+    <div><Button variant="ghost" @click="resetDefaults">Reset to defaults</Button></div>
+    <AdminSaveBar :dirty="dirty" :saving="saving" @save="save" @discard="discard" />
   </div>
 </template>

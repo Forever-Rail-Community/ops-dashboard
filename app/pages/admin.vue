@@ -15,28 +15,25 @@ const tabs = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
-    <div>
-      <h2 class="text-2xl font-semibold tracking-tight">Admin</h2>
-      <p class="text-sm text-muted-foreground">Change how the site looks and who can do what. Changes apply as soon as you save.</p>
-    </div>
+  <PageBody>
+    <PageHeader title="Admin" description="How the site looks, who can do what, and the game servers. Changes apply as soon as you save." />
 
     <Tabs :default-value="tabs[0]?.value">
       <TabsList>
         <TabsTrigger v-for="t in tabs" :key="t.value" :value="t.value">{{ t.label }}</TabsTrigger>
       </TabsList>
-      <TabsContent v-if="can('admin.settings')" value="appearance" class="pt-4">
+      <TabsContent v-if="can('admin.settings')" value="appearance" class="pt-2">
         <AdminAppearance />
       </TabsContent>
-      <TabsContent v-if="can('admin.roles')" value="access" class="pt-4">
+      <TabsContent v-if="can('admin.roles')" value="access" class="pt-2">
         <AdminAccess />
       </TabsContent>
-      <TabsContent v-if="can('admin.agents')" value="servers" class="pt-4">
+      <TabsContent v-if="can('admin.agents')" value="servers" class="pt-2">
         <AdminServers />
       </TabsContent>
-      <TabsContent v-if="can('admin.activity')" value="activity" class="pt-4">
+      <TabsContent v-if="can('admin.activity')" value="activity" class="pt-2">
         <AdminActivity />
       </TabsContent>
     </Tabs>
-  </div>
+  </PageBody>
 </template>
