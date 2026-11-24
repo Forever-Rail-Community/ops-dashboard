@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 
-// One of the Overview's headline figures: an icon, the figure itself (the default slot, beside the icon), what it is,
+// A page's headline figure: an icon, the figure itself (the default slot, beside the icon), what it is,
 // and a short detail line underneath.
 defineProps<{ icon: Component; label: string }>()
 </script>
