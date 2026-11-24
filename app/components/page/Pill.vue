@@ -1,7 +1,5 @@
 <script setup lang="ts">
-// A short status label, colored by what it means: green for good or done, amber for needs attention, red for a
-// problem or "no", blue for new or under review, violet for highlights, gray for neutral.
-export type PillTone = 'green' | 'amber' | 'red' | 'blue' | 'violet' | 'gray'
+// A short status label, colored by what it means (see PillTone in utils/page.ts).
 
 const TONES: Record<PillTone, string> = {
   green: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
