@@ -46,4 +46,3 @@ export const SCOPE_ICON: Record<RoadmapScope, Component> = {
 
 export const columnLabel = (status: RoadmapStatus) => ROADMAP_COLUMNS.find((c) => c.value === status)?.label ?? status
 export const errorText = (err: any) => err?.data?.statusMessage ?? 'Try again.'
-export const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
