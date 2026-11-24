@@ -1,13 +1,9 @@
 <script setup lang="ts">
+// A report's status: New (blue), Confirmed by staff (amber), Fixed (green), Won't fix (gray).
 defineProps<{ status: BugStatus }>()
-const TINT: Record<BugStatus, string> = {
-  new: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
-  confirmed: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  fixed: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-  wontfix: 'bg-muted text-muted-foreground'
-}
+const TONE: Record<BugStatus, PillTone> = { new: 'blue', confirmed: 'amber', fixed: 'green', wontfix: 'gray' }
 </script>
 
 <template>
-  <span class="shrink-0 rounded-full px-2 py-0.5 text-xs" :class="TINT[status]">{{ BUG_STATUSES.find((s) => s.value === status)!.label }}</span>
+  <PagePill :tone="TONE[status]">{{ BUG_STATUSES.find((s) => s.value === status)!.label }}</PagePill>
 </template>
