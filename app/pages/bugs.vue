@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock } from '@lucide/vue'
+import { Bug, FileText, Lightbulb } from '@lucide/vue'
 
 // Reporting bugs and following your reports; staff also see and answer everyone's.
 definePageMeta({ title: 'Bug reports' })
@@ -19,43 +19,65 @@ const tab = computed({
 })
 const openId = Number(route.query.report) || undefined
 const refreshAll = () => Promise.all([mine.refresh(), staff.value ? all.refresh() : null])
-const date = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+
+const reporting = ref(false)
+async function sent() {
+  reporting.value = false
+  await refreshAll()
+}
+const viewingId = ref<number | null>(null)
+const viewing = computed(() => mine.data.value.find((r) => r.id === viewingId.value) ?? null)
+const answered = computed(() => mine.data.value.filter((r) => r.reply).length)
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
-    <div>
-      <h2 class="text-2xl font-semibold tracking-tight">Bug reports</h2>
-      <p class="flex items-center gap-1.5 text-sm text-muted-foreground"><Lock class="size-3.5" />Only you and staff can see your reports.</p>
-    </div>
+  <PageBody>
+    <PageHeader title="Bug reports" description="Tell us what’s broken. Only you and staff can see your reports, and staff reply here.">
+      <template #actions><Button @click="reporting = true"><Bug />Report a bug</Button></template>
+    </PageHeader>
 
     <Tabs v-model="tab">
       <TabsList v-if="staff">
-        <TabsTrigger value="mine">Report and track</TabsTrigger>
-        <TabsTrigger value="all">All reports ({{ all.data.value.length }})</TabsTrigger>
+        <TabsTrigger value="mine">Your reports</TabsTrigger>
+        <TabsTrigger value="all">All reports {{ all.data.value.length }}</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="mine" class="grid gap-6 pt-4 lg:grid-cols-2">
-        <BugsReportForm :screenshots="meta.screenshots" @sent="refreshAll" />
-        <section class="grid content-start gap-2" aria-label="Your reports">
-          <h3 class="text-sm font-medium text-muted-foreground">Your reports</h3>
-          <p v-if="!mine.data.value.length" class="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">You haven't reported anything yet.</p>
-          <article v-for="r in mine.data.value" :key="r.id" class="grid gap-2 rounded-xl border bg-card p-4">
-            <div class="flex items-start justify-between gap-3">
-              <p class="font-medium">{{ r.title }}</p>
-              <BugsStatusTag :status="r.status" />
-            </div>
-            <p class="text-xs text-muted-foreground">#{{ r.id }} · {{ r.area }} · {{ date(r.createdAt) }}</p>
-            <BugsScreenshots :ids="r.screenshots" />
-            <p v-if="r.reply" class="rounded-lg bg-muted p-2.5 text-sm"><span class="font-medium">Staff:</span> {{ r.reply }}</p>
-            <p v-if="r.roadmapItem" class="text-xs text-muted-foreground">On the roadmap as “{{ r.roadmapItem.title }}”</p>
-          </article>
-        </section>
+      <TabsContent value="mine" class="pt-2">
+        <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+          <PageSection :icon="FileText" title="Your reports" description="What you’ve reported, and where each one stands. Open one to see staff’s reply." :count="mine.data.value.length" :row-height="64">
+            <template #action><span v-if="answered" class="text-muted-foreground">{{ answered }} with a staff reply</span></template>
+            <PageRow v-for="r in mine.data.value" :key="r.id" as="button" type="button" :title="r.title" :detail="`${r.area}, ${shortDate(r.createdAt)}`" @click="viewingId = r.id">
+              <template #trailing>
+                <span class="flex items-center gap-2.5">
+                  <span v-if="r.reply" class="hidden text-[13px] text-muted-foreground sm:inline">Staff replied</span>
+                  <BugsStatusTag :status="r.status" />
+                </span>
+              </template>
+            </PageRow>
+            <template #empty>You haven’t reported anything yet.</template>
+          </PageSection>
+          <PageSection :icon="Lightbulb" title="Good reports get fixed faster" description="What helps staff find the problem.">
+            <PageRow title="Say where it happened" detail="Which page, and which part of it" />
+            <PageRow title="Say what you expected" detail="And what you saw instead" />
+            <PageRow v-if="meta.screenshots" title="Add a screenshot" detail="Paste it straight into the report" />
+          </PageSection>
+        </div>
       </TabsContent>
 
-      <TabsContent v-if="staff" value="all" class="pt-4">
+      <TabsContent v-if="staff" value="all" class="pt-2">
         <BugsStaffReports :reports="all.data.value" :open-id="openId" @changed="refreshAll" />
       </TabsContent>
     </Tabs>
-  </div>
+
+    <Dialog v-model:open="reporting">
+      <DialogContent class="sm:max-w-[560px]">
+        <DialogHeader>
+          <DialogTitle>Report a bug</DialogTitle>
+          <DialogDescription>Only you and staff can see it.</DialogDescription>
+        </DialogHeader>
+        <BugsReportForm :screenshots="meta.screenshots" @sent="sent" @cancel="reporting = false" />
+      </DialogContent>
+    </Dialog>
+    <BugsReportPanel :report="viewing" @close="viewingId = null" />
+  </PageBody>
 </template>

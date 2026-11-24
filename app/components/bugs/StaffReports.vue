@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { FileText } from '@lucide/vue'
 
 // Every report, for staff: filter by status, pick one, then set its status, reply to the reporter, link it to a
 // roadmap item, or delete it.
@@ -21,6 +22,10 @@ watch(
   },
   { immediate: true }
 )
+
+// Only confirmed (reproduced) bugs go on the roadmap; the server refuses the rest.
+const onRoadmapAllowed = computed(() => form.value.status === 'confirmed' || form.value.status === 'fixed')
+watch(onRoadmapAllowed, (ok) => !ok && (form.value.roadmapItemId = 'none'))
 
 const busy = ref(false)
 async function save() {
@@ -64,28 +69,29 @@ const date = (iso: string) => new Date(iso).toLocaleDateString(undefined, { mont
         <button
           v-for="f in [{ value: 'all', label: 'All' }, ...BUG_STATUSES]"
           :key="f.value"
-          class="rounded-full border px-3 py-1 text-sm"
-          :class="filter === f.value ? 'bg-accent font-medium' : 'text-muted-foreground'"
+          class="h-8 rounded-lg border px-3 text-[13px] font-medium"
+          :class="filter === f.value ? 'bg-muted text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'"
           :aria-pressed="filter === f.value"
           @click="filter = f.value as BugStatus | 'all'"
         >
           {{ f.label }} <span class="text-muted-foreground">{{ f.value === 'all' ? reports.length : reports.filter((r) => r.status === f.value).length }}</span>
         </button>
       </div>
-      <p v-if="!shown.length" class="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No reports here.</p>
-      <ul class="grid gap-1">
-        <li v-for="r in shown" :key="r.id">
-          <button class="grid w-full gap-1 rounded-lg p-3 text-left hover:bg-accent" :class="{ 'bg-accent': r.id === pickedId }" @click="pickedId = r.id">
-            <div class="flex items-start justify-between gap-3"><span class="font-medium">{{ r.title }}</span><BugsStatusTag :status="r.status" /></div>
-            <span class="text-xs text-muted-foreground">#{{ r.id }} · {{ r.area }} · {{ r.author }} · {{ date(r.createdAt) }}{{ r.screenshots.length ? ` · ${r.screenshots.length} screenshot${r.screenshots.length > 1 ? 's' : ''}` : '' }}</span>
-          </button>
-        </li>
-      </ul>
+      <PageSection :icon="FileText" title="All reports" description="Pick one to set its status, reply, or put it on the roadmap." :count="shown.length" :row-height="64">
+        <PageRow
+          v-for="r in shown" :key="r.id" as="button" type="button" :title="r.title" :class="r.id === pickedId ? 'bg-accent/60' : 'hover:bg-accent/40'"
+          :detail="`#${r.id}, ${r.area}, ${r.author}, ${date(r.createdAt)}${r.screenshots.length ? `, ${r.screenshots.length} screenshot${r.screenshots.length > 1 ? 's' : ''}` : ''}`"
+          @click="pickedId = r.id"
+        >
+          <template #trailing><BugsStatusTag :status="r.status" /></template>
+        </PageRow>
+        <template #empty>No reports here.</template>
+      </PageSection>
     </div>
 
-    <Card v-if="picked" class="gap-4 self-start">
+    <Card v-if="picked" class="gap-4 self-start rounded-2xl">
       <CardHeader>
-        <CardDescription>#{{ picked.id }} · {{ picked.area }} · {{ picked.author }} · {{ date(picked.createdAt) }}</CardDescription>
+        <CardDescription>#{{ picked.id }}, {{ picked.area }}, {{ picked.author }}, {{ date(picked.createdAt) }}</CardDescription>
         <CardTitle class="text-base">{{ picked.title }}</CardTitle>
       </CardHeader>
       <CardContent class="grid gap-4">
@@ -100,13 +106,14 @@ const date = (iso: string) => new Date(iso).toLocaleDateString(undefined, { mont
         </div>
         <div class="grid gap-1.5">
           <Label>Roadmap item</Label>
-          <Select v-model="form.roadmapItemId">
+          <Select v-model="form.roadmapItemId" :disabled="!onRoadmapAllowed">
             <SelectTrigger class="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Not linked</SelectItem>
               <SelectItem v-for="i in roadmap" :key="i.id" :value="String(i.id)">{{ i.title }}</SelectItem>
             </SelectContent>
           </Select>
+          <p v-if="!onRoadmapAllowed" class="text-xs text-muted-foreground">Set it to Confirmed once you’ve reproduced it, then it can go on the roadmap.</p>
         </div>
         <div class="grid gap-1.5">
           <Label for="bug-reply">Reply to {{ picked.author }}</Label>
