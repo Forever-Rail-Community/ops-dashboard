@@ -17,10 +17,11 @@ const title = computed(() =>
         <SidebarTrigger class="-ml-1" />
         <Separator orientation="vertical" class="mr-2 data-[orientation=vertical]:h-4" />
         <h1 class="text-sm font-medium">{{ title }}</h1>
-        <div class="ml-auto flex items-center gap-1">
+        <div class="ml-auto flex items-center gap-2">
           <StatusWidget />
           <UpdatesWhatsNewButton />
           <ThemeToggle />
+          <UserMenu />
         </div>
         <UpdatesWhatsNewDialog />
       </header>

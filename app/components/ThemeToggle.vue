@@ -14,12 +14,12 @@ const options = [
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button variant="ghost" size="icon" class="size-8" aria-label="Change theme">
-        <Sun class="dark:hidden" />
-        <Moon class="hidden dark:block" />
-      </Button>
+      <button type="button" :class="[HEADER_CONTROL, 'w-10']" aria-label="Change theme">
+        <Sun class="size-[18px] dark:hidden" />
+        <Moon class="hidden size-[18px] dark:block" />
+      </button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
+    <DropdownMenuContent align="end" :side-offset="6">
       <DropdownMenuItem v-for="o in options" :key="o.value" @select="set(o.value)">
         {{ o.label }}
         <Check v-if="theme === o.value" class="ml-auto" />
