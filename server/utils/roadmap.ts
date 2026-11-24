@@ -70,6 +70,7 @@ type ItemRow = {
   update_published_at: Date | null
   bug_reports: number
   history: { status: RoadmapStatus; at: string }[]
+  comments: number
 }
 
 const toItem = (r: ItemRow): RoadmapItem => ({
@@ -86,6 +87,7 @@ const toItem = (r: ItemRow): RoadmapItem => ({
   shippedIn: r.update_id && r.update_published_at ? { id: r.update_id, title: r.update_title!, publishedAt: r.update_published_at.toISOString() } : null,
   bugReports: r.bug_reports,
   history: r.history,
+  comments: r.comments,
   updatedAt: r.updated_at.toISOString()
 })
 
@@ -96,7 +98,8 @@ const ITEM_SELECT = `
     EXISTS (SELECT 1 FROM feature_votes v WHERE v.request_id = i.request_id AND v.user_id = $1) AS voted,
     r.author_name AS requested_by, r.created_at AS requested_at,
     u.id AS update_id, u.title AS update_title, u.published_at AS update_published_at,
-    (SELECT count(*)::int FROM bug_reports b WHERE b.roadmap_item_id = i.id) AS bug_reports
+    (SELECT count(*)::int FROM bug_reports b WHERE b.roadmap_item_id = i.id) AS bug_reports,
+    (SELECT count(*)::int FROM roadmap_comments c WHERE c.item_id = i.id) AS comments
   FROM roadmap_items i
   LEFT JOIN feature_requests r ON r.id = i.request_id
   LEFT JOIN updates u ON u.id = i.update_id`

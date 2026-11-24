@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ShieldCheck } from '@lucide/vue'
+import { MessageSquare, ShieldCheck } from '@lucide/vue'
 
 // A roadmap card: its area, title, two lines of description, who asked for it, and its votes. A bug fix shows how
 // many people reported it instead, and no name, since bug reports are private.
@@ -28,7 +28,10 @@ const bugFix = computed(() => props.item.bugReports > 0)
       <span v-if="bugFix" class="flex items-center gap-1.5"><ShieldCheck class="size-3.5" />Confirmed by staff</span>
       <RoadmapPerson v-else-if="item.requestedBy" :name="item.requestedBy" />
       <span v-else>From staff</span>
-      <span v-if="item.shippedIn" class="ml-auto whitespace-nowrap">Shipped {{ shortDate(item.shippedIn.publishedAt) }}</span>
+      <span class="ml-auto flex items-center gap-3 whitespace-nowrap">
+        <span v-if="item.shippedIn">Shipped {{ shortDate(item.shippedIn.publishedAt) }}</span>
+        <span v-if="item.comments" class="flex items-center gap-1" :aria-label="`${item.comments} comments`"><MessageSquare class="size-3.5" />{{ item.comments }}</span>
+      </span>
     </div>
   </article>
 </template>

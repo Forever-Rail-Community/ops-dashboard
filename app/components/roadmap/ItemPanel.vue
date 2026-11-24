@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Check, ChevronUp, Pencil, Trash2 } from '@lucide/vue'
 
-// A roadmap item opened from the board: the whole description, votes, and its progress. Staff can edit, move and
-// remove it here.
+// A roadmap item opened from the board: the whole description, votes, its progress and comments. Staff can edit,
+// move and remove it here.
 const props = defineProps<{ item: RoadmapItem | null; staff: boolean }>()
-const emit = defineEmits<{ close: []; vote: []; edit: []; move: [status: RoadmapStatus]; remove: [] }>()
+const emit = defineEmits<{ close: []; vote: []; edit: []; move: [status: RoadmapStatus]; remove: []; changed: [] }>()
 
 const STATUS_TONE: Record<RoadmapStatus, PillTone> = { planned: 'gray', next: 'blue', progress: 'amber', complete: 'green' }
 const DOT: Record<RoadmapStatus, string> = { planned: 'bg-muted-foreground', next: 'bg-sky-500', progress: 'bg-amber-400', complete: 'bg-emerald-500' }
@@ -23,7 +23,7 @@ watch(() => props.item?.id, () => (confirmRemove.value = false))
 
 <template>
   <Sheet :open="Boolean(item)" @update:open="(v) => !v && emit('close')">
-    <SheetContent class="w-full gap-0 overflow-y-auto sm:max-w-[520px]">
+    <SheetContent class="w-full gap-0 overflow-y-auto sm:max-w-[520px]" @open-auto-focus.prevent>
       <template v-if="item">
         <SheetHeader class="gap-3 px-7 pt-7 pb-2">
           <div class="flex flex-wrap items-center gap-2.5 pr-8">
@@ -63,6 +63,8 @@ watch(() => props.item?.id, () => (confirmRemove.value = false))
               Shipped in “{{ item.shippedIn.title }}”. See What’s new for what changed.
             </p>
           </div>
+
+          <RoadmapComments :key="item.id" :item-id="item.id" :staff="staff" @changed="emit('changed')" />
 
           <div v-if="staff" class="grid gap-3 border-t pt-5">
             <h3 class="text-sm font-semibold">Manage</h3>

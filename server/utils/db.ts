@@ -252,6 +252,21 @@ const STEPS: { name: string; sql: string }[] = [
     sql: `ALTER TABLE roadmap_items ADD COLUMN IF NOT EXISTS history jsonb NOT NULL DEFAULT '[]'::jsonb;
           UPDATE roadmap_items SET history = jsonb_build_array(jsonb_build_object('status', status, 'at', updated_at))
           WHERE history = '[]'::jsonb`
+  },
+  // Comments on roadmap items (server/utils/roadmapComments.ts). "staff": the author could manage the roadmap then.
+  {
+    name: 'roadmap-comments',
+    sql: `CREATE TABLE IF NOT EXISTS roadmap_comments (
+        id serial PRIMARY KEY,
+        item_id integer NOT NULL REFERENCES roadmap_items(id) ON DELETE CASCADE,
+        author_id text NOT NULL,
+        author_name text NOT NULL,
+        staff boolean NOT NULL DEFAULT false,
+        body text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS roadmap_comments_item ON roadmap_comments (item_id, created_at);
+      CREATE INDEX IF NOT EXISTS roadmap_comments_author ON roadmap_comments (author_id, created_at)`
   }
 ]
 
