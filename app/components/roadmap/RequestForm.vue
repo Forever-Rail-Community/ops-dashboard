@@ -24,7 +24,7 @@ const similar = computed(() => {
 })
 
 async function voteSimilar(r: FeatureRequest) {
-  if (await toggleVote(r.id, !r.voted)) emit('vote')
+  if (await voteForRequest(r.id, !r.voted)) emit('vote')
 }
 
 async function post() {

@@ -28,7 +28,7 @@ const editing = ref<{ open: boolean; item: RoadmapItem | null; status: RoadmapSt
 const edit = (item: RoadmapItem | null, status: RoadmapStatus = 'planned') => (editing.value = { open: true, item, status })
 
 async function vote(item: RoadmapItem) {
-  if (item.requestId && (await toggleVote(item.requestId, !item.voted))) emit('changed')
+  if (item.requestId && (await voteForRequest(item.requestId, !item.voted))) emit('changed')
 }
 
 async function move(item: RoadmapItem, status: RoadmapStatus) {

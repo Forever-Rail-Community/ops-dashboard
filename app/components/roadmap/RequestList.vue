@@ -36,7 +36,7 @@ const shown = computed(() =>
 const pending = ref(new Set<number>())
 async function vote(r: FeatureRequest) {
   pending.value.add(r.id)
-  if (await toggleVote(r.id, !r.voted)) emit('changed')
+  if (await voteForRequest(r.id, !r.voted)) emit('changed')
   pending.value.delete(r.id)
 }
 

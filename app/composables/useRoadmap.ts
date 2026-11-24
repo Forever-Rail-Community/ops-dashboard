@@ -25,7 +25,7 @@ export function useRoadmapFilters() {
 }
 
 // Votes belong to feature requests; a roadmap item that came from one shows (and takes) the request's votes.
-export async function toggleVote(requestId: number, on: boolean) {
+export async function voteForRequest(requestId: number, on: boolean) {
   try {
     await $fetch(`/api/requests/${requestId}/vote`, { method: 'POST', body: { vote: on } })
     return true
