@@ -1,0 +1,30 @@
+name: Feature
+description: Something new for the Operations Center, or a change to something that exists.
+labels: [feature]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What it should do
+      description: Who it's for and what they can do with it.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The problem it solves, or what it makes easier.
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options: [Railroader, Run8, Both, Not about a game]
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: A short checklist that says when this is finished.
+      placeholder: |
+        - [ ] …

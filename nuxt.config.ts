@@ -1,4 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
+import { readFileSync } from 'node:fs'
+
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 // Upstash Redis (added from the Vercel marketplace) provides the shared storage in production.
 // Locally, data is kept in ./.data so you don't need any database to develop.
@@ -45,7 +48,10 @@ export default defineNuxtConfig({
       // Set NUXT_PUBLIC_STATUS_URL; without it the header shows no status.
       statusUrl: '',
       // The public help site's address, linked from the sign-in page. Set NUXT_PUBLIC_HELP_URL; without it there's no link.
-      helpUrl: ''
+      helpUrl: '',
+      // This release of the Operations Center, from package.json (Release Please bumps it), and the commit Vercel built.
+      appVersion: version,
+      appCommit: (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 7)
     },
     discord: {
       guildId: '',
