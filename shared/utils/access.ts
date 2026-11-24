@@ -1,6 +1,7 @@
 // Every action the dashboard can check. Roles are made of these; admins pick them on the Access page.
 export const PERMISSIONS = [
-  { key: 'status.view', label: 'View route status', group: 'Status' },
+  { key: 'overview.view', label: 'View the game overview (join code, trains running, news)', group: 'Status' },
+  { key: 'status.view', label: 'View route and game status (for staff)', group: 'Status' },
   { key: 'status.detail', label: 'See CPU, memory, process IDs, and server stats', group: 'Status' },
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
   { key: 'multiplayer.joinCode', label: 'See the Railroader multiplayer join code', group: 'Status' },
@@ -29,7 +30,7 @@ export interface RoleMapping {
 }
 
 export const DEFAULT_ROLES: RoleDef[] = [
-  { key: 'member', label: 'Member', permissions: ['status.view', 'map.view', 'multiplayer.joinCode'] },
-  { key: 'dispatcher', label: 'Dispatcher', permissions: ['status.view', 'status.detail', 'map.view', 'multiplayer.joinCode'] },
+  { key: 'member', label: 'Member', permissions: ['overview.view', 'map.view', 'multiplayer.joinCode'] },
+  { key: 'dispatcher', label: 'Dispatcher', permissions: ['overview.view', 'status.view', 'status.detail', 'map.view', 'multiplayer.joinCode'] },
   { key: 'admin', label: 'Admin', permissions: [...ALL_PERMISSION_KEYS] }
 ]

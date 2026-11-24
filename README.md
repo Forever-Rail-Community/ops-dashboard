@@ -107,11 +107,13 @@ Rate limiting on `/api/ingest`, update history, and Discord alerts when a route 
 
 ## Games
 
-Run8 and Railroader each have their own section: `/run8` and `/railroader` (the map is at `/railroader/map`; the old `/map` address redirects there).
+Run8 and Railroader each have their own section: `/run8` and `/railroader`. Railroader's opens on the members' **Overview** (`/railroader`), with the map at `/railroader/map` (the old `/map` address redirects there) and the staff **Game status** at `/railroader/status`.
+
+- **Overview:** what a member needs before joining: whether the railroad is running and for how long, the join code and the game version it needs, the trains out and where, and the latest What's new. It comes from `GET /api/railroader/overview` (needs "View the game overview"), which sends only that; process figures and errors stay on Game status (needs "View route and game status").
 
 - **Choosing a game:** the first visit to `/` asks "Which game are you operating today?". Opening a game's section remembers it in that browser, so later visits to `/` go straight there. The switcher at the top of the sidebar changes game.
 - **Separate data:** each game has its own status endpoint (`/api/status/run8`, `/api/status/railroader`) that only returns that game's part of the agent's report. The server machine's load is the one thing both show (to staff), since it's the same machine.
-- **Access:** roles work the same in both games for now.
+- **Access:** roles work the same in both games for now. A game page someone's role can't use sends them to the first one it can (`app/middleware/auth.global.ts`).
 - **Adding a page to a game:** put it under `app/pages/<game>/` and add it to that game's `features` in `app/utils/games.ts`. That list drives the sidebar, the picker, and the page title.
 
 ## Railroader map

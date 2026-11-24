@@ -235,7 +235,14 @@ const STEPS: { name: string; sql: string }[] = [
   { name: 'grant-bugs-manage', sql: grantPermission('bugs.manage', ['admin']) },
   { name: 'train-history-at-index', sql: `CREATE INDEX IF NOT EXISTS train_history_at ON train_history (at)` },
   // Featured help articles show first on the help site's home page, longest featured first. NULL: not featured.
-  { name: 'help-articles-featured', sql: `ALTER TABLE help_articles ADD COLUMN IF NOT EXISTS featured_at timestamptz` }
+  { name: 'help-articles-featured', sql: `ALTER TABLE help_articles ADD COLUMN IF NOT EXISTS featured_at timestamptz` },
+  // The Overview replaces Game status as what members see: every role that could see status can see the Overview.
+  // Taking status away from members is left to admins (Admin > Access), as it also hides Run8's route status.
+  {
+    name: 'grant-overview-view',
+    sql: `UPDATE roles SET permissions = permissions || '["overview.view"]'::jsonb
+          WHERE permissions @> '["status.view"]'::jsonb AND NOT (permissions @> '["overview.view"]'::jsonb)`
+  }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,
