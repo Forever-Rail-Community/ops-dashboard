@@ -17,7 +17,9 @@ request makes sure the title fits.
 
 [Release Please](https://github.com/googleapis/release-please) keeps a release pull request open, listing what's
 been merged since the last release. Merging it bumps the version in `package.json`, adds the list to
-`CHANGELOG.md`, and tags and publishes the GitHub release; Vercel then deploys it. The version shows in the
+`CHANGELOG.md`, and tags and publishes the GitHub release; Vercel then deploys it. The release's notes are GitHub's
+"What's Changed" list, grouped by each pull request's type label (added from its title) under the header in
+`.github/release-header.md`. The version shows in the
 Operations Center, so members know which release they're on.
 
 ## Issues

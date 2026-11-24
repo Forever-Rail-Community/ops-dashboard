@@ -26,4 +26,4 @@ jobs:
             chore
           requireScope: false
           subjectPattern: ^[A-Z].+$
-          subjectPatternError: Start the description with a capital letter, e.g. "feat: Show the join code to members".
+          subjectPatternError: 'Start the description with a capital letter, for example "feat: Show the join code to members".'
