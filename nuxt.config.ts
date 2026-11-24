@@ -33,7 +33,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Discord user IDs (comma-separated) that are always admins. Set this to your own ID.
     bootstrapAdminIds: '',
-    staleAfterSec: 90,
+    // A report older than this counts as stale. Agents report every minute while nobody's watching, so leave room.
+    staleAfterSec: 150,
     // Free key from https://carto.com/basemaps/apikey/ for the real-world map under the Railroader map.
     // Without it, that layer is simply not offered. Redeploy after setting it.
     cartoKey: '',

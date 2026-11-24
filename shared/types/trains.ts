@@ -57,6 +57,14 @@ export interface TrainHistorySample {
   z: number
 }
 
+// What the agent sends: each train's samples, oldest first, as [at (ms since 1970), segment, end, distance, speedMph, x, z].
+export type TrainHistoryRow = [number, string, 'A' | 'B', number, number, number, number]
+
+export interface RailroaderTrainHistory {
+  minutes: number
+  trains: Record<string, TrainHistoryRow[]>
+}
+
 export interface TrainHistory {
   minutes: number
   samples: TrainHistorySample[]

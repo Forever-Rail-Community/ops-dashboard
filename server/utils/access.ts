@@ -28,14 +28,17 @@ export async function resolveAccess(userId: string, discordRoleIds: string[]) {
   return roles.length ? { roles, permissions: [...permissions] } : null
 }
 
-// Used on every protected request: read permissions from the database, not the sign-in cookie,
-// so a role change takes effect right away.
+// Used on every protected request: permissions come from the roles as saved, not the sign-in cookie, so a role
+// change takes effect without signing in again (within a minute; see remember.ts).
 export async function livePermissions(user: { id: string; roles?: string[] }): Promise<string[]> {
   if (bootstrapAdmins().includes(user.id)) return ALL_PERMISSION_KEYS
   if (!user.roles?.length) return []
-  const sql = await db()
-  const rows = await sql<{ permissions: string[] }[]>`SELECT permissions FROM roles WHERE key IN ${sql(user.roles)}`
-  return [...new Set(rows.flatMap((r) => r.permissions))]
+  const byRole = await remember('roles', async () => {
+    const sql = await db()
+    const rows = await sql<{ key: string; permissions: string[] }[]>`SELECT key, permissions FROM roles`
+    return Object.fromEntries(rows.map((r) => [r.key, r.permissions])) as Record<string, string[]>
+  })
+  return [...new Set(user.roles.flatMap((role) => byRole[role] ?? []))]
 }
 
 export async function requirePermission(event: H3Event, permission: string) {

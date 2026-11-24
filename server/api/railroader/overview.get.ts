@@ -1,6 +1,7 @@
 // The members' Overview of Railroader. See shared/types/overview.ts for what's included.
 export default defineEventHandler(async (event): Promise<RailroaderOverview> => {
   const { permissions } = await requirePermission(event, 'overview.view')
+  await markWatching('railroader')
   const staleAfter = Number(useRuntimeConfig(event).staleAfterSec)
   const [statusReports, trainReports, map] = await Promise.all([
     latestReports<RailroaderStatus>('railroader', 'status', staleAfter),

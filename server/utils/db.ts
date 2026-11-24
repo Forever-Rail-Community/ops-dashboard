@@ -242,7 +242,10 @@ const STEPS: { name: string; sql: string }[] = [
     name: 'grant-overview-view',
     sql: `UPDATE roles SET permissions = permissions || '["overview.view"]'::jsonb
           WHERE permissions @> '["status.view"]'::jsonb AND NOT (permissions @> '["overview.view"]'::jsonb)`
-  }
+  },
+  // Train history is now kept by the agent and stored in Redis (server/utils/trainHistory.ts), so the database can
+  // go idle while a game server is running.
+  { name: 'drop-train-history', sql: `DROP TABLE IF EXISTS train_history` }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

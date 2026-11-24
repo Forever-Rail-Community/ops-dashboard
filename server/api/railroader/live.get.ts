@@ -1,6 +1,7 @@
 // What moves on the Railroader map: the latest trains and switch positions from each Railroader server.
 export default defineEventHandler(async (event): Promise<LiveResponse> => {
   await requirePermission(event, 'map.view')
+  await markWatching('railroader')
   const staleAfter = Number(useRuntimeConfig(event).staleAfterSec)
   const [trainReports, switchReports, industryReports, signalReports, layoutReports] = await Promise.all([
     latestReports<RailroaderTrains>('railroader', 'trains', staleAfter),
