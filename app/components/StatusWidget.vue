@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExternalLink } from '@lucide/vue'
+import { ArrowUpRight, ExternalLink } from '@lucide/vue'
 
 // The status page's overall status in the header; hovering lists each group's main components. Reads the status
 // page's public summary (cached there for 60 seconds) once a minute. Hidden when no status page is configured.
@@ -63,12 +63,13 @@ const alerting = computed(() => !['operational', 'unknown', 'paused'].includes(o
 <template>
   <HoverCard v-if="base" :open-delay="150" :close-delay="150">
     <HoverCardTrigger as-child>
-      <a :href="link" target="_blank" rel="noopener" class="flex h-8 items-center gap-2 rounded-md px-2.5 text-sm hover:bg-accent">
-        <span class="relative flex size-2.5" aria-hidden="true">
-          <span v-if="alerting" class="absolute inset-0 animate-ping rounded-full opacity-60 motion-reduce:hidden" :class="DOT[overall]" />
-          <span class="relative size-2.5 rounded-full" :class="DOT[overall]" />
+      <a :href="link" target="_blank" rel="noopener" :class="[HEADER_CONTROL, 'w-10 sm:w-auto sm:px-3.5']">
+        <span class="relative grid size-2.5 place-items-center" aria-hidden="true">
+          <span class="absolute inset-0 rounded-full opacity-35" :class="[DOT[overall], { 'animate-ping opacity-60 motion-reduce:animate-none': alerting }]" />
+          <span class="relative size-1.5 rounded-full" :class="DOT[overall]" />
         </span>
-        <span class="hidden sm:inline">{{ LABEL[overall] }}</span>
+        <span class="hidden sm:inline">{{ OVERALL[overall] }}</span>
+        <ArrowUpRight class="hidden size-3.5 text-muted-foreground sm:block" aria-hidden="true" />
         <span class="sr-only">Status: {{ OVERALL[overall] }}. Opens the status page.</span>
       </a>
     </HoverCardTrigger>

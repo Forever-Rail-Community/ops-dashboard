@@ -6,15 +6,14 @@ const { open, updates, autoShow, unseen } = useWhatsNew()
 </script>
 
 <template>
-  <Button
+  <button
     v-if="!autoShow && updates?.length"
-    variant="ghost"
-    size="icon"
-    class="relative size-8"
+    type="button"
+    :class="[HEADER_CONTROL, 'relative w-10']"
     :aria-label="unseen ? 'What\'s new (new update)' : 'What\'s new'"
     @click="open = true"
   >
-    <Megaphone />
-    <span v-if="unseen" class="absolute top-1.5 right-1.5 size-2 rounded-full bg-sky-500 ring-2 ring-background" aria-hidden="true" />
-  </Button>
+    <Megaphone class="size-[18px]" />
+    <span v-if="unseen" class="absolute top-2 right-2 size-2 rounded-full bg-sky-500 ring-2 ring-background" aria-hidden="true" />
+  </button>
 </template>

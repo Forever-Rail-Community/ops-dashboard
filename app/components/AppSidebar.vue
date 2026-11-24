@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { BookOpen, Bug, Check, ChevronsUpDown, Gamepad2, LogOut, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
+import { BookOpen, Bug, Check, ChevronsUpDown, Gamepad2, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
 
-const { user, clear } = useUserSession()
+const { user } = useUserSession()
 const { site } = useSite()
 const route = useRoute()
 const { current, labelOf } = useGame()
@@ -10,16 +10,6 @@ const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith
 const canEditHelp = computed(() => user.value?.permissions?.includes('help.edit') ?? false)
 const canPostUpdates = computed(() => user.value?.permissions?.includes('updates.post') ?? false)
 const features = computed(() => (current.value ? visibleFeatures(current.value, user.value?.permissions) : []))
-const { prefs, update } = usePreferences()
-const setUnits = (value: unknown) => {
-  if (isUnitSystem(value)) update({ units: value })
-}
-const initials = computed(() => (user.value?.name ?? '?').slice(0, 2).toUpperCase())
-
-async function signOut() {
-  await clear()
-  await navigateTo('/login')
-}
 </script>
 
 <template>
@@ -147,10 +137,7 @@ async function signOut() {
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
               <SidebarMenuButton size="lg" class="data-[state=open]:bg-sidebar-accent">
-                <Avatar class="size-8 rounded-lg">
-                  <AvatarImage v-if="user?.avatar" :src="user.avatar" :alt="user.name" />
-                  <AvatarFallback class="rounded-lg">{{ initials }}</AvatarFallback>
-                </Avatar>
+                <UserAvatar class="size-8 rounded-lg" />
                 <div class="grid flex-1 text-left text-sm leading-tight">
                   <span class="truncate font-medium">{{ user?.name }}</span>
                   <span class="truncate text-xs text-muted-foreground">{{ user?.roles?.join(', ') }}</span>
@@ -159,15 +146,7 @@ async function signOut() {
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent class="w-56" side="top" align="start">
-              <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Units</DropdownMenuLabel>
-              <DropdownMenuRadioGroup :model-value="prefs.units" @update:model-value="setUnits">
-                <DropdownMenuRadioItem v-for="u in UNIT_SYSTEMS" :key="u.value" :value="u.value" @select.prevent>{{ u.label }}</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem @select="signOut">
-                <LogOut />
-                Sign out
-              </DropdownMenuItem>
+              <UserMenuItems />
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>
