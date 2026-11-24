@@ -27,3 +27,6 @@ jobs:
           requireScope: false
           subjectPattern: ^[A-Z].+$
           subjectPatternError: 'Start the description with a capital letter, for example "feat: Show the join code to members".'
+          # Dependabot writes its own titles ("chore(deps): bump …"), so its pull requests skip this check.
+          ignoreLabels: |
+            dependencies
