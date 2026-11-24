@@ -66,6 +66,7 @@ export default defineEventHandler(async (event) => {
     }
   })
 
+  await forget('roles')
   await logEvent(user, 'access.update', { roles: roles.map((r) => r.key), mappings: mappings.length })
   return { roles, mappings }
 })

@@ -52,6 +52,20 @@ agent's `ingestUrl` to `http://localhost:3000/api/ingest`, and run `node agent.m
    Generate secrets with `openssl rand -base64 32`.
 5. Deploy, then add the live `/auth/discord` redirect URL in the Discord portal. Everyone has to sign in again after this update.
 
+### Staying within the free plans
+
+The free Neon plan counts the hours the database is awake, and the free Upstash plan counts commands. The dashboard
+keeps both low:
+
+- **The database is only used for things people do** (signing in, posting, editing). The game servers with their
+  keys, and what each role may do, are read on almost every request, so a copy is kept in Redis and in each
+  instance's memory for a minute (`server/utils/remember.ts`). Reports and page refreshes don't touch the database,
+  and Neon can go idle between visits. A role or server change shows up everywhere within that minute.
+- **Game servers slow down when nobody's watching.** Pages with live data (the map, the Overview) mark the game as
+  watched in Redis. The reply to each report tells the agent; while nobody's watching it reports once a minute
+  instead of every few seconds, and doesn't send train history at all. Agents older than 0.11.0 ignore this and
+  always send at full pace. (`server/utils/watching.ts`)
+
 ## 4. Connect the game servers
 
 Each game server runs its own copy of the agent with its own key:
@@ -92,7 +106,8 @@ that reads published articles from `GET /api/public/help` when it builds.
 ## Customizing
 
 - Name, subtitle, logo, color, and wording: Admin > Appearance. No redeploy needed.
-- How long before "agent has gone quiet" shows: `NUXT_STALE_AFTER_SEC` (default 90).
+- How long before "agent has gone quiet" shows: `NUXT_STALE_AFTER_SEC` (default 150). Keep it above a minute, since
+  agents report once a minute while nobody's watching.
 
 ## Adding more shadcn components
 
@@ -219,9 +234,9 @@ points the height is taken to change evenly.
   10 miles or km), and the steepest climb and descent, the top of the climb and the next town ahead. The track ahead
   follows the switches as they're lined, so it needs the switch legs from the Forever Rail Signals mod 0.2.0 or
   newer; without them it stops at the first switch and says why.
-- **Where it has been** is the train's real path: the server keeps 30 minutes of it in the `train_history` table,
-  one sample of every train per server at most every 20 seconds. Old samples are dropped by the same statement, so
-  the table stays small. `GET /api/railroader/train-history?agent=<server>&train=<train id>` returns it.
+- **Where it has been** is the train's real path: the agent on the game server keeps 30 minutes of it, one sample
+  of every train about every 20 seconds, and sends it while someone is watching. The dashboard keeps the latest copy
+  in Redis. `GET /api/railroader/train-history?agent=<server>&train=<train id>` returns it. Needs agent 0.11.0 or newer.
 - **Map key > Color track by steepness** colors all track by how steep it is, either way. It replaces the speed
   limit colors while it's on.
 - **Code:** `app/utils/mapGrade.ts`, `app/components/map/MapGradePanel.vue`, `server/utils/trainHistory.ts`.

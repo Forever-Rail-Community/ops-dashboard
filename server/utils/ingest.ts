@@ -11,10 +11,8 @@ const HANDLERS: Record<GameKey, Record<string, Handler>> = {
   },
   railroader: {
     status: (agent, data, sentAt) => saveReport('status', agent, sentAt, parseRailroaderStatus(data)),
-    trains: async (agent, data, sentAt) => {
-      const report = parseTrains(data)
-      await Promise.all([saveReport('trains', agent, sentAt, report), recordTrainHistory(agent.id, report.trains)])
-    },
+    trains: (agent, data, sentAt) => saveReport('trains', agent, sentAt, parseTrains(data)),
+    trainhistory: (agent, data, sentAt) => saveReport('trainhistory', agent, sentAt, parseTrainHistory(data)),
     switches: (agent, data, sentAt) => saveReport('switches', agent, sentAt, parseSwitches(data)),
     industries: (agent, data, sentAt) => saveReport('industries', agent, sentAt, parseIndustries(data)),
     signals: (agent, data, sentAt) => saveReport('signals', agent, sentAt, parseSignals(data)),
@@ -51,5 +49,6 @@ export async function acceptReport(agent: RegisteredAgent, body: unknown) {
     await handle(agent, data, sentAt)
     accepted.push(kind)
   }
-  return { server: agent.id, game: agent.game, accepted, skipped }
+  // Tells the agent whether to send at full pace. Agents older than 0.11 ignore it and always do.
+  return { server: agent.id, game: agent.game, accepted, skipped, watching: await isWatched(agent.game) }
 }

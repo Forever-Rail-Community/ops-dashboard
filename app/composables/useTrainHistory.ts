@@ -1,4 +1,4 @@
-// A live train's recorded path (the server keeps the last 30 minutes), refreshed every 30 seconds while shown.
+// A live train's recorded path (the game server keeps the last 30 minutes), refreshed every 30 seconds while shown.
 // New samples are taken about every 20 seconds, so refreshing faster wouldn't show more.
 export function useTrainHistory(train: Ref<LiveTrain | undefined>) {
   const query = computed(() => (train.value ? { agent: train.value.agentId, train: train.value.id } : undefined))

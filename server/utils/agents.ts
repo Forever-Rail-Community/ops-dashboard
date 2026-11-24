@@ -12,9 +12,15 @@ const NAME = /^[a-z0-9][a-z0-9-]{1,39}$/
 const hashKey = (key: string) => createHash('sha256').update(key).digest('hex')
 const newKey = () => `fra_${randomBytes(24).toString('base64url')}`
 // The latest report of each kind is kept per server, under "<kind>:<server>".
-const REPORT_KINDS = ['status', 'trains', 'switches', 'industries', 'signals', 'signallayout'] as const
-type ReportKind = (typeof REPORT_KINDS)[number]
+const REPORT_KINDS = ['status', 'trains', 'trainhistory', 'switches', 'industries', 'signals', 'signallayout'] as const
+export type ReportKind = (typeof REPORT_KINDS)[number]
 const reportKey = (kind: ReportKind, id: string) => `${kind}:${id}`
+// Every server with its game and key hash, read on every report and live page refresh (see remember.ts).
+const registry = () =>
+  remember('agents', async () => {
+    const sql = await db()
+    return sql<(RegisteredAgent & { key_hash: string })[]>`SELECT id, game, key_hash FROM agents ORDER BY id`.then((rows) => [...rows])
+  })
 
 export function parseAgentInput(body: unknown): RegisteredAgent {
   const b = (body ?? {}) as Record<string, unknown>
@@ -39,9 +45,9 @@ export async function requireAgent(event: H3Event): Promise<RegisteredAgent> {
 // Which server a key belongs to, or null if no server has it (wrong, or removed).
 export async function agentForKey(key: string): Promise<RegisteredAgent | null> {
   if (!key) return null
-  const sql = await db()
-  const [row] = await sql<RegisteredAgent[]>`SELECT id, game FROM agents WHERE key_hash = ${hashKey(key)}`
-  return row ?? null
+  const hash = hashKey(key)
+  const found = (await registry()).find((a) => a.key_hash === hash)
+  return found ? { id: found.id, game: found.game } : null
 }
 
 export async function listAgents(): Promise<AgentInfo[]> {
@@ -69,6 +75,7 @@ export async function createAgent(agent: RegisteredAgent, actor: { id: string; n
     VALUES (${agent.id}, ${agent.game}, ${hashKey(key)}, ${actor.id}, ${actor.name})
     ON CONFLICT (id) DO NOTHING RETURNING id`
   if (!created) throw createError({ statusCode: 409, statusMessage: 'A server with that name already exists.' })
+  await forget('agents')
   return key
 }
 
@@ -78,6 +85,7 @@ export async function replaceAgentKey(id: string): Promise<string> {
   const key = newKey()
   const [updated] = await sql`UPDATE agents SET key_hash = ${hashKey(key)} WHERE id = ${id} RETURNING id`
   if (!updated) throw createError({ statusCode: 404, statusMessage: 'Server not found' })
+  await forget('agents')
   return key
 }
 
@@ -86,6 +94,7 @@ export async function deleteAgent(id: string): Promise<void> {
   const sql = await db()
   const [removed] = await sql`DELETE FROM agents WHERE id = ${id} RETURNING id`
   if (!removed) throw createError({ statusCode: 404, statusMessage: 'Server not found' })
+  await forget('agents')
   await Promise.all(REPORT_KINDS.map((kind) => useStorage('data').removeItem(reportKey(kind, id))))
 }
 
@@ -106,8 +115,7 @@ async function lastReportAt(id: string): Promise<number | null> {
 
 // The latest report of one kind from every server registered for a game, with how old each is.
 export async function latestReports<Data>(game: GameKey, kind: ReportKind, staleAfterSec: number) {
-  const sql = await db()
-  const servers = await sql<{ id: string }[]>`SELECT id FROM agents WHERE game = ${game} ORDER BY id`
+  const servers = (await registry()).filter((a) => a.game === game)
   const now = Date.now()
   const found = await Promise.all(servers.map(({ id }) => readReport<Data>(kind, id)))
   return found.flatMap((stored) => {
