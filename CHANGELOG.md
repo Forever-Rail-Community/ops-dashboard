@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.3.0...v0.4.0) (2026-11-25)
+
+
+### ✨ New features
+
+* CTC board, read-only, with lines filled in from the game ([#49](https://github.com/Forever-Rail-Community/ops-dashboard/issues/49)) ([0d18210](https://github.com/Forever-Rail-Community/ops-dashboard/commit/0d18210aa311ae82acb0932b251640372ae3003e))
+
 ## [0.3.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.2.0...v0.3.0) (2026-11-24)
 
 
