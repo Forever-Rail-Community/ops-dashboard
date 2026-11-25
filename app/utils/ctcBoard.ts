@@ -1,5 +1,5 @@
 // Where everything goes on a CTC board: each piece of track, control point, signal head and town label, in board
-// pixels. Drawn by CtcBoard.vue, which colours it by the live states. Left to right is the line's order. Track is
+// pixels. Drawn by CtcBoard.vue, which colors it by the live states. Left to right is the line's order. Track is
 // schematic: every town is the same width, and each block between towns gets the same length.
 
 type Point = [number, number]
@@ -54,7 +54,7 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
   const blocks = new Map(layout.blocks.map((b) => [b.id, b]))
   const signals = new Map(layout.signals.map((s) => [s.id, s]))
   const cps = new Map(layout.controlPoints.map((c) => [c.id, c]))
-  const centre = (cpId: string): Point | null => {
+  const center = (cpId: string): Point | null => {
     const pts = (cps.get(cpId)?.signals ?? []).map((id) => signals.get(id)).filter((s) => !!s)
     return pts.length ? [pts.reduce((a, p) => a + p.x, 0) / pts.length, pts.reduce((a, p) => a + p.z, 0) / pts.length] : null
   }
@@ -110,8 +110,8 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
     const xR = single ? x : x + BOARD.town
     // Left to right on the board, in the game's coordinates, here.
     const lineDir = single
-      ? linkOut ? direction(centre(left), centre(linkOut.to)) : direction(centre(linkIn!.from), centre(left))
-      : direction(centre(left), centre(right!))
+      ? linkOut ? direction(center(left), center(linkOut.to)) : direction(center(linkIn!.from), center(left))
+      : direction(center(left), center(right!))
 
     board.towns.push({ name: town.name, x: (xL + xR) / 2, milepost: town.milepost ?? meters / METERS_PER_MILE, measured: town.milepost === undefined, mainCertain: town.mainCertain })
     const points: [string, number, BoardPoint['side']][] = single ? [[left, xL, 'only']] : [[left, xL, 'left'], [right!, xR, 'right']]
@@ -169,7 +169,7 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
     // Between towns: the blocks in order, and the intermediate signals at the joints between them.
     const xEnd = x + BOARD.link * linkOut.via.length
     run(linkOut.via, x, xEnd, M, 'link')
-    const towardNext = direction(centre(linkOut.from), centre(linkOut.to))
+    const towardNext = direction(center(linkOut.from), center(linkOut.to))
     for (const sig of layout.signals) {
       if (!sig.intermediate) continue
       const p: Point = [sig.x, sig.z]

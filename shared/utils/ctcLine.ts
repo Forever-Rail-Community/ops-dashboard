@@ -30,14 +30,14 @@ export function deriveLines(layout: RailroaderSignalLayout, map: MapData): CtcLi
   const points = (id: string) => blocks.get(id)?.track.flat() ?? []
   const distTo = (id: string, p: Point) => Math.min(Infinity, ...points(id).map((q) => near(q, p)))
   const endsOf = (id: string) => (blocks.get(id)?.track ?? []).flatMap((piece) => [piece[0]!, piece.at(-1)!])
-  const centre = (cpId: string): Point | null => {
+  const center = (cpId: string): Point | null => {
     const pts = (cpById.get(cpId)?.signals ?? []).map((id) => signals.get(id)).filter((s) => !!s)
     return pts.length ? [pts.reduce((a, p) => a + p.x, 0) / pts.length, pts.reduce((a, p) => a + p.z, 0) / pts.length] : null
   }
 
   // Blocks touch where their pieces end at the same point. Where a control point's block is among them, track runs
   // through the control point, so the others aren't linked directly (the game's control point blocks overlap their
-  // neighbours a little).
+  // neighbors a little).
   const atPoint = new Map<string, Set<string>>()
   for (const b of layout.blocks) for (const p of endsOf(b.id)) {
     const k = key(p)
@@ -146,11 +146,11 @@ export function deriveLines(layout: RailroaderSignalLayout, map: MapData): CtcLi
   // A control point with no track of its own (a line's end) belongs at the dead end its signals stand on. When two
   // control points lead into that dead end, it's the one nearer the dead end's start.
   for (const cp of cps.filter((c) => !c.blocks.some((b) => cpOfBlock.has(b)))) {
-    const at = centre(cp.id)
+    const at = center(cp.id)
     if (!at) continue
     const options = [...towns.values()]
       .flatMap((town) => town.deadEnds.map((end) => {
-        const from = centre(end.from)
+        const from = center(end.from)
         return { town, end, dist: distTo(end.via.at(-1)!, at), lead: from ? distTo(end.via[0]!, from) : Infinity }
       }))
       .filter((o) => o.dist < ATTACH_WITHIN)
@@ -174,7 +174,7 @@ export function deriveLines(layout: RailroaderSignalLayout, map: MapData): CtcLi
 
   // Each line: from the end farthest east (largest x), so boards read east to west, walking from town to town. A
   // junction where a branch leaves carries on along the longer way; the branch is its own line.
-  const eastOf = (name: string) => Math.max(-Infinity, ...towns.get(name)!.controlPoints.map((id) => centre(id)?.[0] ?? -Infinity))
+  const eastOf = (name: string) => Math.max(-Infinity, ...towns.get(name)!.controlPoints.map((id) => center(id)?.[0] ?? -Infinity))
   const placed = new Set<string>()
   const lines: CtcLineData[] = []
   const reach = (from: string, without: Set<string>): number => {
@@ -214,7 +214,7 @@ export function deriveLines(layout: RailroaderSignalLayout, map: MapData): CtcLi
       const left = inFrom ?? town.controlPoints.find((id) => id !== outFrom)!
       if (town.controlPoints[0] !== left) town.controlPoints.reverse()
       // Tracks run left to right too.
-      const leftAt = centre(left)
+      const leftAt = center(left)
       const fromLeft = (via: string[]) => (leftAt ? [...via].sort((a, b) => distTo(a, leftAt) - distTo(b, leftAt)) : via)
       town.main = fromLeft(town.main)
       town.sidings = town.sidings.map(fromLeft)
