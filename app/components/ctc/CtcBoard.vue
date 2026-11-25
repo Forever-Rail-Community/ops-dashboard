@@ -6,7 +6,7 @@ import { onKeyStroke, useEventListener, useResizeObserver } from '@vueuse/core'
 // the game reports right now: occupied track red, track a dispatcher has routed through a control point green, signal
 // heads by aspect, each switch's position with a gap on the leg it isn't lined for, and trains as tags on their track
 // (click one for its train sheet). With `controllable`, clicking a control point signal offers Clear and Stop, and
-// clicking a switch offers lining it normal or reverse; the choice is emitted as a command.
+// clicking a switch offers lining it normal or reverse; the choice is emitted as a command. Signals in `alerts` are ringed.
 const props = defineProps<{
   board: Board
   title: string // the strip's heading, e.g. "MURPHY BRANCH, SYLVA to ANDREWS, 51 MI"
@@ -16,6 +16,7 @@ const props = defineProps<{
   trains: BoardTrain[]
   selectedTrain?: string
   controllable?: boolean
+  alerts?: string[]
 }>()
 const emit = defineEmits<{ command: [action: CtcAction]; train: [id: string] }>()
 
@@ -72,7 +73,7 @@ const heads = computed(() =>
     // A gray mast, then an arrowhead in the aspect's color pointing the way it faces.
     const mast = `M${back} ${y - 5 * s} V${y + 5 * s} M${back} ${y} H${h.x - d * 2 * s}`
     const arrow = `M${h.x - d * 2 * s} ${y - 5 * s} L${h.x + d * BOARD.headTip * s} ${y} L${h.x - d * 2 * s} ${y + 5 * s} Z`
-    return { key: h.signal, head: h, y, mast, arrow, color: ASPECT_COLOR[aspect], title: `${h.signal}: ${ASPECT_TEXT[aspect]}`, clickable: canClick(h) }
+    return { key: h.signal, head: h, y, mast, arrow, color: ASPECT_COLOR[aspect], title: `${h.signal}: ${ASPECT_TEXT[aspect]}`, clickable: canClick(h), alert: props.alerts?.includes(h.signal) ?? false }
   })
 )
 const labelWidth = (text: string) => text.length * 7 + 14
@@ -204,6 +205,7 @@ onMounted(syncView)
         :role="h.clickable ? 'button' : undefined" :tabindex="h.clickable ? 0 : undefined" :aria-label="h.clickable ? `Signal ${h.title}` : undefined"
         @click="openSignal(h.head, $event)" @keydown.enter="openSignal(h.head, $event)"
       >
+        <circle v-if="h.alert" :cx="h.head.x" :cy="h.y" r="13" fill="none" stroke="#ef4444" stroke-width="2" />
         <circle v-if="h.clickable" class="ring" :cx="h.head.x" :cy="h.y" r="11" fill="transparent" stroke="transparent" stroke-width="2" />
         <path :d="h.mast" stroke="#a3a3a3" stroke-width="1.5" fill="none" />
         <path :d="h.arrow" :fill="h.color" />
