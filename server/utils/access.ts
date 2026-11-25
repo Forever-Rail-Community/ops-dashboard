@@ -41,10 +41,11 @@ export async function livePermissions(user: { id: string; roles?: string[] }): P
   return [...new Set(user.roles.flatMap((role) => byRole[role] ?? []))]
 }
 
-export async function requirePermission(event: H3Event, permission: string) {
+// One permission, or a list of which any one will do.
+export async function requirePermission(event: H3Event, permission: string | string[]) {
   const { user } = await requireUserSession(event)
   const permissions = await livePermissions(user)
-  if (!permissions.includes(permission)) {
+  if (![permission].flat().some((p) => permissions.includes(p))) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
   return { user, permissions }

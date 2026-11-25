@@ -9,6 +9,7 @@ const tabs = computed(() =>
     can('admin.settings') && { value: 'appearance', label: 'Appearance' },
     can('admin.roles') && { value: 'access', label: 'Access' },
     can('admin.agents') && { value: 'servers', label: 'Servers' },
+    can('admin.lines') && { value: 'lines', label: 'CTC lines' },
     can('admin.activity') && { value: 'activity', label: 'Activity' }
   ].filter(Boolean) as { value: string; label: string }[]
 )
@@ -16,7 +17,7 @@ const tabs = computed(() =>
 
 <template>
   <PageBody>
-    <PageHeader title="Admin" description="How the site looks, who can do what, and the game servers. Changes apply as soon as you save." />
+    <PageHeader title="Admin" description="How the site looks, who can do what, the game servers and the CTC board's lines. Changes apply as soon as you save." />
 
     <Tabs :default-value="tabs[0]?.value">
       <TabsList>
@@ -30,6 +31,9 @@ const tabs = computed(() =>
       </TabsContent>
       <TabsContent v-if="can('admin.agents')" value="servers" class="pt-2">
         <AdminServers />
+      </TabsContent>
+      <TabsContent v-if="can('admin.lines')" value="lines" class="pt-2">
+        <AdminCtcLines />
       </TabsContent>
       <TabsContent v-if="can('admin.activity')" value="activity" class="pt-2">
         <AdminActivity />

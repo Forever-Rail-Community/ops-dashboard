@@ -1,6 +1,7 @@
-// What moves on the Railroader map: the latest trains and switch positions from each Railroader server.
+// What moves on the Railroader map and the CTC board: the latest trains, switch positions and signals from each
+// Railroader server.
 export default defineEventHandler(async (event): Promise<LiveResponse> => {
-  await requirePermission(event, 'map.view')
+  await requirePermission(event, ['map.view', 'ctc.view'])
   await markWatching('railroader')
   const staleAfter = Number(useRuntimeConfig(event).staleAfterSec)
   const [trainReports, switchReports, industryReports, signalReports, layoutReports] = await Promise.all([

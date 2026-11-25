@@ -267,7 +267,21 @@ const STEPS: { name: string; sql: string }[] = [
       );
       CREATE INDEX IF NOT EXISTS roadmap_comments_item ON roadmap_comments (item_id, created_at);
       CREATE INDEX IF NOT EXISTS roadmap_comments_author ON roadmap_comments (author_id, created_at)`
-  }
+  },
+  // CTC lines (server/utils/ctcLines.ts): each route's towns in order, filled in from the game and named by staff.
+  {
+    name: 'ctc-lines',
+    sql: `CREATE TABLE IF NOT EXISTS ctc_lines (
+        id text PRIMARY KEY,
+        name text NOT NULL,
+        data jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        updated_by text NOT NULL
+      )`
+  },
+  // The CTC board: dispatchers watch it; admins look after its lines.
+  { name: 'grant-ctc-view', sql: grantPermission('ctc.view', ['dispatcher', 'admin']) },
+  { name: 'grant-admin-lines', sql: grantPermission('admin.lines', ['admin']) }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

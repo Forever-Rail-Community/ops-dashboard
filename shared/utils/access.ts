@@ -4,6 +4,7 @@ export const PERMISSIONS = [
   { key: 'status.view', label: 'View route and game status (for staff)', group: 'Status' },
   { key: 'status.detail', label: 'See CPU, memory, process IDs, and server stats', group: 'Status' },
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
+  { key: 'ctc.view', label: 'View the Railroader CTC board', group: 'CTC' },
   { key: 'multiplayer.joinCode', label: 'See the Railroader multiplayer join code', group: 'Status' },
   { key: 'help.edit', label: 'Write and edit help center drafts', group: 'Help center' },
   { key: 'help.publish', label: 'Publish, unpublish, and delete articles; manage categories', group: 'Help center' },
@@ -13,7 +14,8 @@ export const PERMISSIONS = [
   { key: 'admin.settings', label: 'Change appearance and wording', group: 'Admin' },
   { key: 'admin.roles', label: 'Manage roles and Discord access', group: 'Admin' },
   { key: 'admin.activity', label: 'View the activity log', group: 'Admin' },
-  { key: 'admin.agents', label: 'Manage game servers and their agent keys', group: 'Admin' }
+  { key: 'admin.agents', label: 'Manage game servers and their agent keys', group: 'Admin' },
+  { key: 'admin.lines', label: 'Set up the CTC board\'s lines', group: 'Admin' }
 ] as const
 
 export const ALL_PERMISSION_KEYS: string[] = PERMISSIONS.map((p) => p.key)
@@ -31,6 +33,6 @@ export interface RoleMapping {
 
 export const DEFAULT_ROLES: RoleDef[] = [
   { key: 'member', label: 'Member', permissions: ['overview.view', 'map.view', 'multiplayer.joinCode'] },
-  { key: 'dispatcher', label: 'Dispatcher', permissions: ['overview.view', 'status.view', 'status.detail', 'map.view', 'multiplayer.joinCode'] },
+  { key: 'dispatcher', label: 'Dispatcher', permissions: ['overview.view', 'status.view', 'status.detail', 'map.view', 'ctc.view', 'multiplayer.joinCode'] },
   { key: 'admin', label: 'Admin', permissions: [...ALL_PERMISSION_KEYS] }
 ]
