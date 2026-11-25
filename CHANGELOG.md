@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.5.1...v0.6.0) (2026-11-25)
+
+
+### ✨ New features
+
+* Work the line from the CTC board, with alerts ([#59](https://github.com/Forever-Rail-Community/ops-dashboard/issues/59)) ([dacf758](https://github.com/Forever-Rail-Community/ops-dashboard/commit/dacf75888462f02cd7cfdc07585dae11eced46b8))
+
 ## [0.5.1](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.5.0...v0.5.1) (2026-11-25)
 
 
