@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The board's alerts (app/utils/ctcAlerts.ts), newest first: Show moves the board to the signal, Silence hides that
-// signal's alerts for SILENCE_MIN minutes.
+// The board's alerts (app/utils/ctcAlerts.ts) as rows under the board, as board K shows them: Show moves the board to
+// the signal, Silence hides that signal's alerts for SILENCE_MIN minutes.
 import { useIntervalFn } from '@vueuse/core'
 
 const props = defineProps<{ alerts: CtcAlert[]; names: Map<string, string> }>()
@@ -16,16 +16,21 @@ const silence = (signal: string) => silencedUntil.set(signal, Date.now() + SILEN
 </script>
 
 <template>
-  <section v-if="shown.length" class="grid gap-2" aria-label="Alerts" role="status">
-    <div v-for="a in shown" :key="`${a.signal}${a.train}`" class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-2.5 text-sm">
-      <span class="font-semibold text-amber-800 dark:text-amber-300">{{ a.waiting ? 'Waiting' : 'Approaching' }}</span>
-      <span class="min-w-0 flex-1">
-        <b>{{ a.train }}</b>
-        <template v-if="a.waiting"> has been stopped at </template><template v-else> is heading for </template>
-        <b>{{ names.get(a.cp) ?? a.cp }}</b> ({{ a.signal }}), signal at stop<template v-if="a.waiting">, for {{ minutes(a.since) }} min</template>.
+  <div role="status">
+    <div
+      v-for="a in shown" :key="`${a.signal}${a.train}`"
+      class="flex flex-wrap items-center justify-between gap-x-[18px] gap-y-1.5 border-b border-l-[3px] border-b-[#2a2a2a] border-l-red-500 bg-[#1a0606] px-3.5 py-1.5 font-[Barlow] text-[15px] tracking-normal"
+    >
+      <span>
+        <b class="font-['Barlow_Condensed'] font-bold tracking-[.03em] text-red-400">&#9888; ALERT</b>
+        {{ a.train }}
+        <template v-if="a.waiting">has been stopped at</template><template v-else>is heading for</template>
+        {{ (names.get(a.cp) ?? a.cp).toUpperCase() }} ({{ a.signal }}). Its signal is at stop<template v-if="a.waiting">, for <b>{{ minutes(a.since) }} min</b></template>.
       </span>
-      <Button size="sm" variant="outline" @click="emit('show', a.x)">Show</Button>
-      <Button size="sm" variant="ghost" @click="silence(a.signal)">Silence {{ SILENCE_MIN }} min</Button>
+      <span class="inline-flex gap-1.5">
+        <button type="button" class="h-[22px] border border-red-300 px-2 font-['Barlow_Condensed'] text-[13px] font-bold tracking-[.03em] text-red-300" @click="emit('show', a.x)">SHOW</button>
+        <button type="button" class="h-[22px] border border-neutral-400 px-2 font-['Barlow_Condensed'] text-[13px] font-bold tracking-[.03em] text-neutral-400" @click="silence(a.signal)">SILENCE {{ SILENCE_MIN }} MIN</button>
+      </span>
     </div>
-  </section>
+  </div>
 </template>

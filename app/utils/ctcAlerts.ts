@@ -3,7 +3,6 @@
 // where each train is, which way it's heading and how fast.
 
 export const ALERT_WAIT_MIN = 3 // stopped at a signal at stop this long becomes a "waiting" alert
-const NEAR_BLOCK_M = 25 // a train this close to a block's track is in it
 const STOPPED_MPH = 1
 const FACING = 0.3 // how closely a train's heading must match a signal's direction to be heading for it
 
@@ -26,10 +25,8 @@ export function ctcAlerts(
   since: Map<string, number>,
   now = Date.now()
 ): CtcAlert[] {
-  const blocks = new Map(layout.blocks.map((b) => [b.id, b]))
   const signals = new Map(layout.signals.map((s) => [s.id, s]))
-  const inBlock = (id: string, t: LiveTrain) =>
-    blocks.get(id)?.track.some((piece) => piece.some(([x, z]) => Math.hypot(x - t.x, z - t.z) <= NEAR_BLOCK_M)) ?? false
+  const blockOf = trainBlocks(board, layout, trains)
   const alerts: CtcAlert[] = []
   const seen = new Set<string>()
   for (const head of board.heads) {
@@ -38,7 +35,7 @@ export function ctcAlerts(
     const sig = signals.get(head.signal)
     if (!sig || (!sig.dx && !sig.dz)) continue
     // Heading in degrees clockwise from north, x east and z north: (sin, cos).
-    const train = trains.find((t) => inBlock(head.approach!, t) &&
+    const train = trains.find((t) => blockOf.get(t.id) === head.approach &&
       Math.sin((t.heading * Math.PI) / 180) * sig.dx + Math.cos((t.heading * Math.PI) / 180) * sig.dz > FACING)
     if (!train) continue
     const key = `${head.signal}|${train.id}`

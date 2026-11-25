@@ -45,9 +45,11 @@ export function ctcCommandLabel(text: string): string {
   return text
 }
 
-// Typed on the board: CLR <signal> [N|R], STOP <control point>, SW <control point> N|R. Null if it isn't one of these.
+// Typed on the board: CLR <signal> [N|R], STOP <control point>, SW <control point> N|R, in any case (the game's signal
+// and control point ids are lowercase). Null if it isn't one of these.
 export function parseTypedCtc(text: string): CtcAction | null {
-  const [word, id, letter, extra] = text.trim().split(/\s+/)
+  const [word, typedId, letter, extra] = text.trim().split(/\s+/)
+  const id = typedId?.toLowerCase()
   if (!word || !id || extra !== undefined || !ID.test(id)) return null
   const setting = letter === undefined ? undefined : ({ N: 'normal', R: 'reverse' } as const)[letter.toUpperCase() as 'N' | 'R']
   if (letter !== undefined && !setting) return null

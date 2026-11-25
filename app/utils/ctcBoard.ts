@@ -16,6 +16,10 @@ export interface BoardPiece {
   // A leg or stub leaves the main at control point `cp`: drawn open when its switch isn't lined for it.
   cp?: string
   kind: 'main' | 'siding' | 'link' | 'leg' | 'stub'
+  // Which way left to right on the board runs in the game's coordinates here, and where this is, for trains on it
+  // (ctcTrains.ts): a town's name, or "<town> to <town>" between them.
+  along: Point
+  place: string
 }
 
 export interface BoardPoint {
@@ -86,11 +90,11 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
   const S = BOARD.siding
   const board: Board = { width: 0, pieces: [], points: [], heads: [], towns: [], miles: 0 }
   // Track as equal parts left to right, one per block, with a joint between blocks.
-  const run = (via: string[], x1: number, x2: number, y: number, kind: BoardPiece['kind']) => {
+  const run = (via: string[], x1: number, x2: number, y: number, kind: BoardPiece['kind'], along: Point, place: string) => {
     const step = (x2 - x1) / Math.max(1, via.length)
     via.forEach((block, k) => {
       const a = x1 + k * step
-      board.pieces.push({ block, x1: a + (k ? BOARD.joint : 0), y1: y, x2: a + step - (k < via.length - 1 ? BOARD.joint : 0), y2: y, kind })
+      board.pieces.push({ block, x1: a + (k ? BOARD.joint : 0), y1: y, x2: a + step - (k < via.length - 1 ? BOARD.joint : 0), y2: y, kind, along, place })
     })
   }
   // A head pointing right is drawn above its track (CtcBoard.vue), where a siding's leg or a dead end's stub rises
@@ -125,19 +129,19 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
     for (const [id, at, side] of points) board.points.push({ id, name: cps.get(id)?.name ?? id, x: at, side, switch: cps.get(id)?.switches[0] })
 
     if (!single) {
-      run(town.main, xL, xR, M, 'main')
+      run(town.main, xL, xR, M, 'main', lineDir, town.name)
       const siding = town.sidings[0]
       if (siding?.length) {
-        board.pieces.push({ block: siding[0]!, x1: xL, y1: M, x2: xL + BOARD.leg, y2: S, kind: 'leg', cp: left })
-        run(siding, xL + BOARD.leg, xR - BOARD.leg, S, 'siding')
-        board.pieces.push({ block: siding.at(-1)!, x1: xR - BOARD.leg, y1: S, x2: xR, y2: M, kind: 'leg', cp: right })
+        board.pieces.push({ block: siding[0]!, x1: xL, y1: M, x2: xL + BOARD.leg, y2: S, kind: 'leg', cp: left, along: lineDir, place: town.name })
+        run(siding, xL + BOARD.leg, xR - BOARD.leg, S, 'siding', lineDir, town.name)
+        board.pieces.push({ block: siding.at(-1)!, x1: xR - BOARD.leg, y1: S, x2: xR, y2: M, kind: 'leg', cp: right, along: lineDir, place: town.name })
       }
       meters += lengthOf(town.main)
     }
     for (const end of town.deadEnds) {
       const at = end.from === left ? xL : xR
       const out = end.from === left ? -1 : 1
-      board.pieces.push({ block: end.via[0]!, x1: at, y1: M, x2: at + out * BOARD.stub, y2: M - BOARD.stub, kind: 'stub', cp: end.from })
+      board.pieces.push({ block: end.via[0]!, x1: at, y1: M, x2: at + out * BOARD.stub, y2: M - BOARD.stub, kind: 'stub', cp: end.from, along: lineDir, place: town.name })
     }
 
     // The heads at this town's control points, on the track each stands on, pointing the way it faces.
@@ -186,8 +190,8 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
     if (!linkOut) return
     // Between towns: the blocks in order, and the intermediate signals at the joints between them.
     const xEnd = x + BOARD.link * linkOut.via.length
-    run(linkOut.via, x, xEnd, M, 'link')
     const towardNext = direction(center(linkOut.from), center(linkOut.to))
+    run(linkOut.via, x, xEnd, M, 'link', towardNext, `${town.name} to ${line.towns[i + 1]?.name}`)
     for (const sig of layout.signals) {
       if (!sig.intermediate) continue
       const p: Point = [sig.x, sig.z]

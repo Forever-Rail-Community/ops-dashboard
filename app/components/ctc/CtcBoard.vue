@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { onKeyStroke, useEventListener, useResizeObserver } from '@vueuse/core'
 
-// A CTC board for one line (layout in app/utils/ctcBoard.ts), colored by what the game reports right now: occupied
-// track red, track a dispatcher has routed through a control point green, signal heads by aspect, and each switch's
-// position, with a gap on the leg it isn't lined for. A strip along the top shows the whole line; click it to move
-// the board there. With `controllable`, clicking a control point signal offers Clear and Stop, and clicking a switch
-// offers lining it normal or reverse; the choice is emitted as a command. Signals in `alerts` are ringed.
+// The track display of the CTC console (CtcConsole.vue), as the agreed board designs E and K draw it: the whole line
+// as a strip (trains as triangles, a box for the part in view; click it to move there), then the board, colored by what
+// the game reports right now: occupied track red, track a dispatcher has routed through a control point green, signal
+// heads by aspect, each switch's position with a gap on the leg it isn't lined for, and trains as tags on their track
+// (click one for its train sheet). With `controllable`, clicking a control point signal offers Clear and Stop, and
+// clicking a switch offers lining it normal or reverse; the choice is emitted as a command. Signals in `alerts` are ringed.
 const props = defineProps<{
   board: Board
+  title: string // the strip's heading, e.g. "MURPHY BRANCH, SYLVA to ANDREWS, 51 MI"
   aspects: Record<string, SignalAspect>
   occupied: Record<string, boolean>
   thrown: Record<string, boolean>
+  trains: BoardTrain[]
+  selectedTrain?: string
   controllable?: boolean
   alerts?: string[]
 }>()
-const emit = defineEmits<{ command: [action: CtcAction] }>()
+const emit = defineEmits<{ command: [action: CtcAction]; train: [id: string] }>()
 
 const OPEN = 13 // px gap at the points on the leg a switch isn't lined for
 const ASPECT_COLOR: Record<SignalAspect, string> = {
@@ -25,7 +29,7 @@ const ASPECT_TEXT: Record<SignalAspect, string> = {
 }
 
 const routed = computed(() => routedBlocks(props.board, props.aspects, props.thrown))
-const colorOf = (block: string) => (props.occupied[block] ? '#ef4444' : routed.value.has(block) ? '#22c55e' : '#525252')
+const colorOf = (block: string) => (props.occupied[block] ? '#ef4444' : routed.value.has(block) ? '#22c55e' : '#737373')
 const pointById = computed(() => new Map(props.board.points.map((p) => [p.id, p])))
 const thrownAt = (cp?: string) => {
   const sw = cp ? pointById.value.get(cp)?.switch : undefined
@@ -66,12 +70,14 @@ const heads = computed(() =>
     const y = h.dir > 0 ? h.y - 15 : h.y + 15
     const d = h.dir
     const back = h.x - d * BOARD.headBack * s
-    // A mast, then an arrowhead pointing the way it faces.
-    const path = `M${back} ${y - 5 * s} V${y + 5 * s} M${back} ${y} H${h.x - d * 2 * s} M${h.x - d * 2 * s} ${y - 5 * s} L${h.x + d * BOARD.headTip * s} ${y} L${h.x - d * 2 * s} ${y + 5 * s} Z`
-    return { key: h.signal, head: h, path, color: ASPECT_COLOR[aspect], title: `${h.signal}: ${ASPECT_TEXT[aspect]}`, clickable: canClick(h), alert: props.alerts?.includes(h.signal) ?? false }
+    // A gray mast, then an arrowhead in the aspect's color pointing the way it faces.
+    const mast = `M${back} ${y - 5 * s} V${y + 5 * s} M${back} ${y} H${h.x - d * 2 * s}`
+    const arrow = `M${h.x - d * 2 * s} ${y - 5 * s} L${h.x + d * BOARD.headTip * s} ${y} L${h.x - d * 2 * s} ${y + 5 * s} Z`
+    return { key: h.signal, head: h, y, mast, arrow, color: ASPECT_COLOR[aspect], title: `${h.signal}: ${ASPECT_TEXT[aspect]}`, clickable: canClick(h), alert: props.alerts?.includes(h.signal) ?? false }
   })
 )
-const labelWidth = (text: string) => text.length * 7.4 + 14
+const labelWidth = (text: string) => text.length * 7 + 14
+const trainWidth = (name: string) => name.length * 7.6 + 22
 
 // The menu for the signal or switch clicked, just below it on the screen (fixed, so the board's scrolling area
 // doesn't cut it off). Scrolling closes it.
@@ -94,12 +100,12 @@ function openSignal(h: BoardHead, event: Event) {
       { label: 'Clear into the siding', action: { kind: 'clear', signal, setting: 'reverse' } }
     ]
     : [{ label: 'Clear', action: { kind: 'clear', signal } }]
-  menu.value = { ...below(event), title: `Signal ${signal}`, items: [...clear, { label: `Stop ${cpName(h.cp!)}`, action: { kind: 'stop', cp: h.cp! } }] }
+  menu.value = { ...below(event), title: `SIGNAL ${signal.toUpperCase()}`, items: [...clear, { label: `Stop ${cpName(h.cp!)}`, action: { kind: 'stop', cp: h.cp! } }] }
 }
 function openSwitch(p: BoardPoint, event: Event) {
   if (!props.controllable || !p.switch) return
   menu.value = {
-    ...below(event), title: `Switch at ${p.name}`,
+    ...below(event), title: `SWITCH AT ${p.name}`,
     items: [
       { label: 'Line normal', action: { kind: 'throw', cp: p.id, setting: 'normal' } },
       { label: 'Line reverse', action: { kind: 'throw', cp: p.id, setting: 'reverse' } }
@@ -113,15 +119,10 @@ function choose(item: MenuItem) {
 onKeyStroke('Escape', () => (menu.value = null))
 useEventListener('scroll', () => (menu.value = null), { capture: true, passive: true })
 
-// The strip: where each town and each occupied block falls along the whole line, as a share of the board's width.
+// The strip: where each town and each train falls along the whole line, as a share of the board's width.
 const scroller = ref<HTMLElement>()
 const view = reactive({ left: 0, width: 1 })
-// A share of the board's width as a position on the strip, which has 20px of margin each side.
-const onStrip = (share: number) => `calc(20px + (100% - 40px) * ${share})`
-const alongStrip = (share: number) => `calc((100% - 40px) * ${share})`
-const occupiedSpans = computed(() =>
-  pieces.value.filter((p) => props.occupied[p.block]).map((p) => ({ left: Math.min(p.x1, p.x2) / props.board.width, width: Math.abs(p.x2 - p.x1) / props.board.width }))
-)
+const share = (x: number) => `${(x / props.board.width) * 100}%`
 const { height, main: mainY } = BOARD
 function syncView() {
   const el = scroller.value
@@ -147,78 +148,91 @@ onMounted(syncView)
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-xl border bg-black text-neutral-200">
-    <button type="button" class="relative block h-16 w-full cursor-pointer px-5 text-left" aria-label="Move the board along the line" @click="jump">
-      <span class="absolute inset-x-5 top-[30px] h-[3px] bg-neutral-600" />
-      <span v-for="(span, k) in occupiedSpans" :key="k" class="absolute top-[28px] h-[7px] bg-red-500" :style="{ left: onStrip(span.left), width: alongStrip(span.width) }" />
-      <span v-for="(town, k) in board.towns" :key="town.name" class="absolute top-6 h-[15px] w-px bg-neutral-400" :style="{ left: onStrip(town.x / board.width) }">
-        <span class="absolute left-1/2 -translate-x-1/2 text-xs whitespace-nowrap text-neutral-400 uppercase" :class="k % 2 ? 'top-[17px]' : '-top-[19px]'">{{ town.name }}</span>
-      </span>
-      <span class="pointer-events-none absolute top-5 h-[22px] border border-neutral-100" :style="{ left: onStrip(view.left), width: alongStrip(view.width) }" />
+  <section aria-label="The whole line" class="border-b border-[#2a2a2a] bg-[#050505] px-3.5 pt-1.5 pb-2">
+    <div class="flex flex-wrap justify-between gap-x-4 text-[13px] text-neutral-400">
+      <span>{{ title }}</span><span>TRIANGLES ARE TRAINS. THE BOX IS WHAT THIS BOARD SHOWS.</span>
+    </div>
+    <button type="button" class="relative mt-1 block h-[52px] w-full cursor-pointer text-left" aria-label="Move the board along the line" @click="jump">
+      <span
+        v-for="(town, k) in board.towns" :key="town.name" class="absolute text-[13px] whitespace-nowrap text-neutral-400 uppercase"
+        :class="k % 2 ? 'top-[33px]' : 'top-0'"
+        :style="{ left: share(town.x), transform: k === 0 ? 'none' : k === board.towns.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)' }"
+      >{{ town.name }} {{ town.milepost.toFixed(1) }}</span>
+      <span class="absolute inset-x-0 top-[24px] h-[3px] bg-neutral-700" />
+      <span
+        v-for="t in trains" :key="t.id" :title="`${t.name}, ${t.right ? 'toward' : 'from'} ${board.towns.at(-1)?.name}`"
+        class="absolute top-[19px] size-0 -translate-x-1/2 border-y-[7px] border-y-transparent"
+        :class="t.right ? 'border-l-[9px] border-l-neutral-50' : 'border-r-[9px] border-r-neutral-50'"
+        :style="{ left: share(t.x) }"
+      />
+      <span class="pointer-events-none absolute top-[15px] h-5 border border-neutral-50" :style="{ left: `${view.left * 100}%`, width: `${view.width * 100}%` }" />
     </button>
+  </section>
 
-    <div ref="scroller" class="relative overflow-x-auto border-t border-neutral-800" @scroll.passive="syncView">
-      <svg :width="board.width" :height="height" :viewBox="`0 0 ${board.width} ${height}`" class="block" role="img" :aria-label="`CTC board, ${board.towns[0]?.name} to ${board.towns.at(-1)?.name}`">
-        <g v-for="town in board.towns" :key="town.name" text-anchor="middle">
-          <text :x="town.x" y="24" fill="#a3a3a3" font-size="13">
-            MP {{ town.milepost.toFixed(1) }}<title v-if="town.measured">Measured along the track from {{ board.towns[0]?.name }}</title>
-          </text>
-          <text :x="town.x" y="45" fill="#fafafa" font-size="15" font-weight="600" class="uppercase">{{ town.name }}</text>
-        </g>
+  <section ref="scroller" aria-label="Track display" class="relative overflow-x-auto" @scroll.passive="syncView">
+    <svg :width="board.width" :height="height" :viewBox="`0 0 ${board.width} ${height}`" class="block" role="img" :aria-label="`CTC board, ${board.towns[0]?.name} to ${board.towns.at(-1)?.name}`">
+      <g v-for="town in board.towns" :key="town.name" text-anchor="middle">
+        <text :x="town.x" y="22" fill="#a3a3a3" font-size="13">
+          MP {{ town.milepost.toFixed(1) }}<title v-if="town.measured">Measured along the track from {{ board.towns[0]?.name }}</title>
+        </text>
+        <text :x="town.x" y="44" fill="#fafafa" font-size="17" font-weight="700" class="uppercase">{{ town.name }}</text>
+      </g>
 
-        <line v-for="(p, k) in pieces" :key="`p${k}`" :x1="p.x1" :y1="p.y1" :x2="p.x2" :y2="p.y2" :stroke="p.color" stroke-width="5">
-          <title>{{ p.title }}</title>
-        </line>
-        <line v-for="(g, k) in mainGaps" :key="`g${k}`" :x1="g.x1" :y1="mainY" :x2="g.x2" :y2="mainY" stroke="#000" stroke-width="7" />
+      <line v-for="(p, k) in pieces" :key="`p${k}`" :x1="p.x1" :y1="p.y1" :x2="p.x2" :y2="p.y2" :stroke="p.color" stroke-width="6">
+        <title>{{ p.title }}</title>
+      </line>
+      <line v-for="(g, k) in mainGaps" :key="`g${k}`" :x1="g.x1" :y1="mainY" :x2="g.x2" :y2="mainY" stroke="#000" stroke-width="8" />
 
-        <g v-for="p in board.points" :key="p.id">
-          <rect :x="p.x - labelWidth(p.name) / 2" :y="(p.side === 'right' ? 86 : 110) - 15" :width="labelWidth(p.name)" height="21" fill="#000" stroke="#404040" />
-          <text :x="p.x" :y="(p.side === 'right' ? 86 : 110) + 1" fill="#fafafa" font-size="13.5" font-weight="600" text-anchor="middle" class="uppercase">{{ p.name }}</text>
-          <title>{{ p.id }}</title>
-        </g>
-        <g
-          v-for="sw in switches" :key="`s${sw.id}`"
-          :class="controllable ? 'cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-400' : ''"
-          :role="controllable ? 'button' : undefined" :tabindex="controllable ? 0 : undefined"
-          @click="openSwitch(sw, $event)" @keydown.enter="openSwitch(sw, $event)"
-        >
-          <rect :x="sw.x - 9" :y="mainY + 34" width="18" height="18" :fill="controllable ? '#000' : 'none'" :stroke="sw.color" />
-          <text :x="sw.x" :y="mainY + 48" :fill="sw.color" font-size="13" font-weight="600" text-anchor="middle">{{ sw.letter }}</text>
-          <title>Switch {{ sw.switch }}: {{ sw.letter === 'R' ? 'reverse' : sw.letter === 'N' ? 'normal' : 'not reported' }}</title>
-        </g>
-        <g
-          v-for="h in heads" :key="h.key"
-          :class="h.clickable ? 'cursor-pointer outline-none [&:focus-visible>circle.ring]:stroke-sky-400' : ''"
-          :role="h.clickable ? 'button' : undefined" :tabindex="h.clickable ? 0 : undefined"
-          @click="openSignal(h.head, $event)" @keydown.enter="openSignal(h.head, $event)"
-        >
-          <circle v-if="h.alert" :cx="h.head.x" :cy="h.head.dir > 0 ? h.head.y - 15 : h.head.y + 15" r="13" fill="none" stroke="#f59e0b" stroke-width="2" />
-          <circle v-if="h.clickable" class="ring" :cx="h.head.x" :cy="h.head.dir > 0 ? h.head.y - 15 : h.head.y + 15" r="11" fill="transparent" stroke="transparent" stroke-width="2" />
-          <path :d="h.path" :stroke="h.color" :fill="h.color" stroke-width="1.6" />
-          <title>{{ h.title }}</title>
-        </g>
-      </svg>
-      <div
-        v-if="menu" class="fixed z-50 min-w-44 rounded-md border border-neutral-700 bg-neutral-900 p-1 text-sm shadow-lg"
-        :style="{ left: `${menu.x - 8}px`, top: `${menu.y}px` }" role="menu" :aria-label="menu.title"
+      <g v-for="p in board.points" :key="p.id">
+        <rect :x="p.x - labelWidth(p.name) / 2" :y="(p.side === 'right' ? 86 : 110) - 15" :width="labelWidth(p.name)" height="21" fill="#0a0a0a" stroke="#525252" />
+        <text :x="p.x" :y="(p.side === 'right' ? 86 : 110) + 1" fill="#fafafa" font-size="14" font-weight="700" text-anchor="middle" class="uppercase">{{ p.name }}</text>
+        <title>{{ p.id }}</title>
+      </g>
+      <g
+        v-for="sw in switches" :key="`s${sw.id}`"
+        :class="controllable ? 'cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-400' : ''"
+        :role="controllable ? 'button' : undefined" :tabindex="controllable ? 0 : undefined"
+        :aria-label="`Switch at ${sw.name}, ${sw.letter === 'R' ? 'reverse' : sw.letter === 'N' ? 'normal' : 'not reported'}`"
+        @click="openSwitch(sw, $event)" @keydown.enter="openSwitch(sw, $event)"
       >
-        <p class="px-2 py-1 text-xs text-neutral-400">{{ menu.title }}</p>
-        <button
-          v-for="item in menu.items" :key="item.label" type="button" role="menuitem"
-          class="block w-full rounded px-2 py-1.5 text-left text-neutral-100 hover:bg-neutral-800 focus-visible:bg-neutral-800 focus-visible:outline-none"
-          @click="choose(item)"
-        >{{ item.label }}</button>
-        <button type="button" class="block w-full rounded px-2 py-1.5 text-left text-neutral-400 hover:bg-neutral-800" @click="menu = null">Cancel</button>
+        <rect :x="sw.x - 11" :y="mainY + 34" width="22" height="18" fill="#000" :stroke="sw.color" />
+        <text :x="sw.x" :y="mainY + 48" :fill="sw.color" font-size="13" font-weight="700" text-anchor="middle">{{ sw.letter }}</text>
+        <title>Switch {{ sw.switch }}: {{ sw.letter === 'R' ? 'reverse' : sw.letter === 'N' ? 'normal' : 'not reported' }}</title>
+      </g>
+      <g
+        v-for="h in heads" :key="h.key"
+        :class="h.clickable ? 'cursor-pointer outline-none [&:focus-visible>circle.ring]:stroke-sky-400' : ''"
+        :role="h.clickable ? 'button' : undefined" :tabindex="h.clickable ? 0 : undefined" :aria-label="h.clickable ? `Signal ${h.title}` : undefined"
+        @click="openSignal(h.head, $event)" @keydown.enter="openSignal(h.head, $event)"
+      >
+        <circle v-if="h.alert" :cx="h.head.x" :cy="h.y" r="13" fill="none" stroke="#ef4444" stroke-width="2" />
+        <circle v-if="h.clickable" class="ring" :cx="h.head.x" :cy="h.y" r="11" fill="transparent" stroke="transparent" stroke-width="2" />
+        <path :d="h.mast" stroke="#a3a3a3" stroke-width="1.5" fill="none" />
+        <path :d="h.arrow" :fill="h.color" />
+        <title>{{ h.title }}</title>
+      </g>
+      <g
+        v-for="t in trains" :key="t.id" class="cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-400" role="button" tabindex="0"
+        :aria-label="`Train ${t.name}`" @click="emit('train', t.id)" @keydown.enter="emit('train', t.id)"
+      >
+        <rect :x="t.x - trainWidth(t.name) / 2" :y="t.y - 11" :width="trainWidth(t.name)" height="22" fill="#000" :stroke="t.id === selectedTrain ? '#fde047' : '#fafafa'" />
+        <text :x="t.x" :y="t.y + 5" :fill="t.id === selectedTrain ? '#fde047' : '#fafafa'" font-size="15" font-weight="700" text-anchor="middle" letter-spacing=".04em">
+          {{ t.right ? '' : '◀ ' }}{{ t.name }}{{ t.right ? ' ▶' : '' }}
+        </text>
+      </g>
+    </svg>
+    <div
+      v-if="menu" class="fixed z-50 min-w-[168px] border border-neutral-600 bg-[#111] shadow-[0_8px_24px_rgba(0,0,0,.8)]"
+      :style="{ left: `${menu.x - 8}px`, top: `${menu.y}px` }" role="menu" :aria-label="menu.title"
+    >
+      <div class="flex items-center justify-between border-b border-[#2a2a2a] px-2 py-1 text-[13px] font-bold text-neutral-50">
+        {{ menu.title }}<button type="button" class="px-1 text-sm font-semibold text-neutral-400" aria-label="Close" @click="menu = null">X</button>
       </div>
+      <button
+        v-for="item in menu.items" :key="item.label" type="button" role="menuitem"
+        class="block w-full border-t border-[#1f1f1f] px-2.5 py-1.5 text-left text-[15px] font-semibold tracking-[.03em] text-neutral-50 uppercase first-of-type:border-t-0 hover:bg-neutral-900 focus-visible:bg-neutral-900 focus-visible:outline-none"
+        @click="choose(item)"
+      >{{ item.label }}</button>
     </div>
-
-    <div class="flex flex-wrap gap-x-6 gap-y-2 border-t border-neutral-800 px-5 py-3 text-xs text-neutral-400 uppercase">
-      <span><i class="mr-2 inline-block h-[5px] w-5 bg-red-500 align-middle" />Occupied</span>
-      <span><i class="mr-2 inline-block h-[5px] w-5 bg-green-500 align-middle" />Route set through a control point</span>
-      <span><i class="mr-2 inline-block h-[5px] w-5 bg-neutral-600 align-middle" />Idle</span>
-      <span>Switch <b class="text-neutral-50">N</b> normal, <b class="text-amber-500">R</b> reverse, gap on the leg it isn't lined for</span>
-      <span v-if="controllable">Click a signal or a switch to work it</span>
-      <span>Hover anything for the game's id</span>
-    </div>
-  </div>
+  </section>
 </template>
