@@ -42,6 +42,11 @@ export async function requireAgent(event: H3Event): Promise<RegisteredAgent> {
   return agent
 }
 
+// The registered servers of one game.
+export async function registeredAgents(game: GameKey): Promise<RegisteredAgent[]> {
+  return (await registry()).filter((a) => a.game === game).map(({ id }) => ({ id, game }))
+}
+
 // A registered server by name, or null.
 export async function findAgent(id: string | undefined): Promise<RegisteredAgent | null> {
   const found = (await registry()).find((a) => a.id === id)

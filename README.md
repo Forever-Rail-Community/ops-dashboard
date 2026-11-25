@@ -230,7 +230,7 @@ It moves made-up trains along the real track and throws switches now and then, p
 **Railroader > CTC board** shows a line the way a dispatcher's CTC screen does: towns left to right, each passing
 siding above its main, signal heads by aspect, each switch's position (with a gap on the leg it isn't lined for),
 occupied track in red, and track a cleared control point signal sends a train onto in green. It's read-only: work the
-railroad from the game's own panel. A strip along the top shows the whole line; click it to move the board there.
+railroad from the board, or from the game's own panel. A strip along the top shows the whole line; click it to move the board there.
 
 - **Lines are filled in from the game.** In **Admin > CTC lines**, *Read the lines from the game* works out each line
   from the layout the game server sends (agent 0.15 and host mod 0.7.0 or later). Control points named "X East" and
@@ -241,7 +241,17 @@ railroad from the game's own panel. A strip along the top shows the whole line; 
 - **Mileposts** without one set are miles measured along the track from the line's first town.
 - **No extra Redis use:** the board shows the same live data as the map (`/api/railroader/live`, every 5 seconds
   while open), and reads its lines from the database once per page load.
+- **Working the line** (`ctc.control`): click a control point signal to clear it (a signal facing into a town clears
+  into the main or the siding) or to stop its control point, and click a switch's N or R to line it normal or
+  reverse. Or type `CLR <signal> [N|R]`, `STOP <control point>` or `SW <control point> N|R`. Each command shows SENT,
+  then CONFIRMED or REJECTED with the game's reason. Commands go through the same queue as the Game status controls
+  and are carried out by the host mod (0.10.0 or later) through the game's own panel code button, so the save must
+  be in CTC mode. Blocking track, train symbols and locking the in-game panel aren't possible yet.
+- **Alerts:** a train heading for a control point signal at stop, and one stopped at it for 3 minutes or more, with
+  Show (moves the board to it) and Silence (10 minutes). Worked out on the board from the live data it already has,
+  so they only show while someone has the board open.
 - **Who sees it:** *View the Railroader CTC board* (`ctc.view`, given to dispatchers and admins);
+  *Clear signals and throw switches from the CTC board* (`ctc.control`, dispatchers and admins);
   *Set up the CTC board's lines* (`admin.lines`, admins).
 
 ## Server controls (Railroader)

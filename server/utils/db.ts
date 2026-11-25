@@ -305,7 +305,9 @@ const STEPS: { name: string; sql: string }[] = [
   },
   { name: 'grant-server-control', sql: grantPermission('server.control', ['admin']) },
   // The Game status page is for staff: dispatchers see the CTC board and the map instead.
-  { name: 'dispatcher-no-status', sql: revokePermissions(['status.view', 'status.detail'], ['dispatcher']) }
+  { name: 'dispatcher-no-status', sql: revokePermissions(['status.view', 'status.detail'], ['dispatcher']) },
+  // Working the line from the CTC board: dispatchers and admins.
+  { name: 'grant-ctc-control', sql: grantPermission('ctc.control', ['dispatcher', 'admin']) }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

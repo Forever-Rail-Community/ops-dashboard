@@ -5,6 +5,7 @@ definePageMeta({ title: 'CTC board' })
 
 const { user } = useUserSession()
 const canSetUp = computed(() => user.value?.permissions?.includes('admin.lines') ?? false)
+const canControl = computed(() => user.value?.permissions?.includes('ctc.control') ?? false)
 
 const { data: lines, error } = useFetch<CtcLine[]>('/api/railroader/ctc/lines', { server: false, lazy: true })
 const forbidden = computed(() => error.value?.statusCode === 403)
@@ -15,6 +16,15 @@ const chosen = ref<string>()
 const line = computed(() => lines.value?.find((l) => l.id === chosen.value) ?? lines.value?.[0])
 const layout = computed(() => live.value.signals.layout)
 const board = computed(() => (line.value && layout.value?.controlPoints.length ? boardLayout(line.value, layout.value) : null))
+
+// Alerts, worked out on each refresh; `since` remembers when each train was first seen at its signal.
+const since = new Map<string, number>()
+const alerts = computed(() =>
+  board.value && layout.value ? ctcAlerts(board.value, layout.value, live.value.signals.aspects, live.value.signals.occupied, live.value.trains, since) : []
+)
+const cpNames = computed(() => new Map((layout.value?.controlPoints ?? []).map((cp) => [cp.id, cp.name])))
+const boardRef = ref<{ show: (x: number) => void }>()
+const commandsRef = ref<{ send: (action: CtcAction) => Promise<void> }>()
 
 const status = computed(() => {
   const r = response.value
@@ -28,7 +38,10 @@ const status = computed(() => {
 
 <template>
   <PageBody>
-    <PageHeader title="CTC board" description="The line as the game's signals, switches and occupied track show it, live. Watching only: work the railroad from the game's own panel." />
+    <PageHeader
+      title="CTC board"
+      :description="canControl ? 'The line as the game shows it, live. Click a signal or a switch to work it.' : 'The line as the game\'s signals, switches and occupied track show it, live. Watching only.'"
+    />
 
     <Alert v-if="forbidden">
       <CircleAlert />
@@ -65,7 +78,14 @@ const status = computed(() => {
         </Select>
       </div>
 
-      <CtcBoard v-if="board" :board="board" :aspects="live.signals.aspects" :occupied="live.signals.occupied" :thrown="live.switches" />
+      <template v-if="board">
+        <CtcAlerts :alerts="alerts" :names="cpNames" @show="(x) => boardRef?.show(x)" />
+        <CtcBoard
+          ref="boardRef" :board="board" :aspects="live.signals.aspects" :occupied="live.signals.occupied" :thrown="live.switches"
+          :controllable="canControl" :alerts="alerts.map((a) => a.signal)" @command="(a) => commandsRef?.send(a)"
+        />
+        <CtcCommands v-if="canControl" ref="commandsRef" />
+      </template>
       <p v-else-if="response && !layout" class="text-sm text-muted-foreground">Waiting for the game server's signal layout. It's sent when the game loads a save, and every 10 minutes.</p>
       <p v-else-if="layout && !layout.controlPoints.length" class="text-sm text-muted-foreground">
         The game server's layout has no control points. Update the agent to 0.15 and the host mod to 0.7.0 or later.

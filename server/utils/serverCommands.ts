@@ -3,7 +3,7 @@
 // Postgres when a small flag in Redis says a command is waiting for that server.
 
 const MAX_TEXT = 200
-const HISTORY = 20
+export const COMMAND_HISTORY = 20
 const MAX_ANSWERS = 20
 const MAX_MESSAGE = 500
 const ANSWER_STATES = ['pending', 'ok', 'refused', 'error'] as const
@@ -54,12 +54,13 @@ export async function queueCommand(agentId: string, text: string, user: { id: st
   return toCommand(row!)
 }
 
-// A server's latest commands, newest first. Ones the agent never picked up, or never answered, say so.
-export async function listCommands(agentId: string): Promise<ServerCommand[]> {
+// A server's latest commands, newest first, or only those starting with `prefix` (the CTC board's, "ctc "). Ones the
+// agent never picked up, or never answered, say so.
+export async function listCommands(agentId: string, prefix = ''): Promise<ServerCommand[]> {
   const sql = await db()
   const rows = await sql<CommandRow[]>`
     SELECT id, agent_id, text, by_name, created_at, state, message FROM server_commands
-    WHERE agent_id = ${agentId} ORDER BY id DESC LIMIT ${HISTORY}`
+    WHERE agent_id = ${agentId} AND starts_with(text, ${prefix}) ORDER BY id DESC LIMIT ${COMMAND_HISTORY}`
   const now = Date.now()
   return rows.map(toCommand).map((c) => {
     const ageSec = (now - Date.parse(c.at)) / 1000
