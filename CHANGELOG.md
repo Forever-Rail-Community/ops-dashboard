@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.4.1...v0.5.0) (2026-11-25)
+
+
+### ✨ New features
+
+* Server controls on the Game status page ([#54](https://github.com/Forever-Rail-Community/ops-dashboard/issues/54)) ([afcbfcc](https://github.com/Forever-Rail-Community/ops-dashboard/commit/afcbfccd4d253b856825d34ae2e5b88c0b3727ce))
+
 ## [0.4.1](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.4.0...v0.4.1) (2026-11-25)
 
 
