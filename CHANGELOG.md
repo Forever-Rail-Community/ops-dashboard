@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.4.0...v0.4.1) (2026-11-25)
+
+
+### 🐛 Fixes
+
+* Keep CTC signal heads off siding legs and dead-end stubs ([#52](https://github.com/Forever-Rail-Community/ops-dashboard/issues/52)) ([556ca3a](https://github.com/Forever-Rail-Community/ops-dashboard/commit/556ca3a4f98ea0658b8fc43c63cbb1338c72e62f))
+
 ## [0.4.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.3.0...v0.4.0) (2026-11-25)
 
 
