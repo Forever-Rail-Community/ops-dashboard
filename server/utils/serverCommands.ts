@@ -64,10 +64,10 @@ export async function listCommands(agentId: string): Promise<ServerCommand[]> {
   return rows.map(toCommand).map((c) => {
     const ageSec = (now - Date.parse(c.at)) / 1000
     if (c.state === 'queued' && ageSec > COMMAND_PICKUP_SEC) {
-      return { ...c, state: 'expired', message: 'The server didn\'t pick this up within 2 minutes, so it was dropped.' }
+      return { ...c, state: 'expired', message: '' }
     }
     if ((c.state === 'sent' || c.state === 'pending') && ageSec > COMMAND_ANSWER_SEC) {
-      return { ...c, state: 'error', message: c.message || 'No answer from the server. Check its agent window.' }
+      return { ...c, state: 'error', message: c.message || 'No answer.' }
     }
     return c
   })
