@@ -18,6 +18,16 @@ export interface BlockDef {
   track: [number, number][][] // the block's track: one list of points (x, z) per piece of track
 }
 
+// A CTC control point, as the game groups it: the switches it throws, its switch block and its signals. From host
+// mod 0.7.0 on.
+export interface ControlPointDef {
+  id: string
+  name: string // the game's name, e.g. "Whittier West"
+  switches: string[]
+  blocks: string[]
+  signals: string[]
+}
+
 // The "signallayout" report: where things are. Changes only when track or signals are built.
 export interface RailroaderSignalLayout {
   signals: SignalDef[]
@@ -25,6 +35,8 @@ export interface RailroaderSignalLayout {
   // By the game's switch id: its [normal, reverse] piece of track, by the game's piece id. Empty from signals
   // mods before 0.2.
   switchLegs: Record<string, [string, string]>
+  // Empty from agents before 0.15 or host mods before 0.7.0.
+  controlPoints: ControlPointDef[]
 }
 
 // The "signals" report: what they show right now.

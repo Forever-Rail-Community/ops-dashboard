@@ -225,6 +225,25 @@ It moves made-up trains along the real track and throws switches now and then, p
 **After rebuilding the map data,** also refresh the tracker pack's switch list:
 `node tools/write-switch-ids.mjs path/to/server/assets/map.json` in the tracker pack's folder.
 
+## CTC board
+
+**Railroader > CTC board** shows a line the way a dispatcher's CTC screen does: towns left to right, each passing
+siding above its main, signal heads by aspect, each switch's position (with a gap on the leg it isn't lined for),
+occupied track in red, and track a cleared control point signal sends a train onto in green. It's read-only: work the
+railroad from the game's own panel. A strip along the top shows the whole line; click it to move the board there.
+
+- **Lines are filled in from the game.** In **Admin > CTC lines**, *Read the lines from the game* works out each line
+  from the layout the game server sends (agent 0.15 and host mod 0.7.0 or later). Control points named "X East" and
+  "X West" make one town; the blocks joining towns put them in order; each town's main is the track its switches
+  line in normal position. Give the line a name and save it. Town names and mileposts can be changed; a town where
+  the game's data didn't settle which track is the main is marked, with a button to swap them. After track or
+  signals change in the game, *Fill in from the game again* keeps the names and mileposts.
+- **Mileposts** without one set are miles measured along the track from the line's first town.
+- **No extra Redis use:** the board shows the same live data as the map (`/api/railroader/live`, every 5 seconds
+  while open), and reads its lines from the database once per page load.
+- **Who sees it:** *View the Railroader CTC board* (`ctc.view`, given to dispatchers and admins);
+  *Set up the CTC board's lines* (`admin.lines`, admins).
+
 ## Grade on the Railroader map
 
 Grades come from the track heights in the map data (`server/assets/map.json`, version 4 and up). Between two track

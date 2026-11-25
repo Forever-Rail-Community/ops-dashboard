@@ -5,6 +5,8 @@ const ID = /^[A-Za-z0-9_.-]{1,80}$/
 const MAX_SIGNALS = 2000
 const MAX_BLOCKS = 2000
 const MAX_SWITCHES = 5000
+const MAX_CONTROL_POINTS = 500
+const MAX_PER_CONTROL_POINT = 50 // switches, blocks or signals
 const MAX_PIECES = 200 // per block
 const MAX_POINTS = 400 // per piece
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -18,7 +20,7 @@ function parsePiece(raw: unknown): [number, number][] {
 }
 
 export function parseSignalLayout(raw: unknown): RailroaderSignalLayout {
-  const r = raw as { signals?: unknown; blocks?: unknown; switchLegs?: unknown }
+  const r = raw as { signals?: unknown; blocks?: unknown; switchLegs?: unknown; controlPoints?: unknown }
   if (!Array.isArray(r?.signals) || !Array.isArray(r?.blocks)) throw bad('The signal layout needs "signals" and "blocks" lists')
   const signals = r.signals.slice(0, MAX_SIGNALS).flatMap((s: any): SignalDef[] => {
     if (typeof s?.id !== 'string' || !ID.test(s.id) || !finite(s.x) || !finite(s.z)) return []
@@ -40,7 +42,12 @@ export function parseSignalLayout(raw: unknown): RailroaderSignalLayout {
       switchLegs[id] = [legs[0], legs[1]]
     }
   }
-  return { signals, blocks, switchLegs }
+  const ids = (v: unknown) => (Array.isArray(v) ? v.slice(0, MAX_PER_CONTROL_POINT).filter((id): id is string => typeof id === 'string' && ID.test(id)) : [])
+  const controlPoints = (Array.isArray(r.controlPoints) ? r.controlPoints : []).slice(0, MAX_CONTROL_POINTS).flatMap((c: any): ControlPointDef[] => {
+    if (typeof c?.id !== 'string' || !ID.test(c.id)) return []
+    return [{ id: c.id, name: typeof c.name === 'string' ? c.name.slice(0, 60) : '', switches: ids(c.switches), blocks: ids(c.blocks), signals: ids(c.signals) }]
+  })
+  return { signals, blocks, switchLegs, controlPoints }
 }
 
 export function parseSignals(raw: unknown): RailroaderSignals {
