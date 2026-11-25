@@ -61,8 +61,9 @@ const heads = computed(() =>
     const s = h.intermediate ? 0.8 : 1
     const y = h.dir > 0 ? h.y - 15 : h.y + 15
     const d = h.dir
+    const back = h.x - d * BOARD.headBack * s
     // A mast, then an arrowhead pointing the way it faces.
-    const path = `M${h.x - d * 8 * s} ${y - 5 * s} V${y + 5 * s} M${h.x - d * 8 * s} ${y} H${h.x - d * 2 * s} M${h.x - d * 2 * s} ${y - 5 * s} L${h.x + d * 6 * s} ${y} L${h.x - d * 2 * s} ${y + 5 * s} Z`
+    const path = `M${back} ${y - 5 * s} V${y + 5 * s} M${back} ${y} H${h.x - d * 2 * s} M${h.x - d * 2 * s} ${y - 5 * s} L${h.x + d * BOARD.headTip * s} ${y} L${h.x - d * 2 * s} ${y + 5 * s} Z`
     return { key: h.signal, path, colour: ASPECT_COLOUR[aspect], title: `${h.signal}: ${ASPECT_TEXT[aspect]}` }
   })
 )

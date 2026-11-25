@@ -4,7 +4,8 @@
 
 type Point = [number, number]
 
-export const BOARD = { left: 60, town: 230, link: 120, main: 196, siding: 146, leg: 26, stub: 34, height: 256, joint: 2 }
+// headBack and headTip: how far a signal head's mast sits behind its x, and its arrow's tip ahead of it.
+export const BOARD = { left: 60, town: 230, link: 120, main: 196, siding: 146, leg: 26, stub: 34, height: 256, joint: 2, headBack: 8, headTip: 6 }
 
 export interface BoardPiece {
   block: string
@@ -45,6 +46,8 @@ export interface Board {
 }
 
 const METERS_PER_MILE = 1609.344
+// Room kept between a signal head and a diagonal.
+const HEAD_GAP = 3
 const dist = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1])
 
 export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): Board {
@@ -82,6 +85,18 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
       const a = x1 + k * step
       board.pieces.push({ block, x1: a + (k ? BOARD.joint : 0), y1: y, x2: a + step - (k < via.length - 1 ? BOARD.joint : 0), y2: y, kind })
     })
+  }
+  // A head pointing right is drawn above its track (CtcBoard.vue), where a siding's leg or a dead end's stub rises
+  // from the main. One that would sit on such a diagonal moves along, away from its control point, until it's clear.
+  const clearOfDiagonals = (hx: number, away: number) => {
+    const diagonals = board.pieces
+      .filter((p) => p.kind === 'leg' || p.kind === 'stub')
+      .map((p) => [Math.min(p.x1, p.x2) - HEAD_GAP, Math.max(p.x1, p.x2) + HEAD_GAP] as const)
+      .sort((a, b) => away * (a[0] - b[0]))
+    for (const [from, to] of diagonals) {
+      if (hx + BOARD.headTip > from && hx - BOARD.headBack < to) hx = away > 0 ? to + BOARD.headBack : from - BOARD.headTip
+    }
+    return hx
   }
   let x = BOARD.left
   let meters = 0
@@ -134,6 +149,7 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
         ].sort((a, b) => a.d - b.d)
         const on = options[0] ?? { y: M, inner: false, d: 0 }
         const hx = outward === 0 ? at + dir * 14 : on.inner ? at - outward * (on.y === S ? BOARD.leg + 14 : 14) : at + outward * 14
+        const headX = on.y === M && dir === 1 ? clearOfDiagonals(hx, Math.sign(hx - at) || dir) : hx
         // Leaving the town, a cleared head sends a train onto the block beyond; entering it, onto whichever track
         // the switch lines.
         const toward = outward === 0 ? (linkOut ? 1 : -1) : outward
@@ -144,7 +160,7 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
           const end = (via: string[] | undefined) => (via?.length ? (side === 'left' ? via[0] : via.at(-1)) : undefined)
           if (sw) routeTo = { switch: sw, normal: end(town.main)!, reverse: end(town.sidings[0]) }
         }
-        board.heads.push({ signal: sigId, x: hx, y: on.y, dir, intermediate: false, routeTo })
+        board.heads.push({ signal: sigId, x: headX, y: on.y, dir, intermediate: false, routeTo })
       }
     }
 
