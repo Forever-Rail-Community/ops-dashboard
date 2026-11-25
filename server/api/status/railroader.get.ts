@@ -10,7 +10,8 @@ export default defineEventHandler(async (event): Promise<GameStatus<RailroaderAg
       process: detailed ? rr.process : { status: rr.process.status, uptimeSec: rr.process.uptimeSec },
       api: rr.api ? { ...rr.api, error: detailed ? rr.api.error : null } : undefined,
       // The join code lets anyone into the railroad, so it goes only to people allowed to see it.
-      multiplayer: seesJoinCode ? rr.multiplayer : undefined
+      multiplayer: seesJoinCode ? rr.multiplayer : undefined,
+      players: detailed ? rr.players : undefined
     }
     return { ...base, railroader }
   })

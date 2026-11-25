@@ -16,7 +16,8 @@ const HANDLERS: Record<GameKey, Record<string, Handler>> = {
     switches: (agent, data, sentAt) => saveReport('switches', agent, sentAt, parseSwitches(data)),
     industries: (agent, data, sentAt) => saveReport('industries', agent, sentAt, parseIndustries(data)),
     signals: (agent, data, sentAt) => saveReport('signals', agent, sentAt, parseSignals(data)),
-    signallayout: (agent, data, sentAt) => saveReport('signallayout', agent, sentAt, parseSignalLayout(data))
+    signallayout: (agent, data, sentAt) => saveReport('signallayout', agent, sentAt, parseSignalLayout(data)),
+    commands: (agent, data) => recordAnswers(agent, data)
   }
 }
 
@@ -49,6 +50,10 @@ export async function acceptReport(agent: RegisteredAgent, body: unknown) {
     await handle(agent, data, sentAt)
     accepted.push(kind)
   }
-  // Tells the agent whether to send at full pace. Agents older than 0.11 ignore it and always do.
-  return { server: agent.id, game: agent.game, accepted, skipped, watching: await isWatched(agent.game) }
+  // Tells the agent whether to send at full pace (agents older than 0.11 ignore it and always do), and hands it any
+  // commands staff have sent (agents older than 0.16 ignore them). Staff sending commands have the Game status page
+  // open, which counts as watching, so only then is there anything to look for.
+  const watching = await isWatched(agent.game)
+  const commands = watching ? await takeCommands(agent) : []
+  return { server: agent.id, game: agent.game, accepted, skipped, watching, ...(commands.length ? { commands } : {}) }
 }

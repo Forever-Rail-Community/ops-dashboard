@@ -9,6 +9,11 @@ const grantPermission = (permission: string, roleKeys: string[]) =>
   `UPDATE roles SET permissions = permissions || '["${permission}"]'::jsonb
    WHERE key IN (${roleKeys.map((k) => `'${k}'`).join(', ')}) AND NOT (permissions @> '["${permission}"]'::jsonb)`
 
+// SQL that takes permissions away from the named roles. Roles you made yourself are left alone.
+const revokePermissions = (permissions: string[], roleKeys: string[]) =>
+  `UPDATE roles SET permissions = permissions ${permissions.map((p) => `- '${p}'`).join(' ')}
+   WHERE key IN (${roleKeys.map((k) => `'${k}'`).join(', ')})`
+
 const STEPS: { name: string; sql: string }[] = [
   {
     name: 'settings-table',
@@ -281,7 +286,26 @@ const STEPS: { name: string; sql: string }[] = [
   },
   // The CTC board: dispatchers watch it; admins look after its lines.
   { name: 'grant-ctc-view', sql: grantPermission('ctc.view', ['dispatcher', 'admin']) },
-  { name: 'grant-admin-lines', sql: grantPermission('admin.lines', ['admin']) }
+  { name: 'grant-admin-lines', sql: grantPermission('admin.lines', ['admin']) },
+  // Commands sent to game servers from the Game status page (server/utils/serverCommands.ts), kept as their history.
+  {
+    name: 'server-commands',
+    sql: `CREATE TABLE IF NOT EXISTS server_commands (
+        id bigserial PRIMARY KEY,
+        agent_id text NOT NULL,
+        text text NOT NULL,
+        by_id text NOT NULL,
+        by_name text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        state text NOT NULL DEFAULT 'queued',
+        message text NOT NULL DEFAULT '',
+        answered_at timestamptz
+      );
+      CREATE INDEX IF NOT EXISTS server_commands_agent ON server_commands (agent_id, id DESC)`
+  },
+  { name: 'grant-server-control', sql: grantPermission('server.control', ['admin']) },
+  // The Game status page is for staff: dispatchers see the CTC board and the map instead.
+  { name: 'dispatcher-no-status', sql: revokePermissions(['status.view', 'status.detail'], ['dispatcher']) }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

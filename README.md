@@ -244,6 +244,23 @@ railroad from the game's own panel. A strip along the top shows the whole line; 
 - **Who sees it:** *View the Railroader CTC board* (`ctc.view`, given to dispatchers and admins);
   *Set up the CTC board's lines* (`admin.lines`, admins).
 
+## Server controls (Railroader)
+
+**Railroader > Game status** has a **Controls** section for each server: *Start the game*, *Save*, *Shut down…* (it
+saves first; a link closes without saving), and a box for any other command the agent takes (`status`, `window show`,
+`help` and so on). Below them, the latest 20 commands with who sent them and the server's answer.
+
+- **How a command gets there:** it's kept in the database until the server's agent sends its next report; the reply
+  hands it over, and the answers come back with later reports. Having the Controls open counts as watching, so the
+  agent reports every 5 seconds meanwhile. A command not picked up within 2 minutes is dropped, so it never runs by
+  surprise later.
+- **Little extra Redis use:** reports reach the database only when a small flag in Redis says a command is waiting,
+  and only while someone is watching.
+- **Needs** agent 0.16 and host mod 0.9.0 or later. The shutdown warning lists who's on the railroad, which the host
+  mod reports from 0.9.0.
+- **Who sees it:** *Start, save and shut down the game server, and send it commands* (`server.control`, admins only).
+  The Game status page itself needs *View route and game status* (`status.view`), which dispatchers no longer have.
+
 ## Grade on the Railroader map
 
 Grades come from the track heights in the map data (`server/assets/map.json`, version 4 and up). Between two track
