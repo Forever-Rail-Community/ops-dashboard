@@ -38,6 +38,8 @@ export interface RailroaderReport {
   multiplayer?: {
     joinCode: string | null
   }
+  // Who's on the railroad, by name, from the Forever Rail Host mod (0.9.0+). Left out when it isn't reporting. Staff only.
+  players?: string[]
 }
 
 // The "status" part of a server's report, one shape per game.

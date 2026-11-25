@@ -42,6 +42,12 @@ export async function requireAgent(event: H3Event): Promise<RegisteredAgent> {
   return agent
 }
 
+// A registered server by name, or null.
+export async function findAgent(id: string | undefined): Promise<RegisteredAgent | null> {
+  const found = (await registry()).find((a) => a.id === id)
+  return found ? { id: found.id, game: found.game } : null
+}
+
 // Which server a key belongs to, or null if no server has it (wrong, or removed).
 export async function agentForKey(key: string): Promise<RegisteredAgent | null> {
   if (!key) return null

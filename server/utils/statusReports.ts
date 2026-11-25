@@ -6,6 +6,7 @@ const num = (v: unknown): number | null =>
 const bad = (message: string) => createError({ statusCode: 400, statusMessage: message })
 
 const STATES = ['menu', 'loading', 'active', 'unloading']
+const MAX_PLAYERS = 100
 const text = (v: unknown, max = 60): string | null =>
   typeof v === 'string' && v.length > 0 ? v.slice(0, max) : null
 
@@ -35,6 +36,9 @@ function parseRailroader(raw: any): RailroaderReport {
     // A join code is short letters and digits; anything else is dropped rather than shown.
     const code = text(raw.multiplayer.joinCode, 16)
     report.multiplayer = { joinCode: code && /^[A-Za-z0-9]+$/.test(code) ? code : null }
+  }
+  if (Array.isArray(raw.players)) {
+    report.players = raw.players.slice(0, MAX_PLAYERS).flatMap((p: unknown) => (text(p, 40) ? [text(p, 40)!] : []))
   }
   return report
 }

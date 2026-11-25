@@ -2,6 +2,8 @@
 import { Activity, Server } from '@lucide/vue'
 
 const { t } = useSite()
+const { user } = useUserSession()
+const canControl = computed(() => user.value?.permissions?.includes('server.control') ?? false)
 const { loaded, agents, detailed, error, forbidden } = useGameStatus<RailroaderAgent>('railroader')
 
 const SESSION_TEXT: Record<string, string> = {
@@ -17,7 +19,7 @@ const ready = computed(() => loaded.value && !error.value && agents.value.length
 
 <template>
   <PageBody>
-    <PageHeader title="Game status" description="How the Railroader server is running. For staff." />
+    <PageHeader title="Game status" description="How the Railroader server is running, and its controls. For staff." />
 
     <StatusMessages
       :forbidden="forbidden" :error="!!error" :loaded="loaded" :empty="!agents.length"
@@ -58,6 +60,7 @@ const ready = computed(() => loaded.value && !error.value && agents.value.length
                 v-if="agent.railroader.multiplayer && agent.railroader.api.sessionState === 'active'"
                 :code="agent.railroader.multiplayer.joinCode"
               />
+              <StatusDetail v-if="agent.railroader.players" label="Players">{{ agent.railroader.players.length }}</StatusDetail>
               <StatusDetail v-if="agent.railroader.api.gameMode" label="Game mode">{{ agent.railroader.api.gameMode }}</StatusDetail>
               <StatusDetail v-if="agent.railroader.api.gameVersion" label="Game version">{{ agent.railroader.api.gameVersion }}</StatusDetail>
             </template>
@@ -76,6 +79,7 @@ const ready = computed(() => loaded.value && !error.value && agents.value.length
           </template>
           <div v-else class="col-span-full text-sm text-muted-foreground">The Railroader game isn't running on this server.</div>
         </div>
+        <StatusServerControls v-if="canControl" :agent="agent" />
       </PageSection>
     </template>
   </PageBody>
