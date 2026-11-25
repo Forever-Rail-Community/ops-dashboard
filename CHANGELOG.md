@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.5.0...v0.5.1) (2026-11-25)
+
+
+### 🐛 Fixes
+
+* Brief command messages on Game status ([#57](https://github.com/Forever-Rail-Community/ops-dashboard/issues/57)) ([521eb93](https://github.com/Forever-Rail-Community/ops-dashboard/commit/521eb9376702651d412bcb5be49b134d77448ea7))
+
 ## [0.5.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.4.1...v0.5.0) (2026-11-25)
 
 
