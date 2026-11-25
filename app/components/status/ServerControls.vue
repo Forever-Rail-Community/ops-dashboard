@@ -2,13 +2,10 @@
 // Starting, saving and shutting down a Railroader server, and any other command its agent takes, with the latest
 // commands and their answers. Only for staff with "server.control"; the server's agent carries the commands out
 // (server/utils/serverCommands.ts). The list refreshes every few seconds while a command is unanswered.
-import { useTimeoutPoll } from '@vueuse/core'
 import { toast } from 'vue-sonner'
 
 const props = defineProps<{ agent: RailroaderAgent }>()
 
-const FAST_MS = 3_000
-const SLOW_MS = 15_000
 const COMMANDS = ['start', 'status', 'save', 'autosave', 'window show', 'window hide', 'shutdown', 'shutdown now', 'help']
 const STATE: Record<ServerCommandState, { label: string; class: string }> = {
   queued: { label: 'Waiting for the server', class: 'border-border bg-muted text-muted-foreground' },
@@ -19,12 +16,9 @@ const STATE: Record<ServerCommandState, { label: string; class: string }> = {
   error: { label: 'Failed', class: 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300' },
   expired: { label: 'Not picked up', class: 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300' }
 }
-const UNFINISHED: ServerCommandState[] = ['queued', 'sent', 'pending']
 
 const url = computed(() => `/api/servers/${props.agent.agentId}/commands`)
-const { data: commands, refresh } = await useFetch<ServerCommand[]>(url, { key: `commands-${props.agent.agentId}`, default: () => [] })
-const waiting = computed(() => commands.value.some((c) => UNFINISHED.includes(c.state)))
-const { resume } = useTimeoutPoll(refresh, () => (waiting.value ? FAST_MS : SLOW_MS), { immediate: true })
+const { commands, add } = await useCommandList(url, `commands-${props.agent.agentId}`)
 
 const running = computed(() => props.agent.railroader.process.status === 'online')
 const open = computed(() => running.value && props.agent.railroader.api?.sessionState === 'active')
@@ -42,9 +36,7 @@ const confirming = ref(false)
 async function send(command: string) {
   busy.value = true
   try {
-    const sent = await $fetch<ServerCommand>(url.value, { method: 'POST', body: { text: command } })
-    commands.value = [sent, ...commands.value]
-    resume()
+    add(await $fetch<ServerCommand>(url.value, { method: 'POST', body: { text: command } }))
   } catch (err) {
     toast.error('Not sent', { description: errorText(err) })
   } finally {
@@ -63,8 +55,6 @@ async function shutDown(save: boolean) {
   confirming.value = false
   await send(save ? 'shutdown' : 'shutdown now')
 }
-
-const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })
 </script>
 
 <template>
@@ -100,7 +90,7 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'nume
         </TableHeader>
         <TableBody>
           <TableRow v-for="c in commands" :key="c.id" class="align-top">
-            <TableCell class="whitespace-nowrap text-muted-foreground tabular-nums">{{ time(c.at) }}</TableCell>
+            <TableCell class="whitespace-nowrap text-muted-foreground tabular-nums">{{ commandTime(c.at) }}</TableCell>
             <TableCell class="whitespace-nowrap">{{ c.by }}</TableCell>
             <TableCell><code class="font-mono">{{ c.text }}</code></TableCell>
             <TableCell class="whitespace-normal">

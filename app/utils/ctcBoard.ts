@@ -32,6 +32,13 @@ export interface BoardHead {
   y: number
   dir: 1 | -1 // 1: points right
   intermediate: boolean
+  // A control point signal's control point, and the track it stands on: the town's main or siding (facing out of the
+  // town), or the line outside it (facing in). Clearing one on the main or siding lines the switch for it first; one
+  // facing in is cleared into the main or the siding.
+  cp?: string
+  track?: 'main' | 'siding' | 'out'
+  // The block a train waits in before this signal (for alerts).
+  approach?: string
   // The track a cleared signal sends a train onto: a block, or (into a town) whichever track the switch lines.
   routeTo?: string | { switch: string; normal: string; reverse?: string }
 }
@@ -150,6 +157,8 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
         const on = options[0] ?? { y: M, inner: false, d: 0 }
         const hx = outward === 0 ? at + dir * 14 : on.inner ? at - outward * (on.y === S ? BOARD.leg + 14 : 14) : at + outward * 14
         const headX = on.y === M && dir === 1 ? clearOfDiagonals(hx, Math.sign(hx - at) || dir) : hx
+        // A town track's end at this control point.
+        const end = (via: string[] | undefined) => (via?.length ? (side === 'left' ? via[0] : via.at(-1)) : undefined)
         // Leaving the town, a cleared head sends a train onto the block beyond; entering it, onto whichever track
         // the switch lines.
         const toward = outward === 0 ? (linkOut ? 1 : -1) : outward
@@ -157,10 +166,19 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
         if (dir === toward) routeTo = outBlock
         else if (outward !== 0) {
           const sw = cps.get(cpId)?.switches[0]
-          const end = (via: string[] | undefined) => (via?.length ? (side === 'left' ? via[0] : via.at(-1)) : undefined)
           if (sw) routeTo = { switch: sw, normal: end(town.main)!, reverse: end(town.sidings[0]) }
         }
-        board.heads.push({ signal: sigId, x: headX, y: on.y, dir, intermediate: false, routeTo })
+        // A head facing out of the town stands on the main or the siding (whichever is nearer); one facing into it
+        // stands on the line outside, even where it's drawn by the switch.
+        const leaving = outward !== 0 && dir === toward
+        const inner = leaving ? options.filter((o) => o.inner)[0] : undefined
+        const track: BoardHead['track'] = !inner ? 'out' : inner.y === S ? 'siding' : 'main'
+        // Where a train waits for this head: the end of the town track it stands on, the block outside the town, or
+        // (a lone control point) the block on the side it faces away from.
+        const approach = outward === 0
+          ? (dir === 1 ? linkIn?.via.at(-1) : linkOut?.via[0])
+          : track === 'out' ? outBlock : end(track === 'siding' ? town.sidings[0] : town.main)
+        board.heads.push({ signal: sigId, x: headX, y: on.y, dir, intermediate: false, routeTo, cp: cpId, track, approach })
       }
     }
 

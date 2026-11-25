@@ -5,6 +5,7 @@ export const PERMISSIONS = [
   { key: 'status.detail', label: 'See CPU, memory, process IDs, and server stats', group: 'Status' },
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
   { key: 'ctc.view', label: 'View the Railroader CTC board', group: 'CTC' },
+  { key: 'ctc.control', label: 'Clear signals and throw switches from the CTC board', group: 'CTC' },
   { key: 'multiplayer.joinCode', label: 'See the Railroader multiplayer join code', group: 'Status' },
   { key: 'server.control', label: 'Start, save and shut down the game server, and send it commands', group: 'Status' },
   { key: 'help.edit', label: 'Write and edit help center drafts', group: 'Help center' },
@@ -34,6 +35,6 @@ export interface RoleMapping {
 
 export const DEFAULT_ROLES: RoleDef[] = [
   { key: 'member', label: 'Member', permissions: ['overview.view', 'map.view', 'multiplayer.joinCode'] },
-  { key: 'dispatcher', label: 'Dispatcher', permissions: ['overview.view', 'map.view', 'ctc.view', 'multiplayer.joinCode'] },
+  { key: 'dispatcher', label: 'Dispatcher', permissions: ['overview.view', 'map.view', 'ctc.view', 'ctc.control', 'multiplayer.joinCode'] },
   { key: 'admin', label: 'Admin', permissions: [...ALL_PERMISSION_KEYS] }
 ]
