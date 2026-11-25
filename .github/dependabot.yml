@@ -1,0 +1,40 @@
+# Dependabot checks for newer versions of what this repository depends on, every Monday morning, and opens pull
+# requests for them. Alerts about known vulnerabilities don't wait for this: GitHub raises those as soon as an
+# advisory is published, and with "Dependabot security updates" on it opens a fix pull request straight away.
+#
+# Minor and patch updates come as one pull request per ecosystem; major updates each get their own, since those
+# can break things. Titles start "chore(deps):", so they're grouped under Maintenance in release notes and
+# don't trigger a release by themselves.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [dependencies, chore]
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # The versions of the GitHub Actions the workflows use.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [dependencies, chore]
+    groups:
+      actions:
+        patterns: ["*"]
