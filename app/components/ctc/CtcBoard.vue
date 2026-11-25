@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useResizeObserver } from '@vueuse/core'
 
-// A CTC board for one line (layout in app/utils/ctcBoard.ts), coloured by what the game reports right now: occupied
+// A CTC board for one line (layout in app/utils/ctcBoard.ts), colored by what the game reports right now: occupied
 // track red, track a dispatcher has routed through a control point green, signal heads by aspect, and each switch's
 // position, with a gap on the leg it isn't lined for. Read-only. A strip along the top shows the whole line; click
 // it to move the board there.
@@ -13,7 +13,7 @@ const props = defineProps<{
 }>()
 
 const OPEN = 13 // px gap at the points on the leg a switch isn't lined for
-const ASPECT_COLOUR: Record<SignalAspect, string> = {
+const ASPECT_COLOR: Record<SignalAspect, string> = {
   stop: '#ef4444', approach: '#facc15', divergingApproach: '#facc15', clear: '#22c55e', divergingClear: '#22c55e', restricting: '#f59e0b', unknown: '#737373'
 }
 const ASPECT_TEXT: Record<SignalAspect, string> = {
@@ -21,7 +21,7 @@ const ASPECT_TEXT: Record<SignalAspect, string> = {
 }
 
 const routed = computed(() => routedBlocks(props.board, props.aspects, props.thrown))
-const colourOf = (block: string) => (props.occupied[block] ? '#ef4444' : routed.value.has(block) ? '#22c55e' : '#525252')
+const colorOf = (block: string) => (props.occupied[block] ? '#ef4444' : routed.value.has(block) ? '#22c55e' : '#525252')
 const pointById = computed(() => new Map(props.board.points.map((p) => [p.id, p])))
 const thrownAt = (cp?: string) => {
   const sw = cp ? pointById.value.get(cp)?.switch : undefined
@@ -42,7 +42,7 @@ const pieces = computed(() =>
         y2 -= (y2 - y1) * t
       }
     }
-    return { ...p, x1, y1, x2, y2, colour: colourOf(p.block), title: `${p.block}${props.occupied[p.block] ? ', occupied' : routed.value.has(p.block) ? ', routed' : ''}` }
+    return { ...p, x1, y1, x2, y2, color: colorOf(p.block), title: `${p.block}${props.occupied[p.block] ? ', occupied' : routed.value.has(p.block) ? ', routed' : ''}` }
   })
 )
 // A switch lined reverse leaves the main open at its points.
@@ -52,7 +52,7 @@ const mainGaps = computed(() =>
 const switches = computed(() =>
   props.board.points.filter((p) => p.switch).map((p) => {
     const thrown = props.thrown[p.switch!]
-    return { ...p, letter: thrown === true ? 'R' : thrown === false ? 'N' : '?', colour: thrown === true ? '#f59e0b' : '#fafafa' }
+    return { ...p, letter: thrown === true ? 'R' : thrown === false ? 'N' : '?', color: thrown === true ? '#f59e0b' : '#fafafa' }
   })
 )
 const heads = computed(() =>
@@ -64,7 +64,7 @@ const heads = computed(() =>
     const back = h.x - d * BOARD.headBack * s
     // A mast, then an arrowhead pointing the way it faces.
     const path = `M${back} ${y - 5 * s} V${y + 5 * s} M${back} ${y} H${h.x - d * 2 * s} M${h.x - d * 2 * s} ${y - 5 * s} L${h.x + d * BOARD.headTip * s} ${y} L${h.x - d * 2 * s} ${y + 5 * s} Z`
-    return { key: h.signal, path, colour: ASPECT_COLOUR[aspect], title: `${h.signal}: ${ASPECT_TEXT[aspect]}` }
+    return { key: h.signal, path, color: ASPECT_COLOR[aspect], title: `${h.signal}: ${ASPECT_TEXT[aspect]}` }
   })
 )
 const labelWidth = (text: string) => text.length * 7.4 + 14
@@ -116,7 +116,7 @@ onMounted(syncView)
           <text :x="town.x" y="45" fill="#fafafa" font-size="15" font-weight="600" class="uppercase">{{ town.name }}</text>
         </g>
 
-        <line v-for="(p, k) in pieces" :key="`p${k}`" :x1="p.x1" :y1="p.y1" :x2="p.x2" :y2="p.y2" :stroke="p.colour" stroke-width="5">
+        <line v-for="(p, k) in pieces" :key="`p${k}`" :x1="p.x1" :y1="p.y1" :x2="p.x2" :y2="p.y2" :stroke="p.color" stroke-width="5">
           <title>{{ p.title }}</title>
         </line>
         <line v-for="(g, k) in mainGaps" :key="`g${k}`" :x1="g.x1" :y1="mainY" :x2="g.x2" :y2="mainY" stroke="#000" stroke-width="7" />
@@ -127,11 +127,11 @@ onMounted(syncView)
           <title>{{ p.id }}</title>
         </g>
         <g v-for="sw in switches" :key="`s${sw.id}`">
-          <rect :x="sw.x - 9" :y="mainY + 34" width="18" height="18" fill="none" :stroke="sw.colour" />
-          <text :x="sw.x" :y="mainY + 48" :fill="sw.colour" font-size="13" font-weight="600" text-anchor="middle">{{ sw.letter }}</text>
+          <rect :x="sw.x - 9" :y="mainY + 34" width="18" height="18" fill="none" :stroke="sw.color" />
+          <text :x="sw.x" :y="mainY + 48" :fill="sw.color" font-size="13" font-weight="600" text-anchor="middle">{{ sw.letter }}</text>
           <title>Switch {{ sw.switch }}: {{ sw.letter === 'R' ? 'reverse' : sw.letter === 'N' ? 'normal' : 'not reported' }}</title>
         </g>
-        <path v-for="h in heads" :key="h.key" :d="h.path" :stroke="h.colour" :fill="h.colour" stroke-width="1.6">
+        <path v-for="h in heads" :key="h.key" :d="h.path" :stroke="h.color" :fill="h.color" stroke-width="1.6">
           <title>{{ h.title }}</title>
         </path>
       </svg>

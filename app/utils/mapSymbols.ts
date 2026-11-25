@@ -35,7 +35,7 @@ const SIGNAL_SYMBOLS: Partial<Record<MapSymbol, SignalAspect>> = {
 // A signal, drawn the way railroad signal plans draw one: a foot at the edge of the track, a mast running along
 // the track the way its trains go, and a lamp at the end in its aspect's color, set in a ring like a signal's
 // target. Foot, mast and ring share the label color, so a signal reads as one glyph, unlike the round switch
-// markers. Shape adds to color: a bar across the lamp for stop, a hollow lamp for restricting (grey when not
+// markers. Shape adds to color: a bar across the lamp for stop, a hollow lamp for restricting (gray when not
 // reported). Diverging aspects look like their plain ones.
 export interface SignalPose {
   x: number // the foot, beside the track

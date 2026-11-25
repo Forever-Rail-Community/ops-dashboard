@@ -150,7 +150,7 @@ CARTO's light or dark style to match the theme) under the track.
 
 - **Setting it up:** get a free key at https://carto.com/basemaps/apikey/ (free for non-commercial use up to
   5 million tile requests a month), add it in Vercel as `NUXT_CARTO_KEY`, and redeploy. Without it the layer is
-  shown greyed out with a note.
+  shown grayed out with a note.
 - **How tiles are served:** the browser asks the dashboard's `/map-tiles/<style>/<z>/<x>/<y>` route, which fetches
   the tile from CARTO with the key and lets Vercel's CDN cache it for 30 days. The key stays on the server, and
   repeat views don't count against CARTO's limit. The route only serves tiles around the railroad.
