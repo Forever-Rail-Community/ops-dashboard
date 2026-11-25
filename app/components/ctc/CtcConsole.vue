@@ -97,7 +97,7 @@ function closeHelp() {
 
       <CtcBoard
         ref="boardRef" :board="board" :title="title" :aspects="live.signals.aspects" :occupied="live.signals.occupied" :thrown="live.switches"
-        :trains="trains" :selected-train="selected" :controllable="controllable" :alerts="alerts.map((a) => a.signal)"
+        :trains="trains" :selected-train="selected" :controllable="controllable"
         @command="(a) => commandsRef?.send(a)" @train="(id) => (selected = id)"
       />
     </div>
