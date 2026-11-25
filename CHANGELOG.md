@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.6.0...v0.7.0) (2026-11-25)
+
+
+### ✨ New features
+
+* CTC board in the agreed console style ([#61](https://github.com/Forever-Rail-Community/ops-dashboard/issues/61)) ([4ce4ef5](https://github.com/Forever-Rail-Community/ops-dashboard/commit/4ce4ef554e930d4b642a1aeffe1ada083f94e8a0))
+
 ## [0.6.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.5.1...v0.6.0) (2026-11-25)
 
 
