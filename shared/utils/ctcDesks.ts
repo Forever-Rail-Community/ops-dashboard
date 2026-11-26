@@ -8,6 +8,9 @@ export const DESK_NOTE_MAX = 1000
 export const DESK_NOTE_ITEMS_MAX = 20
 export const DESK_BEAT_SEC = 45 // how often an open board or Desks page says its dispatcher is still there
 export const DESK_AWAY_SEC = 120 // without one for this long, they're taken off their desk
+export const DESK_IDLE_CHOICES = [0, 10, 15, 30, 60] // minutes with no activity before being taken off; 0 is never
+export const DEFAULT_DESK_SETTINGS: CtcDeskSettings = { idleMinutes: 0 }
+export const deskSettings = (data: CtcDesksData | null | undefined, lineId: string) => data?.settings[lineId] ?? DEFAULT_DESK_SETTINGS
 
 export interface DeskSpan {
   desk: CtcDesk

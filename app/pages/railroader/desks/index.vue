@@ -59,7 +59,7 @@ const changes = computed(() => desks.value?.changes.filter((c) => c.lineId === l
       </div>
       <CtcDesks
         v-else :line="line" :board="board" :desks="lineDesks" :trains="trains" :aspects="live.signals.aspects" :thrown="live.switches"
-        :changes="changes" :can-take="can('ctc.control')" :can-edit="can('admin.lines')" :busy="busy"
+        :changes="changes" :settings="deskSettings(desks, line.id)" :can-take="can('ctc.control')" :can-edit="can('admin.lines')" :busy="busy"
         @take="take" @leave="leave" @watch="(id) => navigateTo(`/railroader/ctc?desk=${id}`)" @edit="navigateTo(`/railroader/desks/edit?line=${line.id}`)"
       />
     </template>

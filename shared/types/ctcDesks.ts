@@ -34,8 +34,14 @@ export interface CtcDeskChange {
   text: string
 }
 
+// A line's desk rules, set on Edit desks.
+export interface CtcDeskSettings {
+  idleMinutes: number // take a dispatcher off after this long with no activity on the site; 0 for never
+}
+
 export interface CtcDesksData {
   desks: CtcDesk[]
   changes: CtcDeskChange[] // the last day's, newest first
+  settings: Record<string, CtcDeskSettings> // by line id; a line not listed uses DEFAULT_DESK_SETTINGS
 }
 

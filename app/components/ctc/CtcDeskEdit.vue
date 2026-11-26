@@ -8,8 +8,8 @@ import { GripVertical } from '@lucide/vue'
 // The table is two lists side by side: the desks, in line order, and where each place on the line starts. Dragging a
 // desk (or moving it with the arrow keys on its handle) changes which stretch it works; the starts stay put. A start can
 // only move between its neighbors', so the line's order never changes underneath.
-const props = defineProps<{ line: CtcLine; board: Board; desks: CtcDesk[]; busy?: boolean }>()
-const emit = defineEmits<{ save: [desks: { id?: string; name: string; start: string }[]]; cancel: [] }>()
+const props = defineProps<{ line: CtcLine; board: Board; desks: CtcDesk[]; settings: CtcDeskSettings; busy?: boolean }>()
+const emit = defineEmits<{ save: [desks: { id?: string; name: string; start: string }[], settings: CtcDeskSettings]; cancel: [] }>()
 
 const MAX_DESKS = 12
 interface Desk { id?: string; key: string; name: string }
@@ -95,7 +95,11 @@ function passOver(k: number) {
   dragging.value = k
 }
 
-const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.name.trim(), start: starts.value[k]! })))
+// The line's rules. Select values are strings.
+const idle = ref(String(props.settings.idleMinutes))
+const idleLabel = (m: number) => (m ? `After ${m} minutes with no activity` : 'Never')
+
+const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.name.trim(), start: starts.value[k]! })), { idleMinutes: Number(idle.value) })
 </script>
 
 <template>
@@ -168,6 +172,26 @@ const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.n
             Saving takes {{ held.map((d) => d.holder!.name).join(' and ') }} off {{ held.map((d) => d.name).join(' and ') }}, which you've removed.
           </span>
         </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Rules</CardTitle>
+        <CardDescription>For every desk on the {{ line.name }}. Saved with the desks.</CardDescription>
+      </CardHeader>
+      <CardContent class="grid max-w-xl gap-2">
+        <Label for="desk-idle">Take a dispatcher off their desk</Label>
+        <Select v-model="idle">
+          <SelectTrigger id="desk-idle" class="w-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="m in DESK_IDLE_CHOICES" :key="m" :value="String(m)">{{ idleLabel(m) }}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p class="text-sm text-muted-foreground">
+          Activity is clicking, typing, scrolling or moving the mouse on any page of the Operations Center. Time spent in
+          the game doesn't count. Closing the Operations Center for 2 minutes always takes them off.
+        </p>
       </CardContent>
     </Card>
   </div>
