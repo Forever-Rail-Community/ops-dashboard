@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.7.0...v0.7.1) (2026-11-26)
+
+
+### 🐛 Fixes
+
+* CTC board Stop option, train tags and Bryson West's main signal ([#63](https://github.com/Forever-Rail-Community/ops-dashboard/issues/63)) ([af5620f](https://github.com/Forever-Rail-Community/ops-dashboard/commit/af5620fdb3ea72199890874d9ca6fae1c1cba3ec))
+
 ## [0.7.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.6.0...v0.7.0) (2026-11-25)
 
 
