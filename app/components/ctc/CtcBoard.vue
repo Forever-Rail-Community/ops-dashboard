@@ -77,7 +77,17 @@ const heads = computed(() =>
   })
 )
 const labelWidth = (text: string) => text.length * 7 + 14
-const trainWidth = (name: string) => name.length * 7.6 + 22
+const trainWidth = (name: string) => name.length * 7.6 + 24
+// Each train's tag, off the track as board E draws it: below the main or the line, above a siding. The border is red
+// while it's moving, gray when stopped, and blue when it's the one picked; with no symbols yet, names are light blue.
+const tags = computed(() =>
+  props.trains.map((t) => ({
+    ...t,
+    top: t.track === 'siding' ? t.y - BOARD.trainAbove : t.y + BOARD.trainBelow,
+    border: t.id === props.selectedTrain ? '#38bdf8' : t.speedMph >= 1 ? '#ef4444' : '#a3a3a3',
+    width: trainWidth(t.name)
+  }))
+)
 
 // The menu for the signal or switch clicked, just below it on the screen (fixed, so the board's scrolling area
 // doesn't cut it off). Scrolling closes it.
@@ -92,6 +102,8 @@ const cpName = (id: string) => pointById.value.get(id)?.name ?? id
 function openSignal(h: BoardHead, event: Event) {
   if (!canClick(h)) return
   const signal = h.signal
+  // Stop is only offered while one of the control point's signals is showing something other than stop.
+  const anyCleared = props.board.heads.some((x) => x.cp === h.cp && (props.aspects[x.signal] ?? 'stop') !== 'stop')
   // Facing out of the town: cleared from the track it stands on. Facing in, at a switch: cleared into either track.
   const clear: MenuItem[] = h.track === 'main' ? [{ label: 'Clear', action: { kind: 'clear', signal, setting: 'normal' } }]
     : h.track === 'siding' ? [{ label: 'Clear', action: { kind: 'clear', signal, setting: 'reverse' } }]
@@ -100,7 +112,8 @@ function openSignal(h: BoardHead, event: Event) {
       { label: 'Clear into the siding', action: { kind: 'clear', signal, setting: 'reverse' } }
     ]
     : [{ label: 'Clear', action: { kind: 'clear', signal } }]
-  menu.value = { ...below(event), title: `SIGNAL ${signal.toUpperCase()}`, items: [...clear, { label: `Stop ${cpName(h.cp!)}`, action: { kind: 'stop', cp: h.cp! } }] }
+  const stop: MenuItem[] = anyCleared ? [{ label: `Stop ${cpName(h.cp!)}`, action: { kind: 'stop', cp: h.cp! } }] : []
+  menu.value = { ...below(event), title: `SIGNAL ${signal.toUpperCase()}`, items: [...clear, ...stop] }
 }
 function openSwitch(p: BoardPoint, event: Event) {
   if (!props.controllable || !p.switch) return
@@ -212,13 +225,13 @@ onMounted(syncView)
         <title>{{ h.title }}</title>
       </g>
       <g
-        v-for="t in trains" :key="t.id" class="cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-400" role="button" tabindex="0"
-        :aria-label="`Train ${t.name}`" @click="emit('train', t.id)" @keydown.enter="emit('train', t.id)"
+        v-for="t in tags" :key="t.id" class="cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-300" role="button" tabindex="0"
+        :aria-label="`Train ${t.name}, ${t.speedMph >= 1 ? 'moving' : 'stopped'}`" @click="emit('train', t.id)" @keydown.enter="emit('train', t.id)"
       >
-        <rect :x="t.x - trainWidth(t.name) / 2" :y="t.y - 11" :width="trainWidth(t.name)" height="22" fill="#000" :stroke="t.id === selectedTrain ? '#fde047' : '#fafafa'" />
-        <text :x="t.x" :y="t.y + 5" :fill="t.id === selectedTrain ? '#fde047' : '#fafafa'" font-size="15" font-weight="700" text-anchor="middle" letter-spacing=".04em">
-          {{ t.right ? '' : '◀ ' }}{{ t.name }}{{ t.right ? ' ▶' : '' }}
-        </text>
+        <rect :x="t.x - t.width / 2" :y="t.top" :width="t.width" height="22" fill="#000" :stroke="t.border" />
+        <path v-if="!t.right" :d="`M${t.x - t.width / 2 + 13} ${t.top + 6} v10 l-7 -5 z`" fill="#7dd3fc" />
+        <path v-else :d="`M${t.x + t.width / 2 - 13} ${t.top + 6} v10 l7 -5 z`" fill="#7dd3fc" />
+        <text :x="t.x + (t.right ? -4 : 4)" :y="t.top + 16" fill="#7dd3fc" font-size="15" font-weight="700" text-anchor="middle" letter-spacing=".04em">{{ t.name }}</text>
       </g>
     </svg>
     <div
