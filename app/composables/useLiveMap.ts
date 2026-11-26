@@ -3,7 +3,7 @@ import type { Ref } from 'vue'
 
 // What moves on the Railroader map (trains, switch positions, cars at industries, signals), refreshed every
 // 5 seconds while the page is visible. Trains are placed on the track as the map draws it. The signal layout is
-// fetched only when its version changes.
+// fetched only when its version changes, and kept between pages.
 const REFRESH_MS = 5_000
 
 export function useLiveMap(map: Ref<MapData | null | undefined>) {
@@ -20,17 +20,22 @@ export function useLiveMap(map: Ref<MapData | null | undefined>) {
     }
   })
 
-  const signalLayout = ref<RailroaderSignalLayout | null>(null)
+  // Kept for the whole visit, so moving between the map, the CTC board and the Desks page shows it at once instead of
+  // waiting for the next refresh.
+  const signalLayout = useState<RailroaderSignalLayout | null>('signal-layout', () => null)
+  const layoutVersion = useState<number | null>('signal-layout-version', () => null)
   watch(
     () => data.value?.signalLayoutVersion,
     async (version) => {
-      if (!version) return
+      if (!version || version === layoutVersion.value) return
       try {
         signalLayout.value = await $fetch<RailroaderSignalLayout>(`/api/railroader/signal-layout?v=${version}`)
+        layoutVersion.value = version
       } catch {
-        // Keep the last layout; the next version change tries again.
+        // Keep the last layout; the next refresh tries again.
       }
-    }
+    },
+    { immediate: true }
   )
 
   const live = computed<LiveMapData>(() => {

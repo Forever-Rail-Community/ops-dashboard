@@ -7,7 +7,7 @@ definePageMeta({ title: 'Desks' })
 const { user } = useUserSession()
 const can = (p: string) => user.value?.permissions?.includes(p) ?? false
 
-const { data: lines, error } = useFetch<CtcLine[]>('/api/railroader/ctc/lines', { server: false, lazy: true })
+const { lines, error } = useCtcLines()
 const forbidden = computed(() => error.value?.statusCode === 403)
 const { data: desks, busy, take, leave } = useDesks()
 const { live } = useLiveMap(ref(null))

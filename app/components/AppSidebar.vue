@@ -10,6 +10,7 @@ const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith
 const canEditHelp = computed(() => user.value?.permissions?.includes('help.edit') ?? false)
 const canPostUpdates = computed(() => user.value?.permissions?.includes('updates.post') ?? false)
 const features = computed(() => (current.value ? visibleFeatures(current.value, user.value?.permissions) : []))
+const entries = computed(() => sidebarEntries(features.value))
 </script>
 
 <template>
@@ -62,13 +63,32 @@ const features = computed(() => (current.value ? visibleFeatures(current.value, 
         <SidebarGroupLabel>{{ current.name }}</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            <SidebarMenuItem v-for="feature in features" :key="feature.to">
-              <SidebarMenuButton as-child :is-active="route.path === feature.to" :tooltip="labelOf(feature)">
-                <NuxtLink :to="feature.to">
-                  <component :is="feature.icon" />
-                  <span>{{ labelOf(feature) }}</span>
+            <SidebarMenuItem v-for="entry in entries" :key="'feature' in entry ? entry.feature.to : entry.section.label">
+              <SidebarMenuButton v-if="'feature' in entry" as-child :is-active="route.path === entry.feature.to" :tooltip="labelOf(entry.feature)">
+                <NuxtLink :to="entry.feature.to">
+                  <component :is="entry.feature.icon" />
+                  <span>{{ labelOf(entry.feature) }}</span>
                 </NuxtLink>
               </SidebarMenuButton>
+              <template v-else>
+                <!-- A section: its heading opens its first page (the only way in while the sidebar is icons only). -->
+                <SidebarMenuButton as-child :tooltip="entry.section.label">
+                  <NuxtLink :to="entry.features[0]!.to">
+                    <component :is="entry.section.icon" />
+                    <span>{{ entry.section.label }}</span>
+                  </NuxtLink>
+                </SidebarMenuButton>
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem v-for="feature in entry.features" :key="feature.to">
+                    <SidebarMenuSubButton as-child :is-active="route.path === feature.to">
+                      <NuxtLink :to="feature.to">
+                        <component :is="feature.icon" />
+                        <span>{{ labelOf(feature) }}</span>
+                      </NuxtLink>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </template>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>
