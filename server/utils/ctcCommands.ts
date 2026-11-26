@@ -3,15 +3,14 @@
 
 export const CTC_PREFIX = 'ctc '
 
-export async function ctcServerFor(action: CtcAction): Promise<RegisteredAgent> {
+// The game server whose layout has the action's control point, and that control point.
+export async function ctcServerFor(action: CtcAction): Promise<{ agent: RegisteredAgent; cp: string }> {
   const reports = await latestReports<RailroaderSignalLayout>('railroader', 'signallayout', Infinity)
-  const found = reports.find(({ stored }) =>
-    action.kind === 'clear'
-      ? stored.data.controlPoints?.some((cp) => cp.signals.includes(action.signal))
-      : stored.data.controlPoints?.some((cp) => cp.id === action.cp)
-  )
-  if (!found) throw createError({ statusCode: 404, statusMessage: 'No game server has that control point.' })
-  return { id: found.stored.agentId, game: 'railroader' }
+  for (const { stored } of reports) {
+    const cp = stored.data.controlPoints?.find((c) => (action.kind === 'clear' ? c.signals.includes(action.signal) : c.id === action.cp))
+    if (cp) return { agent: { id: stored.agentId, game: 'railroader' }, cp: cp.id }
+  }
+  throw createError({ statusCode: 404, statusMessage: 'No game server has that control point.' })
 }
 
 // The CTC board's latest commands across Railroader servers, newest first.

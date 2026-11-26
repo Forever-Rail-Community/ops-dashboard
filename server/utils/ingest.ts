@@ -53,6 +53,9 @@ export async function acceptReport(agent: RegisteredAgent, body: unknown) {
   // Tells the agent whether to send at full pace (agents older than 0.11 ignore it and always do), and hands it any
   // commands staff have sent (agents older than 0.16 ignore them). Staff sending commands have the Game status page
   // open, which counts as watching, so only then is there anything to look for.
+  // Railroader reports are also the clock for taking away dispatchers off their desks (server/utils/ctcDesks.ts), so
+  // Discord hears soon after even with nobody's page open. It never stops a report being accepted.
+  if (agent.game === 'railroader') await releaseAwayDispatchers().catch((err) => console.error('Desk check failed', err))
   const watching = await isWatched(agent.game)
   const commands = watching ? await takeCommands(agent) : []
   return { server: agent.id, game: agent.game, accepted, skipped, watching, ...(commands.length ? { commands } : {}) }
