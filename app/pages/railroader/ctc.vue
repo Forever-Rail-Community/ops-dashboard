@@ -7,7 +7,7 @@ const { user } = useUserSession()
 const canSetUp = computed(() => user.value?.permissions?.includes('admin.lines') ?? false)
 const canControl = computed(() => user.value?.permissions?.includes('ctc.control') ?? false)
 
-const { data: lines, error } = useFetch<CtcLine[]>('/api/railroader/ctc/lines', { server: false, lazy: true })
+const { lines, error } = useCtcLines()
 const forbidden = computed(() => error.value?.statusCode === 403)
 // The same live data the map shows (refreshed every 5 seconds while the page is open), so a board costs nothing extra.
 const { live, response, error: liveError } = useLiveMap(ref(null))
@@ -52,7 +52,7 @@ const linkOk = computed(() => !liveError.value && response.value?.signalsAge.age
         :dispatcher="user?.name ?? ''" :user-id="user?.id ?? ''" :controllable="canControl" :desks="desks?.desks ?? []" :focus="focus"
         @line="(id) => (chosen = id)"
       />
-      <p v-else-if="response && !layout" class="text-sm text-muted-foreground">Waiting for the game server's signal layout. It's sent when the game loads a save, and every 10 minutes.</p>
+      <p v-else-if="response && !response.signalLayoutVersion" class="text-sm text-muted-foreground">Waiting for the game server's signal layout. It's sent when the game loads a save, and every 10 minutes.</p>
       <p v-else-if="layout && !layout.controlPoints.length" class="text-sm text-muted-foreground">
         The game server's layout has no control points. Update the agent to 0.15 and the host mod to 0.7.0 or later.
       </p>

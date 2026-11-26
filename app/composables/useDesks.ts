@@ -6,7 +6,10 @@ import { toast } from 'vue-sonner'
 // through here, so each page shows the result straight away.
 export function useDesks() {
   const { user } = useUserSession()
-  const { data, error, refresh } = useFetch<CtcDesksData>('/api/railroader/ctc/desks', { server: false, lazy: true, key: 'ctc-desks' })
+  // Kept for the whole visit, like the lines, so pages show the desks at once while a fresh copy loads.
+  const data = useState<CtcDesksData | null>('ctc-desks', () => null)
+  const { data: fresh, error, refresh } = useFetch<CtcDesksData>('/api/railroader/ctc/desks', { server: false, lazy: true })
+  watch(fresh, (value) => { if (value) data.value = value }, { immediate: true })
   const busy = ref(false)
   const onDesk = computed(() => data.value?.desks.some((d) => d.holder?.userId === user.value?.id) ?? false)
 

@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { CircleAlert } from '@lucide/vue'
 
-// Edit desks (board H), for staff who set up the CTC board's lines.
+// Edit desks (board H), for staff who set up the CTC board's lines (the route guard sends anyone else away).
 definePageMeta({ title: 'Edit desks' })
 
-const { user } = useUserSession()
-const allowed = computed(() => user.value?.permissions?.includes('admin.lines') ?? false)
-const { data: lines, error } = useFetch<CtcLine[]>('/api/railroader/ctc/lines', { server: false, lazy: true })
+const { lines, error } = useCtcLines()
 const { data: desks, busy, save } = useDesks()
 const { live } = useLiveMap(ref(null))
 
@@ -21,12 +19,7 @@ async function saved(list: { id?: string; name: string; start: string }[]) {
 
 <template>
   <PageBody>
-    <Alert v-if="!allowed">
-      <CircleAlert />
-      <AlertTitle>Your role can't edit desks</AlertTitle>
-      <AlertDescription>Editing desks needs the "Set up the CTC board's lines" permission.</AlertDescription>
-    </Alert>
-    <Alert v-else-if="error" variant="destructive">
+    <Alert v-if="error" variant="destructive">
       <CircleAlert />
       <AlertTitle>Can't load the lines</AlertTitle>
       <AlertDescription>Refresh the page. If it keeps happening, tell an admin.</AlertDescription>
