@@ -1,8 +1,9 @@
 import type { TransactionSql } from 'postgres'
 
 // Desks (shared/types/ctcDesks.ts): saved in the database, which changes only when someone takes, leaves or edits a
-// desk, and read through remember() so open boards don't keep Neon awake. Whether a dispatcher is still at the board
-// is a Redis key per dispatcher, written by their open board or Desks page every DESK_BEAT_SEC (one command each).
+// desk, and read through remember() so open boards don't keep Neon awake. The copy is read from Redis every time (no
+// memory copy), so a desk taken through one server instance shows at once on the others. Whether a dispatcher is still at the board
+// is a Redis key per dispatcher, written by any open page of the site every DESK_BEAT_SEC (app/composables/useDeskBeat.ts).
 // Someone gone for DESK_AWAY_SEC is taken off their desk, and Discord is told; that's checked when desks are read and
 // as game servers report, at most every CHECK_EVERY_MS per server instance.
 
@@ -41,7 +42,7 @@ export const listDesks = () =>
       })),
       changes: changes.map((c) => ({ lineId: c.line_id, at: c.at.toISOString(), text: c.text }))
     }
-  })
+  }, { memory: false })
 
 // Runs a change and records it in the Desk changes list, then drops the remembered copy.
 async function change(lineId: string, text: string, run: (tx: TransactionSql) => Promise<unknown>) {
@@ -114,10 +115,10 @@ export async function releaseAwayDispatchers() {
     const at = await storage.getItem<number>(beatKey(desk.holder!.userId))
     if (typeof at === 'number' && Date.now() - at < DESK_AWAY_SEC * 1000) continue
     const line = lines.find((l) => l.id === desk.lineId)?.name ?? 'the line'
-    await release(desk, `${desk.holder!.name} was taken off ${desk.name}, away from the board for 2 minutes`, null)
+    await release(desk, `${desk.holder!.name} was taken off ${desk.name}, with the Operations Center closed for 2 minutes`, null)
     await discordPost('staff', {
       title: `${desk.name} on the ${line} is open`,
-      description: `${desk.holder!.name} has been away from the CTC board for 2 minutes. It's worked from the game's own CTC panel until someone takes it.`,
+      description: `${desk.holder!.name} has had the Operations Center closed for 2 minutes. It's worked from the game's own CTC panel until someone takes it.`,
       color: await brandColor()
     })
   }

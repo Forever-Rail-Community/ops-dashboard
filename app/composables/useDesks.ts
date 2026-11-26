@@ -1,32 +1,25 @@
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 import { toast } from 'vue-sonner'
 
-// The CTC desks (shared/types/ctcDesks.ts) for the board and the Desks page: re-read every DESK_BEAT_SEC while the
-// page is visible, which is also when a dispatcher on a desk says they're still there. Taking, leaving and editing go
-// through here, so each page shows the result straight away.
+// The CTC desks (shared/types/ctcDesks.ts) for the board and the Desks pages: re-read every DESK_BEAT_SEC while the
+// page is visible. Taking, leaving and editing go through here, so each page shows the result straight away. (Saying
+// a dispatcher is still here is the app's job: useDeskBeat.)
 export function useDesks() {
-  const { user } = useUserSession()
   // Kept for the whole visit, like the lines, so pages show the desks at once while a fresh copy loads.
   const data = useState<CtcDesksData | null>('ctc-desks', () => null)
   const { data: fresh, error, refresh } = useFetch<CtcDesksData>('/api/railroader/ctc/desks', { server: false, lazy: true })
   watch(fresh, (value) => { if (value) data.value = value }, { immediate: true })
   const busy = ref(false)
-  const onDesk = computed(() => data.value?.desks.some((d) => d.holder?.userId === user.value?.id) ?? false)
 
-  async function tick() {
-    if (onDesk.value) await $fetch('/api/railroader/ctc/desks/beat', { method: 'POST' }).catch(() => {})
-    await refresh()
-  }
-  const { pause, resume } = useIntervalFn(tick, DESK_BEAT_SEC * 1000)
+  const { pause, resume } = useIntervalFn(refresh, DESK_BEAT_SEC * 1000)
   const visibility = useDocumentVisibility()
-  watch(visibility, (state) => (state === 'visible' ? (tick(), resume()) : pause()))
-  // A desk just taken counts as there at once.
-  watch(onDesk, (now, before) => { if (now && !before) tick() })
+  watch(visibility, (state) => (state === 'visible' ? (refresh(), resume()) : pause()))
 
   async function act(method: 'POST' | 'PUT', url: string, words: { done: string; failed: string }, body?: object) {
     busy.value = true
     try {
-      data.value = await $fetch<CtcDesksData>(url, { method, body })
+      // The fetch's own copy too: another page's useFetch starts from it, and an older one would undo the change.
+      data.value = fresh.value = await $fetch<CtcDesksData>(url, { method, body })
       toast.success(words.done)
       return true
     } catch (err: any) {

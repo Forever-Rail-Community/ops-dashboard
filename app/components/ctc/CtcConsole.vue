@@ -34,6 +34,8 @@ const mine = computed(() => desks.value.filter((d) => d.mine))
 const controls = computed(() =>
   !props.controllable ? [] : spans.value.length ? mine.value.flatMap((d) => d.span.controlPoints) : props.layout.controlPoints.map((cp) => cp.id))
 const working = computed(() => controls.value.length > 0)
+// On a desk, the board keeps to it, unless they came to watch another (Watch on the Desks page).
+const onlyMine = computed(() => mine.value.length > 0 && (desks.value.find((d) => d.id === props.focus)?.mine ?? true))
 const neighbors = computed(() => incoming(board.value, desks.value, trains.value))
 // Alerts, worked out on each refresh; `since` remembers when each train was first seen at its signal.
 const since = new Map<string, number>()
@@ -119,7 +121,7 @@ function closeHelp() {
 
       <CtcBoard
         ref="boardRef" :board="board" :title="title" :aspects="live.signals.aspects" :occupied="live.signals.occupied" :thrown="live.switches"
-        :trains="trains" :selected-train="selected" :controls="controls" :alerts="alerts.map((a) => a.signal)" :desks="desks"
+        :trains="trains" :selected-train="selected" :controls="controls" :alerts="alerts.map((a) => a.signal)" :desks="desks" :only-mine="onlyMine"
         @command="(a) => commandsRef?.send(a)" @train="(id) => (selected = id)"
       />
     </div>

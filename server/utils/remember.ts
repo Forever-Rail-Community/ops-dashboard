@@ -6,13 +6,15 @@
 //   memory (up to MEMORY_TTL_MS old) -> Redis -> the database, which then fills Redis.
 // Whatever changes the data calls forget(name): the Redis copy goes at once, other instances' memory within a minute.
 // Copies are kept per deploy, so a migration that changes the data is picked up straight away.
+// Something people watch change as it happens (who's on a desk) skips the memory copy, so every instance sees a
+// change at once: { memory: false } reads Redis each time.
 
 const MEMORY_TTL_MS = 60_000
 const inMemory = new Map<string, { value: unknown; until: number }>()
 const redisKey = (name: string) => `copy:${useRuntimeConfig().public.appCommit || 'dev'}:${name}`
 
-export async function remember<T extends object>(name: string, load: () => Promise<T>): Promise<T> {
-  const hit = inMemory.get(name)
+export async function remember<T extends object>(name: string, load: () => Promise<T>, { memory = true } = {}): Promise<T> {
+  const hit = memory ? inMemory.get(name) : undefined
   if (hit && hit.until > Date.now()) return hit.value as T
   const storage = useStorage('data')
   let value = await storage.getItem<T>(redisKey(name))
@@ -20,7 +22,7 @@ export async function remember<T extends object>(name: string, load: () => Promi
     value = await load()
     await storage.setItem(redisKey(name), value)
   }
-  inMemory.set(name, { value, until: Date.now() + MEMORY_TTL_MS })
+  if (memory) inMemory.set(name, { value, until: Date.now() + MEMORY_TTL_MS })
   return value
 }
 

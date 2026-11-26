@@ -121,7 +121,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
             <li>One dispatcher per desk. Anyone can watch.</li>
             <li>The CTC board works only the desk you're on. Open desks are worked from the game's own CTC panel.</li>
             <li>Leaving, you write a turnover note. The next dispatcher reads it before taking the desk.</li>
-            <li>With no CTC board or Desks page open for 2 minutes, you're taken off your desk, and Discord is told.</li>
+            <li>With the Operations Center closed for 2 minutes, you're taken off your desk, and Discord is told.</li>
             <li>The board shows what's heading your way from the desks either side.</li>
           </ul>
         </CardContent>

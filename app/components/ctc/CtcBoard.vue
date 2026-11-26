@@ -7,7 +7,8 @@ import { onKeyStroke, useEventListener, useResizeObserver } from '@vueuse/core'
 // heads by aspect, each switch's position with a gap on the leg it isn't lined for, and trains as tags on their track
 // (click one for its train sheet). At the control points in `controls`, clicking a signal offers Clear and Stop, and
 // clicking a switch offers lining it normal or reverse; the choice is emitted as a command. Signals in `alerts` are
-// ringed. With `desks`, the strip shows who's on each desk, and the board dims the ones that aren't yours.
+// ringed. With `desks`, the strip shows who's on each desk, and the board dims the ones that aren't yours. With `onlyMine`,
+// the board scrolls only across your desks (and a little either side), and only their trains can be clicked.
 const props = defineProps<{
   board: Board
   title: string // the strip's heading, e.g. "MURPHY BRANCH, SYLVA to ANDREWS, 51 MI"
@@ -19,6 +20,7 @@ const props = defineProps<{
   controls?: string[] // control points this dispatcher can work
   alerts?: string[]
   desks?: BoardDesk[]
+  onlyMine?: boolean
 }>()
 const emit = defineEmits<{ command: [action: CtcAction]; train: [id: string] }>()
 
@@ -141,10 +143,18 @@ const scroller = ref<HTMLElement>()
 const view = reactive({ left: 0, width: 1 })
 const share = (x: number) => `${(x / props.board.width) * 100}%`
 const { height, main: mainY } = BOARD
+// The part of the board that scrolls: the whole line, or with onlyMine your desks and a little of the ones either side.
+const NEIGHBOR_PX = 160
+const mine = computed(() => (props.onlyMine ? (props.desks ?? []).filter((d) => d.mine) : []))
+const range = computed(() =>
+  mine.value.length
+    ? { lo: Math.max(0, Math.min(...mine.value.map((d) => d.x1)) - NEIGHBOR_PX), hi: Math.min(props.board.width, Math.max(...mine.value.map((d) => d.x2)) + NEIGHBOR_PX) }
+    : { lo: 0, hi: props.board.width })
+const pickable = (x: number) => !mine.value.length || mine.value.some((d) => x >= d.x1 && x < d.x2)
 function syncView() {
   const el = scroller.value
   if (!el) return
-  view.left = el.scrollLeft / props.board.width
+  view.left = (el.scrollLeft + range.value.lo) / props.board.width
   view.width = Math.min(1, el.clientWidth / props.board.width)
 }
 function jump(event: MouseEvent) {
@@ -152,12 +162,12 @@ function jump(event: MouseEvent) {
   const strip = event.currentTarget as HTMLElement
   if (!el) return
   const r = strip.getBoundingClientRect()
-  el.scrollTo({ left: ((event.clientX - r.left) / r.width) * props.board.width - el.clientWidth / 2, behavior: 'smooth' })
+  el.scrollTo({ left: ((event.clientX - r.left) / r.width) * props.board.width - range.value.lo - el.clientWidth / 2, behavior: 'smooth' })
 }
 // Scrolls the board so board position x is in the middle (an alert's Show).
 function show(x: number) {
   const el = scroller.value
-  if (el) el.scrollTo({ left: x - el.clientWidth / 2, behavior: 'smooth' })
+  if (el) el.scrollTo({ left: x - range.value.lo - el.clientWidth / 2, behavior: 'smooth' })
 }
 defineExpose({ show })
 useResizeObserver(scroller, syncView)
@@ -194,10 +204,10 @@ onMounted(syncView)
   </section>
 
   <section ref="scroller" aria-label="Track display" class="relative overflow-x-auto" @scroll.passive="syncView">
-    <svg :width="board.width" :height="height" :viewBox="`0 0 ${board.width} ${height}`" class="block" role="img" :aria-label="`CTC board, ${board.towns[0]?.name} to ${board.towns.at(-1)?.name}`">
+    <svg :width="range.hi - range.lo" :height="height" :viewBox="`${range.lo} 0 ${range.hi - range.lo} ${height}`" class="block" role="img" :aria-label="`CTC board, ${board.towns[0]?.name} to ${board.towns.at(-1)?.name}`">
       <template v-for="d in desks" :key="`d${d.id}`">
         <line v-if="d.x1 > 0" :x1="d.x1" y1="0" :x2="d.x1" :y2="height" stroke="#525252" stroke-dasharray="4 4" />
-        <text :x="d.x1 + 8" y="16" :fill="d.mine ? '#7dd3fc' : '#737373'" font-size="13" font-weight="700" class="uppercase">
+        <text :x="d.x1 + 8" :y="height - 8" :fill="d.mine ? '#7dd3fc' : '#737373'" font-size="13" font-weight="700" class="uppercase">
           {{ d.name }}, {{ d.mine ? 'YOU' : d.holder ?? 'OPEN' }}
         </text>
       </template>
@@ -242,8 +252,10 @@ onMounted(syncView)
         <title>{{ h.title }}</title>
       </g>
       <g
-        v-for="t in tags" :key="t.id" class="cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-300" role="button" tabindex="0"
-        :aria-label="`Train ${t.name}, ${t.speedMph >= 1 ? 'moving' : 'stopped'}`" @click="emit('train', t.id)" @keydown.enter="emit('train', t.id)"
+        v-for="t in tags" :key="t.id" :class="pickable(t.x) ? 'cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-300' : 'opacity-60'"
+        :role="pickable(t.x) ? 'button' : undefined" :tabindex="pickable(t.x) ? 0 : undefined"
+        :aria-label="`Train ${t.name}, ${t.speedMph >= 1 ? 'moving' : 'stopped'}`"
+        @click="pickable(t.x) && emit('train', t.id)" @keydown.enter="pickable(t.x) && emit('train', t.id)"
       >
         <rect :x="t.x - t.width / 2" :y="t.top" :width="t.width" height="22" fill="#000" :stroke="t.border" />
         <path v-if="!t.right" :d="`M${t.x - t.width / 2 + 13} ${t.top + 6} v10 l-7 -5 z`" fill="#7dd3fc" />

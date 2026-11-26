@@ -87,10 +87,12 @@ function move(from: number, to: number) {
   const [desk] = desks.value.splice(from, 1)
   desks.value.splice(to, 0, desk!)
 }
+// While dragging, the desks make room as the dragged one passes over them, so where it'll land is always shown.
 const dragging = ref<number | null>(null)
-function drop(k: number) {
-  if (dragging.value !== null) move(dragging.value, k)
-  dragging.value = null
+function passOver(k: number) {
+  if (dragging.value === null || dragging.value === k) return
+  move(dragging.value, k)
+  dragging.value = k
 }
 
 const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.name.trim(), start: starts.value[k]! })))
@@ -124,10 +126,10 @@ const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.n
           <TableHeader>
             <TableRow><TableHead class="w-10" /><TableHead class="w-56">Name</TableHead><TableHead class="w-80">Starts at</TableHead><TableHead>Covers</TableHead><TableHead class="w-24" /></TableRow>
           </TableHeader>
-          <TableBody>
+          <TransitionGroup tag="tbody" data-slot="table-body" class="[&_tr:last-child]:border-0" move-class="transition-transform duration-150 motion-reduce:transition-none">
             <TableRow
-              v-for="(d, k) in desks" :key="d.key" :class="dragging === k ? 'opacity-50' : ''"
-              @dragover.prevent @drop.prevent="drop(k)"
+              v-for="(d, k) in desks" :key="d.key" :class="dragging === k ? 'bg-accent outline-2 -outline-offset-2 outline-ring' : ''"
+              @dragenter.prevent="passOver(k)" @dragover.prevent @drop.prevent="dragging = null"
             >
               <TableCell>
                 <button
@@ -157,7 +159,7 @@ const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.n
                 <Button v-if="desks.length > 1" variant="ghost" size="sm" @click="remove(k)">Remove</Button>
               </TableCell>
             </TableRow>
-          </TableBody>
+          </TransitionGroup>
         </Table>
         <div class="flex flex-wrap items-center gap-3">
           <Button variant="secondary" :disabled="desks.length >= MAX_DESKS || desks.length >= order.length" @click="add">Add a desk</Button>
