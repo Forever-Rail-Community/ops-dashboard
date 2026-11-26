@@ -1,5 +1,6 @@
-// Trains on the CTC board: where each one is drawn (on the piece of track whose block it's in, as far along as it
-// is through that block), which way it's going, where it is in words, and the next signal ahead of it.
+// Trains on the CTC board: which piece of track each one is on (the block it's in), which way it's going, where it is
+// in words, and the next signal ahead of it. The board draws its tag off the track, as board E does (CtcBoard.vue).
+// `x` is the middle of that block on the board; `at` is how far through the block it is, for the next signal.
 
 const NEAR_BLOCK_M = 25 // a train no farther than this from a block's track can be in it
 const TRAIN_PIECES: BoardPiece['kind'][] = ['main', 'siding', 'link']
@@ -8,7 +9,7 @@ export interface BoardTrain {
   id: string
   name: string
   x: number
-  y: number
+  y: number // the track it's on
   right: boolean // heading left to right on the board
   speedMph: number
   cars: number
@@ -49,11 +50,12 @@ export function boardTrains(board: Board, layout: RailroaderSignalLayout, aspect
     const lo = Math.min(...along)
     const hi = Math.max(...along)
     const share = hi > lo ? Math.min(1, Math.max(0, (t.x * ax + t.z * az - lo) / (hi - lo))) : 0.5
-    const x = piece.x1 + share * (piece.x2 - piece.x1)
+    const at = piece.x1 + share * (piece.x2 - piece.x1)
+    const x = (piece.x1 + piece.x2) / 2
     const right = Math.sin((t.heading * Math.PI) / 180) * ax + Math.cos((t.heading * Math.PI) / 180) * az >= 0
     const ahead = board.heads
-      .filter((h) => (h.dir === 1) === right && (right ? h.x > x : h.x < x) && (h.y === piece.y1 || h.track === 'out' || h.intermediate))
-      .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0]
+      .filter((h) => (h.dir === 1) === right && (right ? h.x > at : h.x < at) && (h.y === piece.y1 || h.track === 'out' || h.intermediate))
+      .sort((a, b) => Math.abs(a.x - at) - Math.abs(b.x - at))[0]
     return [{
       id: t.id, name: t.name, x, y: piece.y1, right, speedMph: t.speedMph, cars: t.cars, place: piece.place,
       track: piece.kind === 'link' ? 'line' : piece.kind === 'siding' ? 'siding' : 'main',
