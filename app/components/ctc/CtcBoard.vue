@@ -5,8 +5,9 @@ import { onKeyStroke, useEventListener, useResizeObserver } from '@vueuse/core'
 // as a strip (trains as triangles, a box for the part in view; click it to move there), then the board, colored by what
 // the game reports right now: occupied track red, track a dispatcher has routed through a control point green, signal
 // heads by aspect, each switch's position with a gap on the leg it isn't lined for, and trains as tags on their track
-// (click one for its train sheet). With `controllable`, clicking a control point signal offers Clear and Stop, and
-// clicking a switch offers lining it normal or reverse; the choice is emitted as a command. Signals in `alerts` are ringed.
+// (click one for its train sheet). At the control points in `controls`, clicking a signal offers Clear and Stop, and
+// clicking a switch offers lining it normal or reverse; the choice is emitted as a command. Signals in `alerts` are
+// ringed. With `desks`, the strip shows who's on each desk, and the board dims the ones that aren't yours.
 const props = defineProps<{
   board: Board
   title: string // the strip's heading, e.g. "MURPHY BRANCH, SYLVA to ANDREWS, 51 MI"
@@ -15,8 +16,9 @@ const props = defineProps<{
   thrown: Record<string, boolean>
   trains: BoardTrain[]
   selectedTrain?: string
-  controllable?: boolean
+  controls?: string[] // control points this dispatcher can work
   alerts?: string[]
+  desks?: BoardDesk[]
 }>()
 const emit = defineEmits<{ command: [action: CtcAction]; train: [id: string] }>()
 
@@ -97,7 +99,9 @@ const below = (event: Event) => {
   const r = (event.currentTarget as Element).getBoundingClientRect()
   return { x: r.left, y: r.bottom + 4 }
 }
-const canClick = (h: BoardHead) => !!props.controllable && !h.intermediate && !!h.cp
+const controlled = computed(() => new Set(props.controls))
+const onDesk = computed(() => props.desks?.some((d) => d.mine) ?? false)
+const canClick = (h: BoardHead) => !h.intermediate && !!h.cp && controlled.value.has(h.cp)
 const cpName = (id: string) => pointById.value.get(id)?.name ?? id
 function openSignal(h: BoardHead, event: Event) {
   if (!canClick(h)) return
@@ -116,7 +120,7 @@ function openSignal(h: BoardHead, event: Event) {
   menu.value = { ...below(event), title: `SIGNAL ${signal.toUpperCase()}`, items: [...clear, ...stop] }
 }
 function openSwitch(p: BoardPoint, event: Event) {
-  if (!props.controllable || !p.switch) return
+  if (!p.switch || !controlled.value.has(p.id)) return
   menu.value = {
     ...below(event), title: `SWITCH AT ${p.name}`,
     items: [
@@ -180,10 +184,23 @@ onMounted(syncView)
       />
       <span class="pointer-events-none absolute top-[15px] h-5 border border-neutral-50" :style="{ left: `${view.left * 100}%`, width: `${view.width * 100}%` }" />
     </button>
+    <div v-if="desks?.length" class="relative mt-1 h-[22px]">
+      <span
+        v-for="d in desks" :key="d.id" class="absolute inset-y-0 truncate border-x border-[#050505] px-1.5 text-[13px]/[22px] uppercase"
+        :class="d.mine ? 'bg-sky-950 text-sky-200' : d.holder ? 'bg-neutral-800 text-neutral-200' : 'bg-neutral-900 text-neutral-500'"
+        :style="{ left: share(d.x1), width: share(d.x2 - d.x1) }" :title="`${d.name}: ${d.mine ? 'you' : d.holder ?? 'open'}`"
+      ><b class="font-semibold">{{ d.name }}</b> {{ d.mine ? 'YOU' : d.holder ?? 'OPEN' }}</span>
+    </div>
   </section>
 
   <section ref="scroller" aria-label="Track display" class="relative overflow-x-auto" @scroll.passive="syncView">
     <svg :width="board.width" :height="height" :viewBox="`0 0 ${board.width} ${height}`" class="block" role="img" :aria-label="`CTC board, ${board.towns[0]?.name} to ${board.towns.at(-1)?.name}`">
+      <template v-for="d in desks" :key="`d${d.id}`">
+        <line v-if="d.x1 > 0" :x1="d.x1" y1="0" :x2="d.x1" :y2="height" stroke="#525252" stroke-dasharray="4 4" />
+        <text :x="d.x1 + 8" y="16" :fill="d.mine ? '#7dd3fc' : '#737373'" font-size="13" font-weight="700" class="uppercase">
+          {{ d.name }}, {{ d.mine ? 'YOU' : d.holder ?? 'OPEN' }}
+        </text>
+      </template>
       <g v-for="town in board.towns" :key="town.name" text-anchor="middle">
         <text :x="town.x" y="22" fill="#a3a3a3" font-size="13">
           MP {{ town.milepost.toFixed(1) }}<title v-if="town.measured">Measured along the track from {{ board.towns[0]?.name }}</title>
@@ -203,8 +220,8 @@ onMounted(syncView)
       </g>
       <g
         v-for="sw in switches" :key="`s${sw.id}`"
-        :class="controllable ? 'cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-400' : ''"
-        :role="controllable ? 'button' : undefined" :tabindex="controllable ? 0 : undefined"
+        :class="controlled.has(sw.id) ? 'cursor-pointer outline-none [&:focus-visible>rect]:stroke-sky-400' : ''"
+        :role="controlled.has(sw.id) ? 'button' : undefined" :tabindex="controlled.has(sw.id) ? 0 : undefined"
         :aria-label="`Switch at ${sw.name}, ${sw.letter === 'R' ? 'reverse' : sw.letter === 'N' ? 'normal' : 'not reported'}`"
         @click="openSwitch(sw, $event)" @keydown.enter="openSwitch(sw, $event)"
       >
@@ -233,6 +250,9 @@ onMounted(syncView)
         <path v-else :d="`M${t.x + t.width / 2 - 13} ${t.top + 6} v10 l7 -5 z`" fill="#7dd3fc" />
         <text :x="t.x + (t.right ? -4 : 4)" :y="t.top + 16" fill="#7dd3fc" font-size="15" font-weight="700" text-anchor="middle" letter-spacing=".04em">{{ t.name }}</text>
       </g>
+      <template v-for="d in desks" :key="`dim${d.id}`">
+        <rect v-if="onDesk && !d.mine" :x="d.x1" y="24" :width="d.x2 - d.x1" :height="height - 24" fill="#000" opacity=".45" class="pointer-events-none" />
+      </template>
     </svg>
     <div
       v-if="menu" class="fixed z-50 min-w-[168px] border border-neutral-600 bg-[#111] shadow-[0_8px_24px_rgba(0,0,0,.8)]"

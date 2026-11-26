@@ -307,7 +307,30 @@ const STEPS: { name: string; sql: string }[] = [
   // The Game status page is for staff: dispatchers see the CTC board and the map instead.
   { name: 'dispatcher-no-status', sql: revokePermissions(['status.view', 'status.detail'], ['dispatcher']) },
   // Working the line from the CTC board: dispatchers and admins.
-  { name: 'grant-ctc-control', sql: grantPermission('ctc.control', ['dispatcher', 'admin']) }
+  { name: 'grant-ctc-control', sql: grantPermission('ctc.control', ['dispatcher', 'admin']) },
+  // Desks (server/utils/ctcDesks.ts): each line split into stretches, one dispatcher on each. The unique index keeps
+  // a dispatcher to one desk at a time.
+  {
+    name: 'ctc-desks',
+    sql: `CREATE TABLE IF NOT EXISTS ctc_desks (
+        id text PRIMARY KEY,
+        line_id text NOT NULL REFERENCES ctc_lines (id) ON DELETE CASCADE,
+        name text NOT NULL,
+        start text NOT NULL,
+        holder_id text,
+        holder_name text,
+        held_since timestamptz,
+        note jsonb
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS ctc_desks_holder ON ctc_desks (holder_id) WHERE holder_id IS NOT NULL;
+      CREATE TABLE IF NOT EXISTS ctc_desk_changes (
+        id bigserial PRIMARY KEY,
+        line_id text NOT NULL,
+        at timestamptz NOT NULL DEFAULT now(),
+        text text NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS ctc_desk_changes_at ON ctc_desk_changes (at DESC)`
+  }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,
