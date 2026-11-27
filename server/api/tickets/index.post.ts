@@ -2,5 +2,8 @@
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
   const input = parseNewTicket(await readBody(event), getRequestHeader(event, 'user-agent'))
-  return createTicket(input, user, getRequestURL(event).origin)
+  const origin = getRequestURL(event).origin
+  const ticket = await createTicket(input, user, origin)
+  syncTicketThreadLater(ticket.id, origin)
+  return ticket
 })

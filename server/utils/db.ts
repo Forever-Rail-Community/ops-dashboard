@@ -366,7 +366,18 @@ const STEPS: { name: string; sql: string }[] = [
       );
       CREATE INDEX IF NOT EXISTS ticket_events_ticket ON ticket_events (ticket_id, id)`
   },
-  { name: 'grant-tickets-manage', sql: grantPermission('tickets.manage', ['admin']) }
+  { name: 'grant-tickets-manage', sql: grantPermission('tickets.manage', ['admin']) },
+  // Discord threads for tickets (server/utils/ticketDiscord.ts): the thread, its status card, who the bot added as
+  // assignee, and whether it's archived. Each timeline entry posted there (or written there) keeps its message ID,
+  // so nothing is posted twice.
+  {
+    name: 'ticket-discord',
+    sql: `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS discord_thread_id text UNIQUE;
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS discord_card_id text;
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS discord_assignee_id text;
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS discord_archived boolean NOT NULL DEFAULT false;
+      ALTER TABLE ticket_events ADD COLUMN IF NOT EXISTS discord_message_id text UNIQUE`
+  }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

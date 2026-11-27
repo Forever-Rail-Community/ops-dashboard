@@ -6,5 +6,6 @@ export default defineEventHandler(async (event): Promise<Ticket> => {
   const { before, ticket } = await updateTicket(id, parseTicketChanges(await readBody(event)), user, staff)
   if (before.status !== ticket.status) await logEvent(user, 'ticket.status', { id, subject: ticket.subject, status: ticket.status })
   if (before.assignee?.id !== ticket.assignee?.id) await logEvent(user, 'ticket.assign', { id, subject: ticket.subject, assignee: ticket.assignee?.name ?? null })
+  syncTicketThreadLater(id, getRequestURL(event).origin)
   return ticket
 })

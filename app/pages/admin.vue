@@ -9,6 +9,7 @@ const tabs = computed(() =>
     can('admin.settings') && { value: 'appearance', label: 'Appearance' },
     can('admin.roles') && { value: 'access', label: 'Access' },
     can('admin.agents') && { value: 'servers', label: 'Servers' },
+    can('admin.settings') && { value: 'discord', label: 'Discord' },
     can('admin.lines') && { value: 'lines', label: 'CTC lines' },
     can('admin.activity') && { value: 'activity', label: 'Activity' }
   ].filter(Boolean) as { value: string; label: string }[]
@@ -31,6 +32,9 @@ const tabs = computed(() =>
       </TabsContent>
       <TabsContent v-if="can('admin.agents')" value="servers" class="pt-2">
         <AdminServers />
+      </TabsContent>
+      <TabsContent v-if="can('admin.settings')" value="discord" class="pt-2">
+        <AdminDiscord />
       </TabsContent>
       <TabsContent v-if="can('admin.lines')" value="lines" class="pt-2">
         <AdminCtcLines />

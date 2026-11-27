@@ -2,5 +2,7 @@
 export default defineEventHandler(async (event): Promise<Ticket> => {
   const { user } = await requireUserSession(event)
   const id = parseTicketId(getRouterParam(event, 'id'))
-  return addTicketMessage(id, parseMessage(await readBody(event)), user, await canManageTickets(user))
+  const ticket = await addTicketMessage(id, parseMessage(await readBody(event)), user, await canManageTickets(user))
+  syncTicketThreadLater(id, getRequestURL(event).origin)
+  return ticket
 })
