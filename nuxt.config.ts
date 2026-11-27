@@ -61,6 +61,15 @@ export default defineNuxtConfig({
       // (NUXT_DISCORD_STAFF_WEBHOOK).
       updatesWebhook: '',
       staffWebhook: '',
+      // The bot, for ticket threads (server/utils/ticketDiscord.ts). It's the sign-in application's bot: its token
+      // (Bot tab), its public key (General Information) for signed button and form events, and the channel whose
+      // private threads hold tickets. botSecret is shared with the always-on bot in bot/. Without them, tickets
+      // simply stay in the Operations Center.
+      botToken: '',
+      publicKey: '',
+      ticketsChannelId: '',
+      botSecret: '',
+      apiBase: 'https://discord.com/api/v10',
       // The three role-ID lists below are only used once, to fill in the starting Access settings.
       adminRoleIds: '',
       dispatcherRoleIds: '',

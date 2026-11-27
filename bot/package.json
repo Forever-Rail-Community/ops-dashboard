@@ -1,0 +1,9 @@
+{
+  "name": "operations-center-bot",
+  "private": true,
+  "type": "module",
+  "description": "Forwards messages typed in Discord ticket threads to the Operations Center.",
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node index.mjs" },
+  "dependencies": { "discord.js": "^14.16.3" }
+}

@@ -156,21 +156,26 @@ export async function getTicket(id: number, viewerId: string, staff: boolean): P
 
 type EventInput = { type: TicketEventType; body?: string; data?: EventRow['data'] }
 
-async function addEvent(sql: Query, ticketId: number, actor: Actor, staff: boolean, event: EventInput) {
+// Where something on a ticket was written. A Discord message keeps its ID, so it's never posted back to Discord.
+export type TicketSource = { via: 'Operations Center' | 'Discord'; discordMessageId?: string }
+const WEBSITE: TicketSource = { via: 'Operations Center' }
+
+async function addEvent(sql: Query, ticketId: number, actor: Actor, staff: boolean, event: EventInput, source: TicketSource = WEBSITE) {
   await sql`
-    INSERT INTO ticket_events (ticket_id, type, author_id, author_name, staff, body, data)
-    VALUES (${ticketId}, ${event.type}, ${actor.id}, ${actor.name}, ${staff}, ${event.body ?? ''}, ${sql.json((event.data ?? {}) as never)})`
+    INSERT INTO ticket_events (ticket_id, type, author_id, author_name, staff, body, data, via, discord_message_id)
+    VALUES (${ticketId}, ${event.type}, ${actor.id}, ${actor.name}, ${staff}, ${event.body ?? ''}, ${sql.json((event.data ?? {}) as never)},
+      ${source.via}, ${source.discordMessageId ?? null})`
 }
 
 // Sets the status, recording it on the timeline. No change, no event.
-async function setStatus(sql: Query, ticket: { id: number; status: TicketStatus }, status: TicketStatus, actor: Actor, staff: boolean) {
+async function setStatus(sql: Query, ticket: { id: number; status: TicketStatus }, status: TicketStatus, actor: Actor, staff: boolean, source: TicketSource = WEBSITE) {
   if (ticket.status === status) return
   await sql`UPDATE tickets SET status = ${status} WHERE id = ${ticket.id}`
-  await addEvent(sql, ticket.id, actor, staff, { type: 'status', data: { status } })
+  await addEvent(sql, ticket.id, actor, staff, { type: 'status', data: { status } }, { via: source.via })
   ticket.status = status
 }
 
-export async function createTicket(input: ReturnType<typeof parseNewTicket>, actor: Actor, origin: string): Promise<Ticket> {
+export async function createTicket(input: ReturnType<typeof parseNewTicket>, actor: Actor, origin: string, source: TicketSource = WEBSITE): Promise<Ticket> {
   const sql = await db()
   const id = await sql.begin(async (tx) => {
     const [{ today } = { today: 0 }] = await tx<{ today: number }[]>`
@@ -182,8 +187,8 @@ export async function createTicket(input: ReturnType<typeof parseNewTicket>, act
       INSERT INTO tickets (kind, game, subject, submitter_id, submitter_name, context)
       VALUES (${input.kind}, ${input.game}, ${input.subject}, ${actor.id}, ${actor.name}, ${tx.json(input.context as never)})
       RETURNING id`
-    await addEvent(tx , row!.id, actor, false, { type: 'opened' })
-    await addEvent(tx , row!.id, actor, false, { type: 'message', body: input.body })
+    await addEvent(tx, row!.id, actor, false, { type: 'opened' }, { via: source.via })
+    await addEvent(tx, row!.id, actor, false, { type: 'message', body: input.body }, { via: source.via })
     return row!.id
   })
   const kind = TICKET_KINDS.find((k) => k.value === input.kind)!.label
@@ -200,16 +205,16 @@ export async function createTicket(input: ReturnType<typeof parseNewTicket>, act
 
 // A message (or, for staff, an internal note). Replying moves the ticket along: the submitter's reply puts a waiting
 // or solved ticket back in progress, and staff's first reply takes an open ticket into progress.
-export async function addTicketMessage(id: number, input: ReturnType<typeof parseMessage>, actor: Actor, staff: boolean): Promise<Ticket> {
+export async function addTicketMessage(id: number, input: ReturnType<typeof parseMessage>, actor: Actor, staff: boolean, source: TicketSource = WEBSITE): Promise<Ticket> {
   if (input.note && !staff) throw createError({ statusCode: 403, statusMessage: 'Only staff can add internal notes' })
   const sql = await db()
   return sql.begin(async (tx) => {
     const ticket = await readTicket(tx, id, actor.id, staff)
     const asSubmitter = ticket.submitter.id === actor.id
-    await addEvent(tx, id, actor, staff && !asSubmitter, { type: input.note ? 'note' : 'message', body: input.body })
+    await addEvent(tx, id, actor, staff && !asSubmitter, { type: input.note ? 'note' : 'message', body: input.body }, source)
     if (!input.note) {
-      if (asSubmitter && (ticket.status === 'waiting' || ticket.status === 'solved')) await setStatus(tx, ticket, 'progress', actor, false)
-      else if (!asSubmitter && ticket.status === 'open') await setStatus(tx, ticket, 'progress', actor, true)
+      if (asSubmitter && (ticket.status === 'waiting' || ticket.status === 'solved')) await setStatus(tx, ticket, 'progress', actor, false, source)
+      else if (!asSubmitter && ticket.status === 'open') await setStatus(tx, ticket, 'progress', actor, true, source)
     }
     await tx`UPDATE tickets SET updated_at = now() WHERE id = ${id}`
     return readTicket(tx, id, actor.id, staff)
@@ -218,7 +223,7 @@ export async function addTicketMessage(id: number, input: ReturnType<typeof pars
 
 // Staff set the status and the assignee; assigning an open ticket also takes it into progress.
 // The submitter may only mark their own ticket solved.
-export async function updateTicket(id: number, changes: ReturnType<typeof parseTicketChanges>, actor: Actor, staff: boolean) {
+export async function updateTicket(id: number, changes: ReturnType<typeof parseTicketChanges>, actor: Actor, staff: boolean, source: TicketSource = WEBSITE) {
   const sql = await db()
   return sql.begin(async (tx) => {
     const before = await readTicket(tx, id, actor.id, staff)
@@ -228,10 +233,10 @@ export async function updateTicket(id: number, changes: ReturnType<typeof parseT
     const ticket = { id, status: before.status }
     if (changes.assignee !== undefined && changes.assignee?.id !== before.assignee?.id) {
       await tx`UPDATE tickets SET assignee_id = ${changes.assignee?.id ?? null}, assignee_name = ${changes.assignee?.name ?? null} WHERE id = ${id}`
-      await addEvent(tx, id, actor, true, { type: 'assigned', data: { assignee: changes.assignee } })
-      if (changes.assignee && changes.status === undefined && ticket.status === 'open') await setStatus(tx, ticket, 'progress', actor, true)
+      await addEvent(tx, id, actor, true, { type: 'assigned', data: { assignee: changes.assignee } }, { via: source.via })
+      if (changes.assignee && changes.status === undefined && ticket.status === 'open') await setStatus(tx, ticket, 'progress', actor, true, source)
     }
-    if (changes.status) await setStatus(tx, ticket, changes.status, actor, staff && !before.mine)
+    if (changes.status) await setStatus(tx, ticket, changes.status, actor, staff && !before.mine, source)
     await tx`UPDATE tickets SET updated_at = now() WHERE id = ${id}`
     return { before, ticket: await readTicket(tx, id, actor.id, staff) }
   })

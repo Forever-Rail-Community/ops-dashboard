@@ -31,7 +31,8 @@ const names: Record<string, string> = {
   'bug.status': "Changed a bug report's status",
   'bug.delete': 'Deleted a bug report',
   'ticket.status': "Changed a ticket's status",
-  'ticket.assign': 'Assigned a ticket'
+  'ticket.assign': 'Assigned a ticket',
+  'discord.commands': 'Registered the Discord commands'
 }
 const when = (iso: string) => new Date(iso).toLocaleString()
 </script>

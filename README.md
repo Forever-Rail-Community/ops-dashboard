@@ -103,6 +103,29 @@ that reads published articles from `GET /api/public/help` when it builds.
 - **Images in articles** are stored in Vercel Blob. In Vercel, open **Storage** and add a **Blob** store to this project;
   it sets `BLOB_READ_WRITE_TOKEN`. Without it, everything else works and the Image button explains what's missing.
 
+## Tickets in Discord
+
+Optional. Each ticket gets a private thread under a tickets channel, with the submitter and the assigned staff member
+in it. Replies, status changes and assignments stay in sync both ways, and members can open tickets with `/ticket` or
+the buttons `/ticket-panel` posts. Internal notes never go to Discord. Until it's set up, tickets work in the
+Operations Center only. **Admin > Discord** shows which settings are in place.
+
+It uses the bot of the Discord application you sign in with:
+
+1. In the Developer Portal, under **Bot**, copy the token and turn on the **Message Content Intent**. Under
+   **General Information**, copy the public key and set the **Interactions Endpoint URL** to
+   `https://<your dashboard>/api/discord/interactions` (after step 3 is deployed, since Discord checks it).
+2. Invite the bot to the server with the `bot` and `applications.commands` scopes and these permissions on the tickets
+   channel: View Channel, Send Messages, Send Messages in Threads, Create Private Threads, Manage Threads, Read
+   Message History.
+3. In Vercel, set `NUXT_DISCORD_BOT_TOKEN`, `NUXT_DISCORD_PUBLIC_KEY`, `NUXT_DISCORD_TICKETS_CHANNEL_ID` and
+   `NUXT_DISCORD_BOT_SECRET` (any long random string), then redeploy.
+4. In **Admin > Discord**, press **Register commands**. Run `/ticket-panel` in the channel where members ask for help.
+5. Replies typed in threads need the always-on bot in `bot/`, which runs on Railway. See `bot/README.md`.
+
+Staff in Discord are recognized by their Discord roles, mapped the same way as at sign-in (Admin > Access): anyone
+whose roles include "See and answer all support tickets" counts as staff.
+
 ## Customizing
 
 - Name, subtitle, logo, color, and wording: Admin > Appearance. No redeploy needed.
