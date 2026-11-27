@@ -330,6 +330,23 @@ const STEPS: { name: string; sql: string }[] = [
         text text NOT NULL
       );
       CREATE INDEX IF NOT EXISTS ctc_desk_changes_at ON ctc_desk_changes (at DESC)`
+  },
+  // Who has signed in before (server/utils/members.ts), so only a first sign-in gets the welcome. Started from everyone
+  // the database already knows from something they did; someone who has only ever looked around gets it once.
+  {
+    name: 'members-seen',
+    sql: `CREATE TABLE IF NOT EXISTS members_seen (
+        user_id text PRIMARY KEY,
+        first_seen timestamptz NOT NULL DEFAULT now()
+      );
+      INSERT INTO members_seen (user_id)
+        SELECT actor_id FROM audit_log WHERE actor_id IS NOT NULL
+        UNION SELECT user_id FROM user_preferences
+        UNION SELECT author_id FROM feature_requests
+        UNION SELECT user_id FROM feature_votes
+        UNION SELECT author_id FROM bug_reports
+        UNION SELECT author_id FROM roadmap_comments
+      ON CONFLICT DO NOTHING`
   }
 ]
 

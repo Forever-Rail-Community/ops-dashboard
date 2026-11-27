@@ -33,4 +33,5 @@ const title = computed(() =>
       <AppFooter class="px-4 pb-4 md:px-6" />
     </SidebarInset>
   </SidebarProvider>
+  <WelcomeOverlay />
 </template>

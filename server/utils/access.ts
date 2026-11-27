@@ -10,22 +10,23 @@ const bootstrapAdmins = () => splitIds(useRuntimeConfig().bootstrapAdminIds)
 export async function resolveAccess(userId: string, discordRoleIds: string[]) {
   const sql = await db()
   const ids = discordRoleIds.length ? discordRoleIds : ['-']
-  const rows = await sql<{ key: string; permissions: string[] }[]>`
-    SELECT key, permissions FROM roles
+  const rows = await sql<{ key: string; label: string; permissions: string[] }[]>`
+    SELECT key, label, permissions FROM roles
     WHERE key IN (
       SELECT role_key FROM role_mappings
       WHERE discord_role_id = '*' OR discord_role_id IN ${sql(ids)}
     )`
 
   const roles = rows.map((r) => r.key)
+  const labels = rows.map((r) => r.label) // the roles' names, for the welcome
   const permissions = new Set(rows.flatMap((r) => r.permissions))
 
   if (bootstrapAdmins().includes(userId)) {
     ALL_PERMISSION_KEYS.forEach((p) => permissions.add(p))
-    if (!roles.includes('admin')) roles.push('admin')
+    if (!roles.includes('admin')) { roles.push('admin'); labels.push('Admin') }
   }
 
-  return roles.length ? { roles, permissions: [...permissions] } : null
+  return roles.length ? { roles, labels, permissions: [...permissions] } : null
 }
 
 // Used on every protected request: permissions come from the roles as saved, not the sign-in cookie, so a role

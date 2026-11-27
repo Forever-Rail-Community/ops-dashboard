@@ -20,7 +20,7 @@ const entries = computed(() => sidebarEntries(features.value))
         <SidebarMenuItem>
           <SidebarMenuButton size="lg" as-child>
             <NuxtLink to="/">
-              <div class="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-sidebar-accent">
+              <div data-site-logo class="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-sidebar-accent">
                 <img :src="site.logo" :alt="`${site.name} logo`" class="size-full object-contain" />
               </div>
               <div class="grid flex-1 text-left text-sm leading-tight">
