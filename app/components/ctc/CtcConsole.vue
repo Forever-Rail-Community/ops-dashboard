@@ -30,7 +30,8 @@ const props = defineProps<{
 const emit = defineEmits<{ line: [id: string]; watch: [id?: string] }>()
 
 const board = computed(() => boardLayout(props.line, props.layout))
-const trains = computed(() => boardTrains(board.value, props.layout, props.live.signals.aspects, props.live.trains))
+const directions: TrainDirections = new Map() // kept between refreshes, so a train's arrow doesn't flick the wrong way
+const trains = computed(() => boardTrains(board.value, props.layout, props.live.signals.aspects, props.live.trains, directions))
 const spans = computed(() => deskSpans(props.line, props.desks.filter((d) => d.lineId === props.line.id)))
 const desks = computed(() => boardDesks(props.line, board.value, spans.value, props.userId))
 const mine = computed(() => desks.value.filter((d) => d.mine))

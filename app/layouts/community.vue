@@ -44,6 +44,7 @@ const tab = 'flex h-16 items-center border-b-2 px-0.5 text-sm font-medium'
       <NoticeBanner />
       <slot />
     </main>
+    <AppFooter class="mx-auto max-w-[1360px] px-4 pb-6 md:px-6" />
     <UpdatesWhatsNewDialog />
   </div>
 </template>

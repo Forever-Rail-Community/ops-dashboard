@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Leaving a desk (board I): a turnover note for whoever takes it next, starting from what the board shows is still in
+// Clocking out of a desk (board I): a turnover note for whoever takes it next, starting from what the board shows is still in
 // effect (ctcDeskBoard.ts, turnoverItems), plus anything else worth knowing.
 const props = defineProps<{ desk: BoardDesk; items: string[]; busy?: boolean }>()
 const emit = defineEmits<{ leave: [note: { items: string[]; text: string }]; cancel: [] }>()
@@ -13,7 +13,7 @@ const leave = () => emit('leave', { items: props.items.filter((i) => kept.value.
 <template>
   <DialogContent class="sm:max-w-lg">
     <DialogHeader>
-      <DialogTitle>Leave {{ desk.name }}</DialogTitle>
+      <DialogTitle>Clock out of {{ desk.name }}</DialogTitle>
       <DialogDescription>Write a turnover note for whoever takes it next. They'll read it before they can take the desk.</DialogDescription>
     </DialogHeader>
 
@@ -36,7 +36,7 @@ const leave = () => emit('leave', { items: props.items.filter((i) => kept.value.
 
     <DialogFooter>
       <Button variant="outline" @click="emit('cancel')">Cancel</Button>
-      <Button :disabled="busy" @click="leave">Leave {{ desk.name }}</Button>
+      <Button :disabled="busy" @click="leave">Clock out</Button>
     </DialogFooter>
   </DialogContent>
 </template>

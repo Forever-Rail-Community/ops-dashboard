@@ -5,9 +5,7 @@ import { Activity, Copy, Check, KeyRound, Sparkles, TrainFront } from '@lucide/v
 // The Overview: what a member needs before joining. Is the railroad running, how to get in, what's running on it,
 // and what's new in the Operations Center. Staff details are on Game status.
 const { user } = useUserSession()
-const { site } = useSite()
 const { speed } = useUnits()
-const { appVersion, appCommit } = useRuntimeConfig().public
 const { copied, copyText } = useCopyText()
 const whatsNew = useWhatsNew()
 
@@ -99,12 +97,6 @@ const changesOf = (u: Update) => `${u.changes.length} ${u.changes.length === 1 ?
         </PageSection>
       </PageGrid>
 
-      <footer class="flex flex-wrap gap-x-5 gap-y-2 pt-2 text-[13px] text-muted-foreground">
-        <span>{{ site.name }}</span>
-        <span class="ml-auto" :title="appCommit ? `Build ${appCommit}` : undefined">
-          Operations Center <span class="font-medium text-foreground tabular-nums">v{{ appVersion }}</span>
-        </span>
-      </footer>
     </PageBody>
   </div>
 </template>

@@ -38,9 +38,17 @@ export function trainBlocks(board: Board, layout: RailroaderSignalLayout, trains
   return found
 }
 
-export function boardTrains(board: Board, layout: RailroaderSignalLayout, aspects: Record<string, SignalAspect>, trains: LiveTrain[]): BoardTrain[] {
+// Which way each train is going along the board, kept between refreshes: from how it has moved along the board once it
+// has moved MOVED_PX, otherwise as it was last time. The game's heading is used only for a train not seen moving yet:
+// near a switch or on a curve, the heading measured against a block's overall direction can point the wrong way for a
+// moment.
+export type TrainDirections = Map<string, { at: number; right: boolean }>
+const MOVED_PX = 3
+
+export function boardTrains(board: Board, layout: RailroaderSignalLayout, aspects: Record<string, SignalAspect>, trains: LiveTrain[], directions?: TrainDirections): BoardTrain[] {
   const blocks = new Map(layout.blocks.map((b) => [b.id, b.track.flat()]))
   const inBlock = trainBlocks(board, layout, trains)
+  for (const id of directions?.keys() ?? []) if (!trains.some((t) => t.id === id)) directions!.delete(id)
   return trains.flatMap((t): BoardTrain[] => {
     const piece = board.pieces.find((p) => TRAIN_PIECES.includes(p.kind) && p.block === inBlock.get(t.id))
     if (!piece) return []
@@ -52,7 +60,11 @@ export function boardTrains(board: Board, layout: RailroaderSignalLayout, aspect
     const share = hi > lo ? Math.min(1, Math.max(0, (t.x * ax + t.z * az - lo) / (hi - lo))) : 0.5
     const at = piece.x1 + share * (piece.x2 - piece.x1)
     const x = (piece.x1 + piece.x2) / 2
-    const right = Math.sin((t.heading * Math.PI) / 180) * ax + Math.cos((t.heading * Math.PI) / 180) * az >= 0
+    const last = directions?.get(t.id)
+    let right = Math.sin((t.heading * Math.PI) / 180) * ax + Math.cos((t.heading * Math.PI) / 180) * az >= 0
+    if (last && Math.abs(at - last.at) < MOVED_PX) right = last.right
+    else if (last) right = at > last.at
+    if (!last || Math.abs(at - last.at) >= MOVED_PX) directions?.set(t.id, { at, right })
     const ahead = board.heads
       .filter((h) => (h.dir === 1) === right && (right ? h.x > at : h.x < at) && (h.y === piece.y1 || h.track === 'out' || h.intermediate))
       .sort((a, b) => Math.abs(a.x - at) - Math.abs(b.x - at))[0]

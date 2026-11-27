@@ -29,6 +29,7 @@ const title = computed(() =>
         <NoticeBanner />
         <slot />
       </main>
+      <AppFooter class="px-4 pb-4 md:px-6" />
     </SidebarInset>
   </SidebarProvider>
 </template>

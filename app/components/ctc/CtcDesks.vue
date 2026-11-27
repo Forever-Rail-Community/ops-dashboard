@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The Desks page's body (board F): the line as its desks, a card for each with who's on it and Take, Watch or
-// Leave, today's desk changes, and the rules. Taking reads the last turnover note first (board J); leaving writes one
+// Clock out, today's desk changes, and the rules. Taking reads the last turnover note first (board J); leaving writes one
 // (board I). The page does the saving; this only asks.
 const props = defineProps<{
   line: CtcLine
@@ -85,14 +85,14 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
           <div class="flex flex-wrap gap-2">
             <template v-if="d.mine">
               <Button @click="emit('watch', d.id)">Open the board</Button>
-              <Button variant="outline" :disabled="busy" @click="leaving = d">Leave</Button>
+              <Button variant="outline" :disabled="busy" @click="leaving = d">Clock out</Button>
             </template>
             <template v-else>
               <Button v-if="!d.holder && canTake" :disabled="busy || !!mine" @click="taking = d">Take this desk</Button>
               <Button variant="outline" @click="emit('watch', d.id)">Watch</Button>
             </template>
           </div>
-          <p v-if="!d.holder && canTake && mine" class="text-xs text-muted-foreground">Leave {{ mine.name }} first to take this one.</p>
+          <p v-if="!d.holder && canTake && mine" class="text-xs text-muted-foreground">Clock out of {{ mine.name }} first to take this one.</p>
         </CardContent>
       </Card>
     </div>
@@ -121,7 +121,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
           <ul class="grid list-disc gap-1.5 pl-5 text-sm">
             <li>One dispatcher per desk. Anyone can watch.</li>
             <li>The CTC board works only the desk you're on. Open desks are worked from the game's own CTC panel.</li>
-            <li>Leaving, you write a turnover note. The next dispatcher reads it before taking the desk.</li>
+            <li>Clocking out, you write a turnover note. The next dispatcher reads it before taking the desk.</li>
             <li>With the Operations Center closed for 2 minutes, you're taken off your desk, and Discord is told.</li>
             <li v-if="settings.idleMinutes">With no activity on the Operations Center for {{ settings.idleMinutes }} minutes, you're taken off too.</li>
             <li>The board shows what's heading your way from the desks either side.</li>
