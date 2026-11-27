@@ -330,7 +330,43 @@ const STEPS: { name: string; sql: string }[] = [
         text text NOT NULL
       );
       CREATE INDEX IF NOT EXISTS ctc_desk_changes_at ON ctc_desk_changes (at DESC)`
-  }
+  },
+  // Support tickets (server/utils/tickets.ts): the ticket, and its timeline of messages, staff notes, status changes
+  // and assignments. Ids start at 1001 and show as FR-1001.
+  {
+    name: 'ticket-tables',
+    sql: `CREATE TABLE IF NOT EXISTS tickets (
+        id serial PRIMARY KEY,
+        kind text NOT NULL,
+        game text NOT NULL,
+        subject text NOT NULL,
+        status text NOT NULL DEFAULT 'open',
+        submitter_id text NOT NULL,
+        submitter_name text NOT NULL,
+        assignee_id text,
+        assignee_name text,
+        context jsonb NOT NULL DEFAULT '{}',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      ALTER SEQUENCE tickets_id_seq RESTART WITH 1001;
+      CREATE INDEX IF NOT EXISTS tickets_submitter ON tickets (submitter_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS tickets_updated ON tickets (updated_at DESC);
+      CREATE TABLE IF NOT EXISTS ticket_events (
+        id bigserial PRIMARY KEY,
+        ticket_id integer NOT NULL REFERENCES tickets (id) ON DELETE CASCADE,
+        type text NOT NULL,
+        author_id text NOT NULL,
+        author_name text NOT NULL,
+        staff boolean NOT NULL DEFAULT false,
+        body text NOT NULL DEFAULT '',
+        data jsonb NOT NULL DEFAULT '{}',
+        via text NOT NULL DEFAULT 'Operations Center',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS ticket_events_ticket ON ticket_events (ticket_id, id)`
+  },
+  { name: 'grant-tickets-manage', sql: grantPermission('tickets.manage', ['admin']) }
 ]
 
 // Steps used to be tracked by position in the list. The first five positions always meant these steps,

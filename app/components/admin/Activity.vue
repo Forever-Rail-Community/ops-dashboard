@@ -29,7 +29,9 @@ const names: Record<string, string> = {
   'request.merge': 'Merged a feature request into another',
   'request.reopen': 'Reopened a feature request',
   'bug.status': "Changed a bug report's status",
-  'bug.delete': 'Deleted a bug report'
+  'bug.delete': 'Deleted a bug report',
+  'ticket.status': "Changed a ticket's status",
+  'ticket.assign': 'Assigned a ticket'
 }
 const when = (iso: string) => new Date(iso).toLocaleString()
 </script>
