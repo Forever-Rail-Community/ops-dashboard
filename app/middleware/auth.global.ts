@@ -20,6 +20,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (to.path.startsWith('/updates') && !user.value.permissions.includes('updates.post')) {
     return navigateTo('/')
   }
+  if (to.path.startsWith('/tickets/inbox') && !user.value.permissions.includes('tickets.manage')) {
+    return navigateTo('/tickets')
+  }
 
   // Entering a game's section remembers that game; "/" then goes straight back to it instead of the picker. A game page
   // this person's role can't use sends them to the first one it can (or the picker), so nobody lands on an empty page.

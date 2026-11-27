@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, Bug, Check, ChevronsUpDown, Gamepad2, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
+import { BookOpen, Bug, Check, ChevronsUpDown, Gamepad2, Inbox, LifeBuoy, Megaphone, Milestone, ShieldCheck } from '@lucide/vue'
 
 const { user } = useUserSession()
 const { site } = useSite()
@@ -9,6 +9,9 @@ const { current, labelOf } = useGame()
 const isAdmin = computed(() => user.value?.permissions?.some((p) => p.startsWith('admin.')) ?? false)
 const canEditHelp = computed(() => user.value?.permissions?.includes('help.edit') ?? false)
 const canPostUpdates = computed(() => user.value?.permissions?.includes('updates.post') ?? false)
+const canManageTickets = computed(() => user.value?.permissions?.includes('tickets.manage') ?? false)
+// My tickets covers the list and opening a new one; the staff inbox is its own entry under Manage.
+const onMyTickets = computed(() => route.path.startsWith('/tickets') && !route.path.startsWith('/tickets/inbox'))
 const features = computed(() => (current.value ? visibleFeatures(current.value, user.value?.permissions) : []))
 const entries = computed(() => sidebarEntries(features.value))
 </script>
@@ -114,14 +117,30 @@ const entries = computed(() => sidebarEntries(features.value))
                 </NuxtLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton as-child :is-active="onMyTickets" tooltip="My tickets">
+                <NuxtLink to="/tickets">
+                  <LifeBuoy />
+                  <span>My tickets</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <SidebarGroup v-if="isAdmin || canEditHelp || canPostUpdates">
+      <SidebarGroup v-if="isAdmin || canEditHelp || canPostUpdates || canManageTickets">
         <SidebarGroupLabel>Manage</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
+            <SidebarMenuItem v-if="canManageTickets">
+              <SidebarMenuButton as-child :is-active="route.path.startsWith('/tickets/inbox')" tooltip="Tickets">
+                <NuxtLink to="/tickets/inbox">
+                  <Inbox />
+                  <span>Tickets</span>
+                </NuxtLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem v-if="canEditHelp">
               <SidebarMenuButton as-child :is-active="route.path.startsWith('/help')" tooltip="Help center">
                 <NuxtLink to="/help">
