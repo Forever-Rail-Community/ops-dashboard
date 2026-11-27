@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CircleAlert } from '@lucide/vue'
 
-// The Desks page (board F): a line's desks and who's on them, with Take, Watch and Leave (CtcDesks).
+// The Desks page (board F): a line's desks and who's on them, with Clock in, Watch and Clock out (CtcDesks).
 definePageMeta({ title: 'Desks' })
 
 const { user } = useUserSession()

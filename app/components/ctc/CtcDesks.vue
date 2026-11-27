@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The Desks page's body (board F): the line as its desks, a card for each with who's on it and Take, Watch or
+// The Desks page's body (board F): the line as its desks, a card for each with who's on it and Clock in, Watch or
 // Clock out, today's desk changes, and the rules. Taking reads the last turnover note first (board J); leaving writes one
 // (board I). The page does the saving; this only asks.
 const props = defineProps<{
@@ -45,7 +45,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">Desks</h1>
-        <p class="text-muted-foreground">The {{ line.name }} is split into desks. Take one to dispatch that stretch from the CTC board.</p>
+        <p class="text-muted-foreground">The {{ line.name }} is split into desks. Clock in to a desk to dispatch that stretch from the CTC board.</p>
       </div>
       <Button v-if="canEdit" variant="outline" @click="emit('edit')">Edit desks</Button>
     </div>
@@ -88,11 +88,11 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
               <Button variant="outline" :disabled="busy" @click="leaving = d">Clock out</Button>
             </template>
             <template v-else>
-              <Button v-if="!d.holder && canTake" :disabled="busy || !!mine" @click="taking = d">Take this desk</Button>
+              <Button v-if="!d.holder && canTake" :disabled="busy || !!mine" @click="taking = d">Clock in</Button>
               <Button variant="outline" @click="emit('watch', d.id)">Watch</Button>
             </template>
           </div>
-          <p v-if="!d.holder && canTake && mine" class="text-xs text-muted-foreground">Clock out of {{ mine.name }} first to take this one.</p>
+          <p v-if="!d.holder && canTake && mine" class="text-xs text-muted-foreground">Clock out of {{ mine.name }} before clocking in here.</p>
         </CardContent>
       </Card>
     </div>
@@ -101,7 +101,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
       <Card>
         <CardHeader>
           <CardTitle>Desk changes</CardTitle>
-          <CardDescription>Who took or left a desk today.</CardDescription>
+          <CardDescription>Who clocked in or out today.</CardDescription>
         </CardHeader>
         <CardContent>
           <ul v-if="changes.length" class="grid gap-2.5 text-sm">
@@ -109,7 +109,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
               <span class="w-16 shrink-0 text-muted-foreground tabular-nums">{{ time(c.at) }}</span>{{ c.text }}
             </li>
           </ul>
-          <p v-else class="text-sm text-muted-foreground">Nobody has taken or left a desk today.</p>
+          <p v-else class="text-sm text-muted-foreground">Nobody has clocked in or out today.</p>
         </CardContent>
       </Card>
       <Card>
@@ -121,7 +121,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
           <ul class="grid list-disc gap-1.5 pl-5 text-sm">
             <li>One dispatcher per desk. Anyone can watch.</li>
             <li>The CTC board works only the desk you're on. Open desks are worked from the game's own CTC panel.</li>
-            <li>Clocking out, you write a turnover note. The next dispatcher reads it before taking the desk.</li>
+            <li>Clocking out, you write a turnover note. The next dispatcher reads it before clocking in.</li>
             <li>With the Operations Center closed for 2 minutes, you're taken off your desk, and Discord is told.</li>
             <li v-if="settings.idleMinutes">With no activity on the Operations Center for {{ settings.idleMinutes }} minutes, you're taken off too.</li>
             <li>The board shows what's heading your way from the desks either side.</li>

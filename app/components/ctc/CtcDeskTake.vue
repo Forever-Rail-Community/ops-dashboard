@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Taking a desk (board J): the turnover note the last dispatcher left, which has to be read first. A note with nothing
+// Clocking in to a desk (board J): the turnover note the last dispatcher left, which has to be read first. A note with nothing
 // in it isn't shown, and there's nothing to confirm.
 const props = defineProps<{ desk: BoardDesk; line: CtcLine; busy?: boolean }>()
 const emit = defineEmits<{ take: []; cancel: [] }>()
@@ -13,11 +13,11 @@ const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short',
 <template>
   <DialogContent class="sm:max-w-lg">
     <DialogHeader>
-      <DialogTitle>Take {{ desk.name }}</DialogTitle>
+      <DialogTitle>Clock in to {{ desk.name }}</DialogTitle>
       <DialogDescription>
         {{ desk.stretch }}.
-        <template v-if="note">{{ note.by }} left it at {{ when(note.at) }}, with this turnover note.</template>
-        <template v-else-if="left">{{ left.by }} left it at {{ when(left.at) }}, with no turnover note.</template>
+        <template v-if="note">Read the turnover note {{ note.by }} left at {{ when(note.at) }} before you clock in.</template>
+        <template v-else-if="left">{{ left.by }} clocked out at {{ when(left.at) }} and left no turnover note.</template>
         <template v-else>Nobody left a turnover note for it.</template>
       </DialogDescription>
     </DialogHeader>
@@ -35,7 +35,7 @@ const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short',
 
     <DialogFooter>
       <Button variant="outline" @click="emit('cancel')">Cancel</Button>
-      <Button :disabled="busy || (!!note && !read)" @click="emit('take')">Take {{ desk.name }}</Button>
+      <Button :disabled="busy || (!!note && !read)" @click="emit('take')">Clock in</Button>
     </DialogFooter>
   </DialogContent>
 </template>

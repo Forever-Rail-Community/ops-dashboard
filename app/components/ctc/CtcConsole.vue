@@ -4,7 +4,7 @@
 // COMMANDS, EVENTS and TRAIN columns. With desks (shared/types/ctcDesks.ts), the strip shows who's on each, the board
 // keeps to yours, only your desks' control points can be worked, and the neighbors row shows what's coming in.
 // Watching a desk (`watch`, from Watch on the Desks page or here) keeps the board to that desk and marks it in yellow.
-// A dispatcher who's on no desk and watching none is off duty: they choose a desk to watch, or go take one, rather than
+// A dispatcher who's on no desk and watching none is off duty: they choose a desk to watch, or go clock in to one, rather than
 // being put to watching. A line with no desks set up is worked as one, by anyone who can control the board.
 import { Eye } from '@lucide/vue'
 import '@fontsource/barlow-condensed/400.css'
@@ -124,7 +124,7 @@ function closeHelp() {
           <li>Track colors: <b class="text-red-400">red</b> has a train on it, <b class="text-green-400">green</b> is a route cleared through a control point, and gray is empty.</li>
           <li v-if="desks.length">The row under the strip shows each desk and who's on it. You can work only the desks you've taken, on the Desks page; the others are dimmed.</li>
           <li v-if="working">Click a switch's <b>N</b> or <b>R</b> to line it, and a signal to clear or stop it. A signal clears only once its switch is lined for it. Click a train for its details.</li>
-          <li v-else-if="controllable">Click a train for its details. Take a desk on the Desks page to work its signals and switches.</li>
+          <li v-else-if="controllable">Click a train for its details. Clock in to a desk on the Desks page to work its signals and switches.</li>
           <li v-else>Click a train for its details. Working the line needs the "Clear signals and throw switches" permission.</li>
           <li v-if="working">Each command shows <b>SENT</b> until the game answers, then <b>CONFIRMED</b> or <b>REJECTED</b> with the reason.</li>
           <li v-if="working">Prefer typing? <b>SW WH-W R</b> lines a switch reverse, <b>CLR WH-WS</b> clears a signal, and <b>STOP WH-W</b> stops a control point.</li>
@@ -138,7 +138,7 @@ function closeHelp() {
       </div>
 
       <div v-if="offDuty" class="grid gap-3 px-3.5 py-6 font-[Barlow] text-[15px] tracking-normal">
-        <p><b class="font-['Barlow_Condensed'] text-base tracking-[.03em] text-neutral-50">YOU'RE OFF DUTY.</b> Take a desk to dispatch it, or pick one to watch.</p>
+        <p><b class="font-['Barlow_Condensed'] text-base tracking-[.03em] text-neutral-50">YOU'RE OFF DUTY.</b> Clock in to a desk to dispatch it, or pick one to watch.</p>
         <div class="flex flex-wrap gap-2 font-['Barlow_Condensed'] text-sm font-bold tracking-[.03em]">
           <NuxtLink to="/railroader/desks" class="inline-flex h-[30px] items-center bg-neutral-50 px-3 text-black">GO TO DESKS</NuxtLink>
           <button
