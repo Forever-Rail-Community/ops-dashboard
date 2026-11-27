@@ -14,6 +14,7 @@ const tab = 'flex h-16 items-center border-b-2 px-0.5 text-sm font-medium'
 
 <template>
   <div class="min-h-svh bg-background">
+    <UpdateAvailable />
     <header class="z-20 border-b bg-background/85 backdrop-blur md:sticky md:top-0">
       <div class="mx-auto flex min-h-16 max-w-[1360px] flex-wrap items-center gap-x-7 gap-y-2 px-4 md:px-6">
         <NuxtLink to="/" class="flex items-center gap-2.5">
@@ -44,6 +45,7 @@ const tab = 'flex h-16 items-center border-b-2 px-0.5 text-sm font-medium'
       <NoticeBanner />
       <slot />
     </main>
+    <AppFooter class="mx-auto max-w-[1360px] px-4 pb-6 md:px-6" />
     <UpdatesWhatsNewDialog />
   </div>
 </template>

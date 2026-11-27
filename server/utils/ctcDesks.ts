@@ -90,13 +90,13 @@ export async function takeDesk(id: unknown, user: { id: string; name: string }) 
   if (desk.holder) throw createError({ statusCode: 409, statusMessage: `${desk.holder.name} is on ${desk.name}.` })
   await beat(user.id)
   try {
-    await change(desk.lineId, `${user.name} took ${desk.name}`, async (sql) => {
+    await change(desk.lineId, `${user.name} clocked in to ${desk.name}`, async (sql) => {
       const taken = await sql`UPDATE ctc_desks SET holder_id = ${user.id}, holder_name = ${user.name}, held_since = now(), note = NULL
                               WHERE id = ${desk.id} AND holder_id IS NULL RETURNING id`
-      if (!taken.length) throw createError({ statusCode: 409, statusMessage: `Someone else just took ${desk.name}.` })
+      if (!taken.length) throw createError({ statusCode: 409, statusMessage: `Someone else just clocked in to ${desk.name}.` })
     })
   } catch (err: any) {
-    if (err?.code === '23505') throw createError({ statusCode: 409, statusMessage: 'Leave your desk first.' }) // the one-desk index
+    if (err?.code === '23505') throw createError({ statusCode: 409, statusMessage: 'Clock out of your desk first.' }) // the one-desk index
     throw err
   }
 }
@@ -112,7 +112,7 @@ export async function leaveDesk(id: unknown, user: { id: string; name: string },
   const desk = await findDesk(id)
   if (desk.holder?.userId !== user.id) throw createError({ statusCode: 409, statusMessage: `You're not on ${desk.name}.` })
   const turnover: CtcTurnoverNote = { by: user.name, at: new Date().toISOString(), ...note }
-  await release(desk, `${user.name} left ${desk.name}`, turnover)
+  await release(desk, `${user.name} clocked out of ${desk.name}`, turnover)
 }
 
 // Takes whoever is on a desk off it, keeping a turnover note if there is one.
@@ -146,7 +146,7 @@ async function takeOff(desk: CtcDesk, reason: string, lines?: CtcLine[]) {
   await release(desk, `${who} was taken off ${desk.name}, ${reason}`, null)
   await discordPost('staff', {
     title: `${desk.name} on the ${line} is open`,
-    description: `${who} was taken off it, ${reason}. It's worked from the game's own CTC panel until someone takes it.`,
+    description: `${who} was taken off it, ${reason}. It's worked from the game's own CTC panel until someone clocks in.`,
     color: await brandColor()
   })
 }

@@ -84,6 +84,7 @@ const spots = computed(() => SPOTS.map((_, i) => cards.value.find((c) => c.key %
         <component :is="live.on.value ? EyeOff : Eye" />
         {{ live.on.value ? 'Turn off live background' : 'Show live background' }}
       </Button>
+      <AppFooter bare class="absolute right-4 bottom-5" />
     </div>
   </div>
 </template>
