@@ -2,6 +2,7 @@
 // The console's COMMANDS column, as board E shows it: the latest commands with what the game said (SENT until it
 // answers, then CONFIRMED or REJECTED with the reason), and the command line under them. Clicks on the board send
 // through `send` too. A command that isn't sent says why in a line above the command line, in the board's own style.
+// `check` can stop one before it's sent, with the reason (a signal whose switch isn't lined for it yet).
 import { useTimeoutFn } from '@vueuse/core'
 
 const URL = '/api/railroader/ctc/commands'
@@ -17,6 +18,8 @@ const STATUS: Record<ServerCommandState, { label: string; class: string }> = {
 // Only a reason is worth showing beside the status; answers that repeat it aren't.
 const reason = (c: ServerCommand) => (['refused', 'error', 'expired'].includes(c.state) ? c.message.replace(/^Rejected:?\s*/, '').replace(/\.$/, '') : '')
 
+const props = defineProps<{ check?: (action: CtcAction) => string | null }>()
+
 const { commands, add } = await useCommandList(URL, 'ctc-commands')
 const typed = ref('')
 
@@ -30,6 +33,8 @@ function tell(title: string, text: string) {
 
 async function send(action: CtcAction) {
   notice.value = null
+  const blocked = props.check?.(action)
+  if (blocked) return tell('NOT SENT', blocked)
   try {
     add(await $fetch<ServerCommand>(URL, { method: 'POST', body: action }))
   } catch (err) {
@@ -40,7 +45,7 @@ async function send(action: CtcAction) {
 async function sendTyped() {
   const action = parseTypedCtc(typed.value)
   if (!action) {
-    tell('NOT A BOARD COMMAND', 'Type CLR <signal> [N|R], STOP <control point>, or SW <control point> N|R.')
+    tell('NOT A BOARD COMMAND', 'Type SW <control point> N|R, CLR <signal>, or STOP <control point>.')
     return
   }
   typed.value = ''
@@ -71,7 +76,7 @@ defineExpose({ send })
     <form class="flex items-center gap-2 border-t border-[#2a2a2a] bg-[#0a0a0a] px-3 py-1.5" autocomplete="off" @submit.prevent="sendTyped">
       <label for="ctc-cmd" class="font-bold text-sky-400">CMD</label>
       <input
-        id="ctc-cmd" v-model="typed" maxlength="80" placeholder="CLR WH-WS R   STOP WH-W   SW WH-W N"
+        id="ctc-cmd" v-model="typed" maxlength="80" placeholder="SW WH-W R   CLR WH-WS   STOP WH-W"
         class="h-[30px] flex-1 border border-neutral-700 bg-black px-2 text-[15px] font-medium tracking-[.04em] text-neutral-50 uppercase placeholder:text-neutral-600"
       >
     </form>

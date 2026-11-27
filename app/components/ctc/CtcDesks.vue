@@ -78,9 +78,9 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
             <div><dt class="text-muted-foreground">Sidings</dt><dd class="text-lg font-semibold tabular-nums">{{ facts(d).sidings }}</dd></div>
           </dl>
           <p class="text-sm text-muted-foreground">
-            <template v-if="d.mine">You took it at {{ time(d.span.desk.holder!.since) }}.</template>
-            <template v-else-if="d.holder">{{ d.holder }} took it at {{ time(d.span.desk.holder!.since) }}. You can watch it.</template>
-            <template v-else>Nobody's on it, so it's worked from the game's own CTC panel.</template>
+            <template v-if="d.mine">You've been on duty on this desk since {{ time(d.span.desk.holder!.since) }}.</template>
+            <template v-else-if="d.holder">{{ d.holder }} has been on duty on this desk since {{ time(d.span.desk.holder!.since) }}. You can watch it.</template>
+            <template v-else>No one is on duty on this desk. For now, anyone in the game can work it from the CTC panel.</template>
           </p>
           <div class="flex flex-wrap gap-2">
             <template v-if="d.mine">

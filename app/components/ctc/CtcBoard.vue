@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Eye } from '@lucide/vue'
 import { onKeyStroke, useEventListener, useResizeObserver } from '@vueuse/core'
 
 // The track display of the CTC console (CtcConsole.vue), as the agreed board designs E and K draw it: the whole line
@@ -7,8 +8,11 @@ import { onKeyStroke, useEventListener, useResizeObserver } from '@vueuse/core'
 // heads by aspect, each switch's position with a gap on the leg it isn't lined for, and trains as tags on their track
 // (click one for its train sheet). At the control points in `controls`, clicking a signal offers Clear and Stop, and
 // clicking a switch offers lining it normal or reverse; the choice is emitted as a command. Signals in `alerts` are
-// ringed. With `desks`, the strip shows who's on each desk, and the board dims the ones that aren't yours. With `onlyMine`,
-// the board scrolls only across your desks (and a little either side), and only their trains can be clicked.
+// ringed. With `desks`, the strip shows who's on each desk. With `keepTo`, the board scrolls only across those desks
+// (yours, or the one being watched, and a little either side), dims the rest, and only their trains can be clicked.
+// The desk in `watching` is marked in yellow with an eye, so a watcher always knows which desk they're looking at.
+// A signal's Clear is offered only once its control point's switch is lined for it (clearNeeds): clearing never
+// throws a switch.
 const props = defineProps<{
   board: Board
   title: string // the strip's heading, e.g. "MURPHY BRANCH, SYLVA to ANDREWS, 51 MI"
@@ -20,7 +24,8 @@ const props = defineProps<{
   controls?: string[] // control points this dispatcher can work
   alerts?: string[]
   desks?: BoardDesk[]
-  onlyMine?: boolean
+  keepTo?: string[] // desk ids
+  watching?: string // desk id
 }>()
 const emit = defineEmits<{ command: [action: CtcAction]; train: [id: string] }>()
 
@@ -95,14 +100,13 @@ const tags = computed(() =>
 
 // The menu for the signal or switch clicked, just below it on the screen (fixed, so the board's scrolling area
 // doesn't cut it off). Scrolling closes it.
-interface MenuItem { label: string; action: CtcAction }
+interface MenuItem { label: string; action: CtcAction; blocked?: string } // blocked: why it can't be sent yet
 const menu = ref<{ x: number; y: number; title: string; items: MenuItem[] } | null>(null)
 const below = (event: Event) => {
   const r = (event.currentTarget as Element).getBoundingClientRect()
   return { x: r.left, y: r.bottom + 4 }
 }
 const controlled = computed(() => new Set(props.controls))
-const onDesk = computed(() => props.desks?.some((d) => d.mine) ?? false)
 const canClick = (h: BoardHead) => !h.intermediate && !!h.cp && controlled.value.has(h.cp)
 const cpName = (id: string) => pointById.value.get(id)?.name ?? id
 function openSignal(h: BoardHead, event: Event) {
@@ -110,14 +114,9 @@ function openSignal(h: BoardHead, event: Event) {
   const signal = h.signal
   // Stop is only offered while one of the control point's signals is showing something other than stop.
   const anyCleared = props.board.heads.some((x) => x.cp === h.cp && (props.aspects[x.signal] ?? 'stop') !== 'stop')
-  // Facing out of the town: cleared from the track it stands on. Facing in, at a switch: cleared into either track.
-  const clear: MenuItem[] = h.track === 'main' ? [{ label: 'Clear', action: { kind: 'clear', signal, setting: 'normal' } }]
-    : h.track === 'siding' ? [{ label: 'Clear', action: { kind: 'clear', signal, setting: 'reverse' } }]
-    : pointById.value.get(h.cp!)?.switch ? [
-      { label: 'Clear into the main', action: { kind: 'clear', signal, setting: 'normal' } },
-      { label: 'Clear into the siding', action: { kind: 'clear', signal, setting: 'reverse' } }
-    ]
-    : [{ label: 'Clear', action: { kind: 'clear', signal } }]
+  // Cleared for the route as the switch is lined now. One on the town's main or siding needs the switch lined for it.
+  const needs = clearNeeds(props.board, signal, props.thrown)
+  const clear: MenuItem[] = [{ label: 'Clear', action: { kind: 'clear', signal }, blocked: needs ? `Line the switch ${needs.setting} first` : undefined }]
   const stop: MenuItem[] = anyCleared ? [{ label: `Stop ${cpName(h.cp!)}`, action: { kind: 'stop', cp: h.cp! } }] : []
   menu.value = { ...below(event), title: `SIGNAL ${signal.toUpperCase()}`, items: [...clear, ...stop] }
 }
@@ -132,6 +131,7 @@ function openSwitch(p: BoardPoint, event: Event) {
   }
 }
 function choose(item: MenuItem) {
+  if (item.blocked) return
   menu.value = null
   emit('command', item.action)
 }
@@ -143,14 +143,14 @@ const scroller = ref<HTMLElement>()
 const view = reactive({ left: 0, width: 1 })
 const share = (x: number) => `${(x / props.board.width) * 100}%`
 const { height, main: mainY } = BOARD
-// The part of the board that scrolls: the whole line, or with onlyMine your desks and a little of the ones either side.
+// The part of the board that scrolls: the whole line, or with keepTo those desks and a little of the ones either side.
 const NEIGHBOR_PX = 160
-const mine = computed(() => (props.onlyMine ? (props.desks ?? []).filter((d) => d.mine) : []))
+const kept = computed(() => (props.desks ?? []).filter((d) => props.keepTo?.includes(d.id)))
 const range = computed(() =>
-  mine.value.length
-    ? { lo: Math.max(0, Math.min(...mine.value.map((d) => d.x1)) - NEIGHBOR_PX), hi: Math.min(props.board.width, Math.max(...mine.value.map((d) => d.x2)) + NEIGHBOR_PX) }
+  kept.value.length
+    ? { lo: Math.max(0, Math.min(...kept.value.map((d) => d.x1)) - NEIGHBOR_PX), hi: Math.min(props.board.width, Math.max(...kept.value.map((d) => d.x2)) + NEIGHBOR_PX) }
     : { lo: 0, hi: props.board.width })
-const pickable = (x: number) => !mine.value.length || mine.value.some((d) => x >= d.x1 && x < d.x2)
+const pickable = (x: number) => !kept.value.length || kept.value.some((d) => x >= d.x1 && x < d.x2)
 function syncView() {
   const el = scroller.value
   if (!el) return
@@ -197,9 +197,10 @@ onMounted(syncView)
     <div v-if="desks?.length" class="relative mt-1 h-[22px]">
       <span
         v-for="d in desks" :key="d.id" class="absolute inset-y-0 truncate border-x border-[#050505] px-1.5 text-[13px]/[22px] uppercase"
-        :class="d.mine ? 'bg-sky-950 text-sky-200' : d.holder ? 'bg-neutral-800 text-neutral-200' : 'bg-neutral-900 text-neutral-500'"
-        :style="{ left: share(d.x1), width: share(d.x2 - d.x1) }" :title="`${d.name}: ${d.mine ? 'you' : d.holder ?? 'open'}`"
-      ><b class="font-semibold">{{ d.name }}</b> {{ d.mine ? 'YOU' : d.holder ?? 'OPEN' }}</span>
+        :class="d.mine ? 'bg-sky-950 text-sky-200' : d.id === watching ? 'bg-yellow-950 text-yellow-200' : d.holder ? 'bg-neutral-800 text-neutral-200' : 'bg-neutral-900 text-neutral-500'"
+        :style="{ left: share(d.x1), width: share(d.x2 - d.x1) }" :title="`${d.name}: ${d.mine ? 'you' : d.holder ?? 'open'}${d.id === watching ? ', watching' : ''}`"
+      ><Eye v-if="d.id === watching" class="mr-1 inline size-3.5 align-[-2px]" aria-hidden="true" /><b class="font-semibold">{{ d.name }}</b>
+        {{ d.mine ? 'YOU' : d.holder ?? 'OPEN' }}<template v-if="d.id === watching">, WATCHING</template></span>
     </div>
   </section>
 
@@ -207,7 +208,7 @@ onMounted(syncView)
     <svg :width="range.hi - range.lo" :height="height" :viewBox="`${range.lo} 0 ${range.hi - range.lo} ${height}`" class="block" role="img" :aria-label="`CTC board, ${board.towns[0]?.name} to ${board.towns.at(-1)?.name}`">
       <template v-for="d in desks" :key="`d${d.id}`">
         <line v-if="d.x1 > 0" :x1="d.x1" y1="0" :x2="d.x1" :y2="height" stroke="#525252" stroke-dasharray="4 4" />
-        <text :x="d.x1 + 8" :y="height - 8" :fill="d.mine ? '#7dd3fc' : '#737373'" font-size="13" font-weight="700" class="uppercase">
+        <text :x="d.x1 + 8" :y="height - 8" :fill="d.mine ? '#7dd3fc' : d.id === watching ? '#fde047' : '#737373'" font-size="13" font-weight="700" class="uppercase">
           {{ d.name }}, {{ d.mine ? 'YOU' : d.holder ?? 'OPEN' }}
         </text>
       </template>
@@ -263,7 +264,7 @@ onMounted(syncView)
         <text :x="t.x + (t.right ? -4 : 4)" :y="t.top + 16" fill="#7dd3fc" font-size="15" font-weight="700" text-anchor="middle" letter-spacing=".04em">{{ t.name }}</text>
       </g>
       <template v-for="d in desks" :key="`dim${d.id}`">
-        <rect v-if="onDesk && !d.mine" :x="d.x1" y="24" :width="d.x2 - d.x1" :height="height - 24" fill="#000" opacity=".45" class="pointer-events-none" />
+        <rect v-if="kept.length && !keepTo?.includes(d.id)" :x="d.x1" y="24" :width="d.x2 - d.x1" :height="height - 24" fill="#000" opacity=".45" class="pointer-events-none" />
       </template>
     </svg>
     <div
@@ -274,10 +275,11 @@ onMounted(syncView)
         {{ menu.title }}<button type="button" class="px-1 text-sm font-semibold text-neutral-400" aria-label="Close" @click="menu = null">X</button>
       </div>
       <button
-        v-for="item in menu.items" :key="item.label" type="button" role="menuitem"
-        class="block w-full border-t border-[#1f1f1f] px-2.5 py-1.5 text-left text-[15px] font-semibold tracking-[.03em] text-neutral-50 uppercase first-of-type:border-t-0 hover:bg-neutral-900 focus-visible:bg-neutral-900 focus-visible:outline-none"
+        v-for="item in menu.items" :key="item.label" type="button" role="menuitem" :aria-disabled="!!item.blocked"
+        class="block w-full border-t border-[#1f1f1f] px-2.5 py-1.5 text-left text-[15px] font-semibold tracking-[.03em] uppercase first-of-type:border-t-0 focus-visible:bg-neutral-900 focus-visible:outline-none"
+        :class="item.blocked ? 'cursor-not-allowed text-neutral-500' : 'text-neutral-50 hover:bg-neutral-900'"
         @click="choose(item)"
-      >{{ item.label }}</button>
+      >{{ item.label }}<span v-if="item.blocked" class="block text-[13px] font-medium text-yellow-400">{{ item.blocked }}</span></button>
     </div>
   </section>
 </template>

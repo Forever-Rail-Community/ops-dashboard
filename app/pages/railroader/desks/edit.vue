@@ -27,7 +27,7 @@ async function saved(list: { id?: string; name: string; start: string }[], setti
     <CtcDeskEdit
       v-else-if="line && board && desks" :line="line" :board="board" :desks="desks.desks.filter((d) => d.lineId === line!.id)" :settings="deskSettings(desks, line.id)"
       :busy="busy"
-      @save="saved" @cancel="back"
+      @save="saved" @back="back"
     />
     <Skeleton v-else class="h-80 rounded-xl" />
   </PageBody>
