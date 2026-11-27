@@ -330,6 +330,27 @@ const STEPS: { name: string; sql: string }[] = [
         text text NOT NULL
       );
       CREATE INDEX IF NOT EXISTS ctc_desk_changes_at ON ctc_desk_changes (at DESC)`
+  },
+  // Covering (FOR-17): a dispatcher can be on more than one desk, up to their line's limit, which
+  // server/utils/ctcDesks.ts checks. The one-desk index goes; a plain one keeps finding a dispatcher's desks quick.
+  {
+    name: 'ctc-desks-covering',
+    sql: `DROP INDEX IF EXISTS ctc_desks_holder;
+      CREATE INDEX IF NOT EXISTS ctc_desks_holder_id ON ctc_desks (holder_id) WHERE holder_id IS NOT NULL`
+  },
+  // Staff takeovers (FOR-17): admins can take over a desk without asking.
+  { name: 'grant-ctc-takeover', sql: grantPermission('ctc.takeover', ['admin']) },
+  // When the agent picked each command up, so the CTC board can show how long the game server and the game took.
+  { name: 'server-commands-sent-at', sql: 'ALTER TABLE server_commands ADD COLUMN IF NOT EXISTS sent_at timestamptz' },
+  // Each desk change's kind, for its icon in the timeline (CtcDeskChangeKind). Older rows are sorted by their wording.
+  {
+    name: 'ctc-desk-change-kinds',
+    sql: `ALTER TABLE ctc_desk_changes ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'edit';
+      UPDATE ctc_desk_changes SET kind = CASE
+        WHEN text LIKE '% was taken off %' THEN 'auto'
+        WHEN text LIKE '% clocked in to %' OR text LIKE '% took %' THEN 'in'
+        WHEN text LIKE '% clocked out of %' OR text LIKE '% left %' THEN 'out'
+        ELSE 'edit' END`
   }
 ]
 

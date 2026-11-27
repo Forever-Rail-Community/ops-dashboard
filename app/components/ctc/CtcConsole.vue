@@ -26,6 +26,7 @@ const props = defineProps<{
   controllable: boolean
   desks: CtcDesk[]
   watch?: string // the desk being watched, if any
+  sound?: boolean // the line's "play a sound" rule (Edit desks)
 }>()
 const emit = defineEmits<{ line: [id: string]; watch: [id?: string] }>()
 
@@ -122,11 +123,11 @@ function closeHelp() {
         <ul class="grid list-disc gap-[7px] py-2.5 pr-3.5 pl-[30px]">
           <li>The strip at the top is the whole line, and the white box is the part this board shows. Click the strip to move there.</li>
           <li>Track colors: <b class="text-red-400">red</b> has a train on it, <b class="text-green-400">green</b> is a route cleared through a control point, and gray is empty.</li>
-          <li v-if="desks.length">The row under the strip shows each desk and who's on it. You can work only the desks you've taken, on the Desks page; the others are dimmed.</li>
+          <li v-if="desks.length">The row under the strip shows each desk and who's on it. You can control only the desks you are clocked in to (on the Desks page). The others are dimmed.</li>
           <li v-if="working">Click a switch's <b>N</b> or <b>R</b> to line it, and a signal to clear or stop it. A signal clears only once its switch is lined for it. Click a train for its details.</li>
           <li v-else-if="controllable">Click a train for its details. Clock in to a desk on the Desks page to work its signals and switches.</li>
           <li v-else>Click a train for its details. Working the line needs the "Clear signals and throw switches" permission.</li>
-          <li v-if="working">Each command shows <b>SENT</b> until the game answers, then <b>CONFIRMED</b> or <b>REJECTED</b> with the reason.</li>
+          <li v-if="working">Each command shows <b>SENT</b> until the game answers, then <b>CONFIRMED</b> or <b>REJECTED</b> with the reason. Click a command to see who sent it, how long the game took, and the game's full answer.</li>
           <li v-if="working">Prefer typing? <b>SW WH-W R</b> lines a switch reverse, <b>CLR WH-WS</b> clears a signal, and <b>STOP WH-W</b> stops a control point.</li>
           <li v-if="desks.length">Watching a desk keeps the board to it and marks it in yellow. The &#10005; beside it stops watching.</li>
           <li>Alerts under the board: a train stopped at a signal at stop.</li>
@@ -138,7 +139,7 @@ function closeHelp() {
       </div>
 
       <div v-if="offDuty" class="grid gap-3 px-3.5 py-6 font-[Barlow] text-[15px] tracking-normal">
-        <p><b class="font-['Barlow_Condensed'] text-base tracking-[.03em] text-neutral-50">YOU'RE OFF DUTY.</b> Clock in to a desk to dispatch it, or pick one to watch.</p>
+        <p><b class="font-['Barlow_Condensed'] text-base tracking-[.03em] text-neutral-50">YOU ARE OFF DUTY.</b> Clock in to a desk to dispatch, or select a desk to watch.</p>
         <div class="flex flex-wrap gap-2 font-['Barlow_Condensed'] text-sm font-bold tracking-[.03em]">
           <NuxtLink to="/railroader/desks" class="inline-flex h-[30px] items-center bg-neutral-50 px-3 text-black">GO TO DESKS</NuxtLink>
           <button
@@ -169,7 +170,7 @@ function closeHelp() {
       </div>
     </div>
 
-    <CtcAlerts v-if="!offDuty" class="border-t border-[#2a2a2a]" :alerts="alerts" :names="cpNames" @show="(x) => boardRef?.show(x)" />
+    <CtcAlerts v-if="!offDuty" class="border-t border-[#2a2a2a]" :alerts="alerts" :names="cpNames" :sound="sound" @show="(x) => boardRef?.show(x)" />
 
     <div class="flex flex-wrap gap-x-[18px] gap-y-1 border-y border-[#2a2a2a] px-3.5 py-1.5 text-[13px] text-neutral-400">
       <span class="inline-flex items-center gap-1.5"><span class="h-1.5 w-5 bg-red-500" />OCCUPIED</span>

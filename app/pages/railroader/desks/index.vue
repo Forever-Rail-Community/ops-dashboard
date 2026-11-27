@@ -10,6 +10,8 @@ const can = (p: string) => user.value?.permissions?.includes(p) ?? false
 const { lines, error } = useCtcLines()
 const forbidden = computed(() => error.value?.statusCode === 403)
 const { data: desks, busy, take, leave } = useDesks()
+const { data: requests, busy: asking, ask, withdraw, watchAll } = useDeskRequests()
+watchAll() // keeps requests fresh while this page is open, for every desk's card
 const { live } = useLiveMap(ref(null))
 const layout = computed(() => live.value.signals.layout)
 
@@ -52,15 +54,16 @@ const changes = computed(() => desks.value?.changes.filter((c) => c.lineId === l
           <CircleAlert />
           <AlertTitle>The {{ line.name }} has no desks yet</AlertTitle>
           <AlertDescription>
-            Until it's split into desks, anyone who can control the CTC board works all of it.
+            Until desks are set up, anyone with CTC board control can dispatch the entire line.
             <template v-if="can('admin.lines')"> <NuxtLink :to="`/railroader/desks/edit?line=${line.id}`" class="underline">Set up its desks</NuxtLink>.</template>
           </AlertDescription>
         </Alert>
       </div>
       <CtcDesks
         v-else :line="line" :board="board" :desks="lineDesks" :trains="trains" :aspects="live.signals.aspects" :thrown="live.switches"
-        :changes="changes" :settings="deskSettings(desks, line.id)" :can-take="can('ctc.control')" :can-edit="can('admin.lines')" :busy="busy"
-        @take="take" @leave="leave" @watch="(id) => navigateTo(`/railroader/ctc?desk=${id}`)" @edit="navigateTo(`/railroader/desks/edit?line=${line.id}`)"
+        :changes="changes" :settings="deskSettings(desks, line.id)" :requests="requests?.requests ?? []" :user-id="user?.id ?? ''"
+        :can-take="can('ctc.control')" :can-takeover="can('ctc.takeover')" :can-edit="can('admin.lines')" :busy="busy || asking"
+        @take="take" @leave="leave" @ask="ask" @cancel-ask="withdraw" @watch="(id) => navigateTo(`/railroader/ctc?desk=${id}`)" @edit="navigateTo(`/railroader/desks/edit?line=${line.id}`)"
       />
     </template>
 

@@ -17,7 +17,11 @@ interface CommandRow {
   created_at: Date
   state: ServerCommandState
   message: string
+  sent_at: Date | null
+  answered_at: Date | null
 }
+
+const COLUMNS = 'id, agent_id, text, by_name, created_at, state, message, sent_at, answered_at'
 
 const toCommand = (r: CommandRow): ServerCommand => ({
   id: Number(r.id),
@@ -26,7 +30,9 @@ const toCommand = (r: CommandRow): ServerCommand => ({
   by: r.by_name,
   at: r.created_at.toISOString(),
   state: r.state,
-  message: r.message
+  message: r.message,
+  sentAt: r.sent_at?.toISOString() ?? null,
+  answeredAt: r.answered_at?.toISOString() ?? null
 })
 
 // Commands only go to servers whose agent can carry them out.
@@ -48,7 +54,7 @@ export async function queueCommand(agentId: string, text: string, user: { id: st
   const sql = await db()
   const [row] = await sql<CommandRow[]>`
     INSERT INTO server_commands (agent_id, text, by_id, by_name) VALUES (${agentId}, ${text}, ${user.id}, ${user.name})
-    RETURNING id, agent_id, text, by_name, created_at, state, message`
+    RETURNING ${sql.unsafe(COLUMNS)}`
   // Set after the row exists, so the agent never sees the flag before the command (see takeCommands).
   await useStorage('data').setItem(flagKey(agentId), Date.now())
   return toCommand(row!)
@@ -59,7 +65,7 @@ export async function queueCommand(agentId: string, text: string, user: { id: st
 export async function listCommands(agentId: string, prefix = ''): Promise<ServerCommand[]> {
   const sql = await db()
   const rows = await sql<CommandRow[]>`
-    SELECT id, agent_id, text, by_name, created_at, state, message FROM server_commands
+    SELECT ${sql.unsafe(COLUMNS)} FROM server_commands
     WHERE agent_id = ${agentId} AND starts_with(text, ${prefix}) ORDER BY id DESC LIMIT ${COMMAND_HISTORY}`
   const now = Date.now()
   return rows.map(toCommand).map((c) => {
@@ -82,7 +88,7 @@ export async function takeCommands(agent: RegisteredAgent): Promise<{ id: number
   await storage.removeItem(flagKey(agent.id))
   const sql = await db()
   const rows = await sql<{ id: string; text: string }[]>`
-    UPDATE server_commands SET state = 'sent'
+    UPDATE server_commands SET state = 'sent', sent_at = now()
     WHERE agent_id = ${agent.id} AND state = 'queued' AND created_at > now() - make_interval(secs => ${COMMAND_PICKUP_SEC})
     RETURNING id, text`
   return rows.map((r) => ({ id: Number(r.id), text: r.text })).sort((a, b) => a.id - b.id)

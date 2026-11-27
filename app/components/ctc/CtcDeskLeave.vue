@@ -14,13 +14,13 @@ const leave = () => emit('leave', { items: props.items.filter((i) => kept.value.
   <DialogContent class="sm:max-w-lg">
     <DialogHeader>
       <DialogTitle>Clock out of {{ desk.name }}</DialogTitle>
-      <DialogDescription>Write a turnover note for whoever clocks in next. They'll read it before they can clock in.</DialogDescription>
+      <DialogDescription>Write a turnover note for the next dispatcher. They must read it before clocking in.</DialogDescription>
     </DialogHeader>
 
     <div class="grid gap-2">
       <Label>Still in effect</Label>
       <p class="-mt-1 text-sm text-muted-foreground">
-        {{ items.length ? "From the board. Untick anything the next dispatcher doesn't need." : 'Nothing on the board: no routes cleared, switches reversed, or trains waiting in a siding.' }}
+        {{ items.length ? "Taken from the board. Uncheck any item the next dispatcher does not need." : 'Nothing to report from the board: no cleared routes, reversed switches or trains held in sidings.' }}
       </p>
       <label v-for="item in items" :key="item" class="flex items-center gap-2 text-sm">
         <Checkbox :model-value="kept.has(item)" @update:model-value="(v) => toggle(item, v)" /> {{ item }}
@@ -28,11 +28,11 @@ const leave = () => emit('leave', { items: props.items.filter((i) => kept.value.
     </div>
 
     <div class="grid gap-2">
-      <Label for="turnover-text">Anything else</Label>
-      <Textarea id="turnover-text" v-model="text" rows="4" :maxlength="DESK_NOTE_MAX" placeholder="Track work, trains waiting for a crew, anything slow to answer…" />
+      <Label for="turnover-text">Additional notes</Label>
+      <Textarea id="turnover-text" v-model="text" rows="4" :maxlength="DESK_NOTE_MAX" placeholder="Track work, trains awaiting crews, control points slow to respond…" />
     </div>
 
-    <p class="text-sm text-muted-foreground">It's left open after you go, and worked from the game's own CTC panel until someone clocks in.</p>
+    <p class="text-sm text-muted-foreground">After you clock out, the desk is open and worked from the in-game CTC panel until another dispatcher clocks in.</p>
 
     <DialogFooter>
       <Button variant="outline" @click="emit('cancel')">Cancel</Button>

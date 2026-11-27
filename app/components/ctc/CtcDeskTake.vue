@@ -16,9 +16,9 @@ const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short',
       <DialogTitle>Clock in to {{ desk.name }}</DialogTitle>
       <DialogDescription>
         {{ desk.stretch }}.
-        <template v-if="note">Read the turnover note {{ note.by }} left at {{ when(note.at) }} before you clock in.</template>
-        <template v-else-if="left">{{ left.by }} clocked out at {{ when(left.at) }} and left no turnover note.</template>
-        <template v-else>Nobody left a turnover note for it.</template>
+        <template v-if="note">Review the turnover note from {{ note.by }} ({{ when(note.at) }}) before clocking in.</template>
+        <template v-else-if="left">{{ left.by }} clocked out at {{ when(left.at) }} without a turnover note.</template>
+        <template v-else>No turnover note is on file for this desk.</template>
       </DialogDescription>
     </DialogHeader>
 
@@ -30,7 +30,7 @@ const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short',
     </div>
 
     <label v-if="note" class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="read" /> I've read the turnover note
+      <Checkbox v-model="read" /> I have read the turnover note
     </label>
 
     <DialogFooter>

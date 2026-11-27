@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // The board's alerts (app/utils/ctcAlerts.ts) as rows under the board, as board K shows them: Show moves the board to
-// the signal, Silence hides that signal's alerts for SILENCE_MIN minutes.
+// the signal, Silence hides that signal's alerts for SILENCE_MIN minutes. With the line's sound on (Edit desks), a new
+// alert chimes.
 import { useIntervalFn } from '@vueuse/core'
 
-const props = defineProps<{ alerts: CtcAlert[]; names: Map<string, string> }>()
+const props = defineProps<{ alerts: CtcAlert[]; names: Map<string, string>; sound?: boolean }>()
 const emit = defineEmits<{ show: [x: number] }>()
 
 const SILENCE_MIN = 10
@@ -13,12 +14,16 @@ useIntervalFn(() => (now.value = Date.now()), 15_000)
 const shown = computed(() => props.alerts.filter((a) => (silencedUntil.get(a.signal) ?? 0) < now.value).sort((a, b) => b.since - a.since))
 const minutes = (since: number) => Math.max(0, Math.floor((now.value - since) / 60_000))
 const silence = (signal: string) => silencedUntil.set(signal, Date.now() + SILENCE_MIN * 60_000)
+const key = (a: CtcAlert) => `${a.signal}${a.train}`
+watch(() => shown.value.map(key), (keys, before) => {
+  if (props.sound && before && keys.some((k) => !before.includes(k))) chime()
+})
 </script>
 
 <template>
   <div role="status">
     <div
-      v-for="a in shown" :key="`${a.signal}${a.train}`"
+      v-for="a in shown" :key="key(a)"
       class="flex flex-wrap items-center justify-between gap-x-[18px] gap-y-1.5 border-b border-l-[3px] border-b-[#2a2a2a] border-l-red-500 bg-[#1a0606] px-3.5 py-1.5 font-[Barlow] text-[15px] tracking-normal"
     >
       <span>

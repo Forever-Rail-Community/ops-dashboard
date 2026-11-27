@@ -6,6 +6,7 @@ export const PERMISSIONS = [
   { key: 'map.view', label: 'View the Railroader map', group: 'Map' },
   { key: 'ctc.view', label: 'View the Railroader CTC board', group: 'CTC' },
   { key: 'ctc.control', label: 'Clear signals and throw switches from the CTC board', group: 'CTC' },
+  { key: 'ctc.takeover', label: 'Take over a CTC desk without asking its dispatcher', group: 'CTC' },
   { key: 'multiplayer.joinCode', label: 'See the Railroader multiplayer join code', group: 'Status' },
   { key: 'server.control', label: 'Start, save and shut down the game server, and send it commands', group: 'Status' },
   { key: 'help.edit', label: 'Write and edit help center drafts', group: 'Help center' },
