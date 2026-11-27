@@ -1,7 +1,9 @@
 <script setup lang="ts">
 await useFetch<SiteSettings>('/api/site', { key: 'site' })
 const { site } = useSite()
-const { bootScript } = useTheme()
+const { bootScript, isDark } = useTheme()
+// A dispatcher on a CTC desk stays on it while any page of the site is open.
+useDeskBeat()
 
 useHead(() => ({
   title: `${site.value.name} ${site.value.subtitle}`.trim(),
@@ -16,5 +18,6 @@ useHead(() => ({
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
-  <Toaster position="bottom-right" />
+  <!-- The theme sets the toasts' own text colors, which otherwise stay light-mode gray in dark mode. -->
+  <Toaster position="bottom-right" :theme="isDark ? 'dark' : 'light'" />
 </template>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The console's COMMANDS column, as board E shows it: the latest commands with what the game said (SENT until it
 // answers, then CONFIRMED or REJECTED with the reason), and the command line under them. Clicks on the board send
-// through `send` too.
-import { toast } from 'vue-sonner'
+// through `send` too. A command that isn't sent says why in a line above the command line, in the board's own style.
+import { useTimeoutFn } from '@vueuse/core'
 
 const URL = '/api/railroader/ctc/commands'
 const STATUS: Record<ServerCommandState, { label: string; class: string }> = {
@@ -20,18 +20,27 @@ const reason = (c: ServerCommand) => (['refused', 'error', 'expired'].includes(c
 const { commands, add } = await useCommandList(URL, 'ctc-commands')
 const typed = ref('')
 
+const NOTICE_MS = 10_000
+const notice = ref<{ title: string; text: string } | null>(null)
+const { start: clearLater } = useTimeoutFn(() => (notice.value = null), NOTICE_MS, { immediate: false })
+function tell(title: string, text: string) {
+  notice.value = { title, text }
+  clearLater()
+}
+
 async function send(action: CtcAction) {
+  notice.value = null
   try {
     add(await $fetch<ServerCommand>(URL, { method: 'POST', body: action }))
   } catch (err) {
-    toast.error('Not sent', { description: errorText(err) })
+    tell('NOT SENT', errorText(err))
   }
 }
 
 async function sendTyped() {
   const action = parseTypedCtc(typed.value)
   if (!action) {
-    toast.error('Not a board command', { description: 'Type CLR <signal> [N|R], STOP <control point> or SW <control point> N|R.' })
+    tell('NOT A BOARD COMMAND', 'Type CLR <signal> [N|R], STOP <control point>, or SW <control point> N|R.')
     return
   }
   typed.value = ''
@@ -54,6 +63,11 @@ defineExpose({ send })
       </li>
       <li v-if="!commands.length" class="px-3 py-[3px] text-neutral-500">NO COMMANDS YET. CLICK A SIGNAL OR A SWITCH, OR TYPE ONE BELOW.</li>
     </ol>
+    <p v-if="notice" role="alert" class="flex items-center gap-2 border-t border-[#7f1d1d] bg-[#1c0a0a] px-3 py-1.5 text-[15px]">
+      <span class="font-bold text-red-400">&#9888; {{ notice.title }}</span>
+      <span class="text-neutral-200">{{ notice.text }}</span>
+      <button type="button" class="ml-auto px-1 text-sm font-semibold text-neutral-400" aria-label="Dismiss" @click="notice = null">X</button>
+    </p>
     <form class="flex items-center gap-2 border-t border-[#2a2a2a] bg-[#0a0a0a] px-3 py-1.5" autocomplete="off" @submit.prevent="sendTyped">
       <label for="ctc-cmd" class="font-bold text-sky-400">CMD</label>
       <input
