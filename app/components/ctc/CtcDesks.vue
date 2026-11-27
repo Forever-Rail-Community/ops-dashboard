@@ -10,6 +10,7 @@ const props = defineProps<{
   aspects: Record<string, SignalAspect>
   thrown: Record<string, boolean>
   changes: CtcDeskChange[]
+  settings: CtcDeskSettings
   canTake: boolean // has "Clear signals and throw switches"
   canEdit: boolean
   busy?: boolean
@@ -122,6 +123,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
             <li>The CTC board works only the desk you're on. Open desks are worked from the game's own CTC panel.</li>
             <li>Leaving, you write a turnover note. The next dispatcher reads it before taking the desk.</li>
             <li>With the Operations Center closed for 2 minutes, you're taken off your desk, and Discord is told.</li>
+            <li v-if="settings.idleMinutes">With no activity on the Operations Center for {{ settings.idleMinutes }} minutes, you're taken off too.</li>
             <li>The board shows what's heading your way from the desks either side.</li>
           </ul>
         </CardContent>

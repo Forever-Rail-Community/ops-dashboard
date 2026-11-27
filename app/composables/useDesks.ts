@@ -34,8 +34,8 @@ export function useDesks() {
     act('POST', `/api/railroader/ctc/desks/${id}/take`, { done: 'You took the desk', failed: "Couldn't take the desk" })
   const leave = (id: string, note: { items: string[]; text: string }) =>
     act('POST', `/api/railroader/ctc/desks/${id}/leave`, { done: 'You left the desk', failed: "Couldn't leave the desk" }, note)
-  const save = (lineId: string, desks: { id?: string; name: string; start: string }[]) =>
-    act('PUT', `/api/railroader/ctc/lines/${lineId}/desks`, { done: 'Desks saved', failed: 'Desks not saved' }, { desks })
+  const save = (lineId: string, desks: { id?: string; name: string; start: string }[], settings: CtcDeskSettings) =>
+    act('PUT', `/api/railroader/ctc/lines/${lineId}/desks`, { done: 'Desks saved', failed: 'Desks not saved' }, { desks, settings })
 
   return { data, error, busy, take, leave, save }
 }

@@ -12,8 +12,8 @@ const route = useRoute()
 const line = computed(() => lines.value?.find((l) => l.id === route.query.line) ?? lines.value?.[0])
 const board = computed(() => (line.value && live.value.signals.layout ? boardLayout(line.value, live.value.signals.layout) : null))
 const back = () => navigateTo(`/railroader/desks?line=${line.value?.id ?? ''}`)
-async function saved(list: { id?: string; name: string; start: string }[]) {
-  if (await save(line.value!.id, list)) back()
+async function saved(list: { id?: string; name: string; start: string }[], settings: CtcDeskSettings) {
+  if (await save(line.value!.id, list, settings)) back()
 }
 </script>
 
@@ -25,7 +25,8 @@ async function saved(list: { id?: string; name: string; start: string }[]) {
       <AlertDescription>Refresh the page. If it keeps happening, tell an admin.</AlertDescription>
     </Alert>
     <CtcDeskEdit
-      v-else-if="line && board && desks" :line="line" :board="board" :desks="desks.desks.filter((d) => d.lineId === line!.id)" :busy="busy"
+      v-else-if="line && board && desks" :line="line" :board="board" :desks="desks.desks.filter((d) => d.lineId === line!.id)" :settings="deskSettings(desks, line.id)"
+      :busy="busy"
       @save="saved" @cancel="back"
     />
     <Skeleton v-else class="h-80 rounded-xl" />

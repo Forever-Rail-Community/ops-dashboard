@@ -2,12 +2,16 @@ import type { TransactionSql } from 'postgres'
 
 // Desks (shared/types/ctcDesks.ts): saved in the database, which changes only when someone takes, leaves or edits a
 // desk, and read through remember() so open boards don't keep Neon awake. The copy is read from Redis every time (no
-// memory copy), so a desk taken through one server instance shows at once on the others. Whether a dispatcher is still at the board
-// is a Redis key per dispatcher, written by any open page of the site every DESK_BEAT_SEC (app/composables/useDeskBeat.ts).
-// Someone gone for DESK_AWAY_SEC is taken off their desk, and Discord is told; that's checked when desks are read and
-// as game servers report, at most every CHECK_EVERY_MS per server instance.
+// memory copy), so a desk taken through one server instance shows at once on the others.
+//
+// Whether a dispatcher is still here is a Redis key per dispatcher, written by any open page of the site every
+// DESK_BEAT_SEC (app/composables/useDeskBeat.ts). Someone gone for DESK_AWAY_SEC is taken off their desk, and Discord
+// is told; that's checked when desks are read and as game servers report, at most every CHECK_EVERY_MS per server
+// instance. Each check-in also says how long since they last used the site, so a line set to take idle dispatchers
+// off (its idleMinutes, on Edit desks) can.
 
 const COPY = 'ctc-desks'
+const SETTINGS_KEY = 'ctc-desks' // in the settings table: { lines: { [lineId]: CtcDeskSettings } }
 const CHANGES_HOURS = 24
 const MAX_DESKS = 12
 const CHECK_EVERY_MS = 30_000
@@ -31,6 +35,7 @@ export const listDesks = () =>
     const rows = await sql<DeskRow[]>`SELECT id, line_id, name, start, holder_id, holder_name, held_since, note FROM ctc_desks ORDER BY name`
     const changes = await sql<{ line_id: string; at: Date; text: string }[]>`
       SELECT line_id, at, text FROM ctc_desk_changes WHERE at > now() - make_interval(hours => ${CHANGES_HOURS}) ORDER BY at DESC LIMIT 100`
+    const [settings] = await sql<{ value: { lines?: Record<string, CtcDeskSettings> } }[]>`SELECT value FROM settings WHERE key = ${SETTINGS_KEY}`
     return {
       desks: rows.map((r) => ({
         id: r.id,
@@ -40,7 +45,8 @@ export const listDesks = () =>
         holder: r.holder_id ? { userId: r.holder_id, name: r.holder_name ?? '', since: r.held_since!.toISOString() } : null,
         note: r.note
       })),
-      changes: changes.map((c) => ({ lineId: c.line_id, at: c.at.toISOString(), text: c.text }))
+      changes: changes.map((c) => ({ lineId: c.line_id, at: c.at.toISOString(), text: c.text })),
+      settings: settings?.value.lines ?? {}
     }
   }, { memory: false })
 
@@ -62,6 +68,21 @@ async function findDesk(id: unknown) {
 
 export async function beat(userId: string) {
   await useStorage('data').setItem(beatKey(userId), Date.now(), { ttl: DESK_AWAY_SEC })
+}
+
+// A check-in from an open page: still here, and idleSec since they last used the site. Writes the beat for someone on
+// a desk (one Redis command), or takes them off if their line's idle limit has passed.
+export async function checkIn(user: { id: string; name: string }, idleSec: unknown): Promise<{ onDesk: boolean; takenOff?: string }> {
+  const data = await listDesks()
+  const desk = data.desks.find((d) => d.holder?.userId === user.id)
+  if (!desk) return { onDesk: false }
+  const { idleMinutes } = deskSettings(data, desk.lineId)
+  if (idleMinutes && typeof idleSec === 'number' && idleSec >= idleMinutes * 60) {
+    await takeOff(desk, `with no activity for ${idleMinutes} minutes`)
+    return { onDesk: false, takenOff: `You were taken off ${desk.name} after ${idleMinutes} minutes with no activity.` }
+  }
+  await beat(user.id)
+  return { onDesk: true }
 }
 
 export async function takeDesk(id: unknown, user: { id: string; name: string }) {
@@ -114,17 +135,23 @@ export async function releaseAwayDispatchers() {
   for (const desk of held) {
     const at = await storage.getItem<number>(beatKey(desk.holder!.userId))
     if (typeof at === 'number' && Date.now() - at < DESK_AWAY_SEC * 1000) continue
-    const line = lines.find((l) => l.id === desk.lineId)?.name ?? 'the line'
-    await release(desk, `${desk.holder!.name} was taken off ${desk.name}, with the Operations Center closed for 2 minutes`, null)
-    await discordPost('staff', {
-      title: `${desk.name} on the ${line} is open`,
-      description: `${desk.holder!.name} has had the Operations Center closed for 2 minutes. It's worked from the game's own CTC panel until someone takes it.`,
-      color: await brandColor()
-    })
+    await takeOff(desk, 'with the Operations Center closed for 2 minutes', lines)
   }
 }
 
-// Edit desks: replaces a line's desks. A removed desk takes its dispatcher off; the rest keep theirs.
+// Takes a dispatcher off their desk for the reason given ("with … for … minutes"), and tells Discord.
+async function takeOff(desk: CtcDesk, reason: string, lines?: CtcLine[]) {
+  const who = desk.holder!.name
+  const line = (lines ?? (await listLines())).find((l) => l.id === desk.lineId)?.name ?? 'the line'
+  await release(desk, `${who} was taken off ${desk.name}, ${reason}`, null)
+  await discordPost('staff', {
+    title: `${desk.name} on the ${line} is open`,
+    description: `${who} was taken off it, ${reason}. It's worked from the game's own CTC panel until someone takes it.`,
+    color: await brandColor()
+  })
+}
+
+// Edit desks: replaces a line's desks and sets its rules. A removed desk takes its dispatcher off; the rest keep theirs.
 export async function saveDesks(lineId: string, body: unknown, user: { name: string }) {
   const line = (await listLines()).find((l) => l.id === lineId)
   if (!line) throw createError({ statusCode: 404, statusMessage: 'No such line.' })
@@ -140,6 +167,9 @@ export async function saveDesks(lineId: string, body: unknown, user: { name: str
   })
   if (new Set(rows.map((r) => r.name.toLowerCase())).size < rows.length) throw bad('Two desks have the same name.')
   if (new Set(rows.map((r) => r.start)).size < rows.length) throw bad('Two desks start at the same place.')
+  const idleMinutes = (body as { settings?: { idleMinutes?: unknown } })?.settings?.idleMinutes ?? 0
+  if (!DESK_IDLE_CHOICES.includes(idleMinutes as number)) throw bad('Pick how long with no activity from the list.')
+  const settings: CtcDeskSettings = { idleMinutes: idleMinutes as number }
 
   const before = (await listDesks()).desks.filter((d) => d.lineId === lineId)
   const removed = before.filter((d) => !rows.some((r) => r.id === d.id))
@@ -150,6 +180,10 @@ export async function saveDesks(lineId: string, body: unknown, user: { name: str
       await sql`INSERT INTO ctc_desks (id, line_id, name, start) VALUES (${r.id}, ${lineId}, ${r.name}, ${r.start})
                 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, start = EXCLUDED.start WHERE ctc_desks.line_id = ${lineId}`
     }
+    await sql`INSERT INTO settings (key, value, updated_by)
+              VALUES (${SETTINGS_KEY}, ${sql.json({ lines: { [lineId]: settings } } as never)}, ${user.name})
+              ON CONFLICT (key) DO UPDATE SET value = jsonb_set(settings.value, ARRAY['lines', ${lineId}], ${sql.json(settings as never)}, true),
+                                              updated_at = now(), updated_by = EXCLUDED.updated_by`
   })
 }
 
