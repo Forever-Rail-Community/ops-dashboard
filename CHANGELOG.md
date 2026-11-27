@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.7.1...v0.8.0) (2026-11-27)
+
+
+### ✨ New features
+
+* CTC desks (FOR-15) ([#65](https://github.com/Forever-Rail-Community/ops-dashboard/issues/65)) ([144192a](https://github.com/Forever-Rail-Community/ops-dashboard/commit/144192a48e603bfc75d2dbc7c54a1a060bdd0e1f))
+* Take idle dispatchers off their desk, set per line on Edit desks ([#69](https://github.com/Forever-Rail-Community/ops-dashboard/issues/69)) ([2b7fb4a](https://github.com/Forever-Rail-Community/ops-dashboard/commit/2b7fb4a1e98992fb832bce8dfedc1f2068d2f22b))
+
+
+### 🐛 Fixes
+
+* Desks editing, Dispatching in the sidebar, and pages that flashed while loading ([#67](https://github.com/Forever-Rail-Community/ops-dashboard/issues/67)) ([bf20aef](https://github.com/Forever-Rail-Community/ops-dashboard/commit/bf20aef9d44a96a6cc391576484b5af72914e4ce))
+* Desks feedback: off duty by default, watching marked, clears never throw switches, alerts only for waiting trains ([#70](https://github.com/Forever-Rail-Community/ops-dashboard/issues/70)) ([dc0c286](https://github.com/Forever-Rail-Community/ops-dashboard/commit/dc0c2865b3afc77eafba3a8537243719852b650f))
+* Desks show changes at once, the board keeps to your desk, and staying on a desk counts any open page ([#68](https://github.com/Forever-Rail-Community/ops-dashboard/issues/68)) ([cf3101f](https://github.com/Forever-Rail-Community/ops-dashboard/commit/cf3101fc1f811c298e89b2220e506e04cead2cb2))
+
 ## [0.7.1](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.7.0...v0.7.1) (2026-11-26)
 
 
