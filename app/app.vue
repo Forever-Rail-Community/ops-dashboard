@@ -18,7 +18,6 @@ useHead(() => ({
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
-  <UpdateAvailable />
   <!-- The theme sets the toasts' own text colors, which otherwise stay light-mode gray in dark mode. -->
   <Toaster position="bottom-right" :theme="isDark ? 'dark' : 'light'" />
 </template>
