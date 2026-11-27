@@ -24,8 +24,7 @@ const silence = (signal: string) => silencedUntil.set(signal, Date.now() + SILEN
       <span>
         <b class="font-['Barlow_Condensed'] font-bold tracking-[.03em] text-red-400">&#9888; ALERT</b>
         {{ a.train }}
-        <template v-if="a.waiting">has been stopped at</template><template v-else>is heading for</template>
-        {{ (names.get(a.cp) ?? a.cp).toUpperCase() }} ({{ a.signal }}). Its signal is at stop<template v-if="a.waiting">, for <b>{{ minutes(a.since) }} min</b></template>.
+        is stopped at {{ (names.get(a.cp) ?? a.cp).toUpperCase() }} ({{ a.signal }}), waiting on a signal at stop<template v-if="a.waiting"> for <b>{{ minutes(a.since) }} min</b></template>.
       </span>
       <span class="inline-flex gap-1.5">
         <button type="button" class="h-[22px] border border-red-300 px-2 font-['Barlow_Condensed'] text-[13px] font-bold tracking-[.03em] text-red-300" @click="emit('show', a.x)">SHOW</button>

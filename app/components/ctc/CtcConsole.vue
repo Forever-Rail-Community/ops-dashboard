@@ -2,8 +2,11 @@
 // The CTC console, as the agreed board designs show it (CTC Board Prototypes canvas, boards E, G, K, L and M): a status
 // strip (line, dispatcher, game link, clock, help), the track display (CtcBoard.vue), alerts, a legend, and the
 // COMMANDS, EVENTS and TRAIN columns. With desks (shared/types/ctcDesks.ts), the strip shows who's on each, the board
-// opens at yours, only your desks' control points can be worked, and the neighbors row shows what's coming in.
-// A line with no desks set up is worked as one, by anyone who can control the board.
+// keeps to yours, only your desks' control points can be worked, and the neighbors row shows what's coming in.
+// Watching a desk (`watch`, from Watch on the Desks page or here) keeps the board to that desk and marks it in yellow.
+// A dispatcher who's on no desk and watching none is off duty: they choose a desk to watch, or go take one, rather than
+// being put to watching. A line with no desks set up is worked as one, by anyone who can control the board.
+import { Eye } from '@lucide/vue'
 import '@fontsource/barlow-condensed/400.css'
 import '@fontsource/barlow-condensed/500.css'
 import '@fontsource/barlow-condensed/600.css'
@@ -22,9 +25,9 @@ const props = defineProps<{
   userId: string
   controllable: boolean
   desks: CtcDesk[]
-  focus?: string // a desk to open at; otherwise the first of yours
+  watch?: string // the desk being watched, if any
 }>()
-const emit = defineEmits<{ line: [id: string] }>()
+const emit = defineEmits<{ line: [id: string]; watch: [id?: string] }>()
 
 const board = computed(() => boardLayout(props.line, props.layout))
 const trains = computed(() => boardTrains(board.value, props.layout, props.live.signals.aspects, props.live.trains))
@@ -34,14 +37,17 @@ const mine = computed(() => desks.value.filter((d) => d.mine))
 const controls = computed(() =>
   !props.controllable ? [] : spans.value.length ? mine.value.flatMap((d) => d.span.controlPoints) : props.layout.controlPoints.map((cp) => cp.id))
 const working = computed(() => controls.value.length > 0)
-// On a desk, the board keeps to it, unless they came to watch another (Watch on the Desks page).
-const onlyMine = computed(() => mine.value.length > 0 && (desks.value.find((d) => d.id === props.focus)?.mine ?? true))
-const neighbors = computed(() => incoming(board.value, desks.value, trains.value))
+const watched = computed(() => desks.value.find((d) => d.id === props.watch && !d.mine))
+// The desks the board keeps to: the one being watched, or yours.
+const kept = computed(() => (watched.value ? [watched.value] : mine.value))
+const offDuty = computed(() => props.controllable && desks.value.length > 0 && !mine.value.length && !watched.value)
+const role = computed(() => (working.value ? 'DISPATCHER' : props.controllable && desks.value.length ? 'OFF DUTY' : 'VIEWING'))
+const neighbors = computed(() => (watched.value ? [] : incoming(board.value, desks.value, trains.value)))
 // Alerts, worked out on each refresh; `since` remembers when each train was first seen at its signal.
 const since = new Map<string, number>()
-// On a desk, only its own alerts; the desks either side have their own dispatchers or the game's panel.
+// On a desk (or watching one), only its own alerts; the desks either side have their own dispatchers or the game's panel.
 const alerts = computed(() => ctcAlerts(board.value, props.layout, props.live.signals.aspects, props.live.signals.occupied, props.live.trains, since)
-  .filter((a) => !mine.value.length || mine.value.some((d) => a.x >= d.x1 && a.x < d.x2)))
+  .filter((a) => !kept.value.length || kept.value.some((d) => a.x >= d.x1 && a.x < d.x2)))
 const selected = ref<string>()
 const train = computed(() => trains.value.find((t) => t.id === selected.value))
 const cpNames = computed(() => new Map(props.layout.controlPoints.map((cp) => [cp.id, cp.name])))
@@ -49,12 +55,18 @@ const span = computed(() => `${props.line.towns[0]?.name} to ${props.line.towns.
 const title = computed(() => `${props.line.name.toUpperCase()}, ${span.value}, ${Math.round(board.value.miles)} MI`)
 
 const boardRef = ref<{ show: (x: number) => void }>()
-// Opens at the start of the desk asked for, or your first.
-onMounted(() => {
-  const desk = desks.value.find((d) => d.id === props.focus) ?? mine.value[0]
+// Opens at the start of the desk it keeps to, and goes there when that changes.
+watch(() => kept.value[0]?.id, () => {
+  const desk = kept.value[0]
   if (desk) nextTick(() => boardRef.value?.show(desk.x1 + 480))
-})
+}, { immediate: true })
 const commandsRef = ref<{ send: (action: CtcAction) => Promise<void> }>()
+// A clear waits for its switch to be lined (clearNeeds): clearing never throws a switch.
+function check(action: CtcAction) {
+  if (action.kind !== 'clear') return null
+  const needs = clearNeeds(board.value, action.signal, props.live.switches)
+  return needs ? `Line the switch at ${(cpNames.value.get(needs.cp) ?? needs.cp).toUpperCase()} ${needs.setting.toUpperCase()} first: SW ${needs.cp.toUpperCase()} ${needs.setting === 'normal' ? 'N' : 'R'}.` : null
+}
 
 const clock = ref('')
 const tick = () => (clock.value = new Date().toLocaleTimeString('en-US', { hour12: false }))
@@ -85,7 +97,11 @@ function closeHelp() {
       </select>
       <span v-else class="text-neutral-400">RAILROADER, {{ line.name.toUpperCase() }}</span>
       <span v-if="mine.length" class="text-sky-300">{{ mine.map((d) => d.name).join(' + ').toUpperCase() }}</span>
-      <span class="ml-auto text-neutral-400">{{ working ? 'DISPATCHER' : 'WATCHING' }} <span class="font-semibold text-neutral-50">{{ dispatcher.toUpperCase() }}</span></span>
+      <span v-if="watched" class="inline-flex items-center gap-1.5 border border-yellow-500 bg-yellow-950 px-2 font-semibold text-yellow-300">
+        <Eye class="size-4" aria-hidden="true" />WATCHING {{ watched.name.toUpperCase() }}
+        <button type="button" class="ml-1 text-yellow-400 hover:text-yellow-200" aria-label="Stop watching" title="Stop watching" @click="emit('watch')">&#10005;</button>
+      </span>
+      <span class="ml-auto text-neutral-400">{{ role }} <span class="font-semibold text-neutral-50">{{ dispatcher.toUpperCase() }}</span></span>
       <span class="border px-2" :class="linkOk ? 'border-green-500 text-green-400' : 'border-red-500 text-red-400'">GAME LINK {{ linkOk ? 'OK' : 'LOST' }}</span>
       <span class="min-w-[76px] text-right text-xl font-semibold text-neutral-50">{{ clock }}</span>
       <button
@@ -106,12 +122,13 @@ function closeHelp() {
           <li>The strip at the top is the whole line, and the white box is the part this board shows. Click the strip to move there.</li>
           <li>Track colors: <b class="text-red-400">red</b> has a train on it, <b class="text-green-400">green</b> is a route cleared through a control point, and gray is empty.</li>
           <li v-if="desks.length">The row under the strip shows each desk and who's on it. You can work only the desks you've taken, on the Desks page; the others are dimmed.</li>
-          <li v-if="working">Click a signal to clear or stop it, and a switch's <b>N</b> or <b>R</b> to line it. Click a train for its details.</li>
+          <li v-if="working">Click a switch's <b>N</b> or <b>R</b> to line it, and a signal to clear or stop it. A signal clears only once its switch is lined for it. Click a train for its details.</li>
           <li v-else-if="controllable">Click a train for its details. Take a desk on the Desks page to work its signals and switches.</li>
           <li v-else>Click a train for its details. Working the line needs the "Clear signals and throw switches" permission.</li>
           <li v-if="working">Each command shows <b>SENT</b> until the game answers, then <b>CONFIRMED</b> or <b>REJECTED</b> with the reason.</li>
-          <li v-if="working">Prefer typing? <b>CLR WH-WS R</b> clears a signal and lines its switch reverse, <b>STOP WH-W</b> stops a control point, and <b>SW WH-W N</b> lines a switch.</li>
-          <li>Alerts under the board: a train heading for a signal at stop, or waiting at one.</li>
+          <li v-if="working">Prefer typing? <b>SW WH-W R</b> lines a switch reverse, <b>CLR WH-WS</b> clears a signal, and <b>STOP WH-W</b> stops a control point.</li>
+          <li v-if="desks.length">Watching a desk keeps the board to it and marks it in yellow. The &#10005; beside it stops watching.</li>
+          <li>Alerts under the board: a train stopped at a signal at stop.</li>
         </ul>
         <div class="flex items-center justify-between gap-3 px-3 pt-2 pb-2.5 text-[13px] text-neutral-400">
           Shows on your first visit. The ? button brings it back.
@@ -119,9 +136,20 @@ function closeHelp() {
         </div>
       </div>
 
+      <div v-if="offDuty" class="grid gap-3 px-3.5 py-6 font-[Barlow] text-[15px] tracking-normal">
+        <p><b class="font-['Barlow_Condensed'] text-base tracking-[.03em] text-neutral-50">YOU'RE OFF DUTY.</b> Take a desk to dispatch it, or pick one to watch.</p>
+        <div class="flex flex-wrap gap-2 font-['Barlow_Condensed'] text-sm font-bold tracking-[.03em]">
+          <NuxtLink to="/railroader/desks" class="inline-flex h-[30px] items-center bg-neutral-50 px-3 text-black">GO TO DESKS</NuxtLink>
+          <button
+            v-for="d in desks" :key="d.id" type="button" class="inline-flex h-[30px] items-center gap-1.5 border border-neutral-500 px-3 text-neutral-200 hover:border-yellow-500 hover:text-yellow-300"
+            @click="emit('watch', d.id)"
+          ><Eye class="size-4" aria-hidden="true" /><span>WATCH {{ d.name.toUpperCase() }}<span class="font-medium text-neutral-500">, {{ (d.holder ?? 'open').toUpperCase() }}</span></span></button>
+        </div>
+      </div>
       <CtcBoard
-        ref="boardRef" :board="board" :title="title" :aspects="live.signals.aspects" :occupied="live.signals.occupied" :thrown="live.switches"
-        :trains="trains" :selected-train="selected" :controls="controls" :alerts="alerts.map((a) => a.signal)" :desks="desks" :only-mine="onlyMine"
+        v-else ref="boardRef" :board="board" :title="title" :aspects="live.signals.aspects" :occupied="live.signals.occupied" :thrown="live.switches"
+        :trains="trains" :selected-train="selected" :controls="controls" :alerts="alerts.map((a) => a.signal)" :desks="desks"
+        :keep-to="kept.map((d) => d.id)" :watching="watched?.id"
         @command="(a) => commandsRef?.send(a)" @train="(id) => (selected = id)"
       />
     </div>
@@ -140,7 +168,7 @@ function closeHelp() {
       </div>
     </div>
 
-    <CtcAlerts class="border-t border-[#2a2a2a]" :alerts="alerts" :names="cpNames" @show="(x) => boardRef?.show(x)" />
+    <CtcAlerts v-if="!offDuty" class="border-t border-[#2a2a2a]" :alerts="alerts" :names="cpNames" @show="(x) => boardRef?.show(x)" />
 
     <div class="flex flex-wrap gap-x-[18px] gap-y-1 border-y border-[#2a2a2a] px-3.5 py-1.5 text-[13px] text-neutral-400">
       <span class="inline-flex items-center gap-1.5"><span class="h-1.5 w-5 bg-red-500" />OCCUPIED</span>
@@ -152,7 +180,7 @@ function closeHelp() {
     </div>
 
     <div class="flex flex-wrap">
-      <CtcCommands v-if="working" ref="commandsRef" />
+      <CtcCommands v-if="working" ref="commandsRef" :check="check" />
       <CtcEvents :board="board" :aspects="live.signals.aspects" :thrown="live.switches" />
       <CtcTrainSheet :train="train" :board="board" />
     </div>

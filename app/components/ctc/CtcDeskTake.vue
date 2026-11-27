@@ -1,9 +1,11 @@
 <script setup lang="ts">
-// Taking a desk (board J): the turnover note the last dispatcher left, which has to be read first.
+// Taking a desk (board J): the turnover note the last dispatcher left, which has to be read first. A note with nothing
+// in it isn't shown, and there's nothing to confirm.
 const props = defineProps<{ desk: BoardDesk; line: CtcLine; busy?: boolean }>()
 const emit = defineEmits<{ take: []; cancel: [] }>()
 
-const note = computed(() => props.desk.span.desk.note)
+const left = computed(() => props.desk.span.desk.note)
+const note = computed(() => (left.value && (left.value.items.length || left.value.text.trim()) ? left.value : null))
 const read = ref(false)
 const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 </script>
@@ -15,6 +17,7 @@ const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short',
       <DialogDescription>
         {{ desk.stretch }}.
         <template v-if="note">{{ note.by }} left it at {{ when(note.at) }}, with this turnover note.</template>
+        <template v-else-if="left">{{ left.by }} left it at {{ when(left.at) }}, with no turnover note.</template>
         <template v-else>Nobody left a turnover note for it.</template>
       </DialogDescription>
     </DialogHeader>

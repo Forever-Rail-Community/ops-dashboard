@@ -8,8 +8,11 @@ import { GripVertical } from '@lucide/vue'
 // The table is two lists side by side: the desks, in line order, and where each place on the line starts. Dragging a
 // desk (or moving it with the arrow keys on its handle) changes which stretch it works; the starts stay put. A start can
 // only move between its neighbors', so the line's order never changes underneath.
+//
+// Save changes and Cancel changes light up only once something has changed (a line with no desks yet can always be
+// saved); Cancel changes puts the page back as it was saved, and Back to desks leaves without saving.
 const props = defineProps<{ line: CtcLine; board: Board; desks: CtcDesk[]; settings: CtcDeskSettings; busy?: boolean }>()
-const emit = defineEmits<{ save: [desks: { id?: string; name: string; start: string }[], settings: CtcDeskSettings]; cancel: [] }>()
+const emit = defineEmits<{ save: [desks: { id?: string; name: string; start: string }[], settings: CtcDeskSettings]; back: [] }>()
 
 const MAX_DESKS = 12
 interface Desk { id?: string; key: string; name: string }
@@ -18,13 +21,21 @@ const order = props.line.towns.flatMap((t) => t.controlPoints)
 const at = (cp: string) => order.indexOf(cp)
 
 let nextKey = 0
-const spans = deskSpans(props.line, props.desks)
-const desks = ref<Desk[]>(spans.map((s) => ({ id: s.desk.id, key: s.desk.id, name: s.desk.name })))
-const starts = ref<string[]>(spans.map((s, k) => (k ? s.desk.start : lineStart)))
-if (!desks.value.length) {
-  desks.value.push({ key: `new-${nextKey++}`, name: 'Desk 1' })
-  starts.value.push(lineStart)
+const desks = ref<Desk[]>([])
+const starts = ref<string[]>([])
+const idle = ref('') // the line's rule; Select values are strings
+// The desks and rule as saved (or one desk covering the whole line, for a line with none yet).
+function reset() {
+  const spans = deskSpans(props.line, props.desks)
+  desks.value = spans.map((s) => ({ id: s.desk.id, key: s.desk.id, name: s.desk.name }))
+  starts.value = spans.map((s, k) => (k ? s.desk.start : lineStart))
+  if (!desks.value.length) {
+    desks.value.push({ key: `new-${nextKey++}`, name: 'Desk 1' })
+    starts.value.push(lineStart)
+  }
+  idle.value = String(props.settings.idleMinutes)
 }
+reset()
 
 // "Starts at" choices for a place on the line, by town (all of it, or from its second control point on), each at its
 // milepost, between the starts before and after it.
@@ -95,11 +106,13 @@ function passOver(k: number) {
   dragging.value = k
 }
 
-// The line's rules. Select values are strings.
-const idle = ref(String(props.settings.idleMinutes))
 const idleLabel = (m: number) => (m ? `After ${m} minutes with no activity` : 'Never')
 
-const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.name.trim(), start: starts.value[k]! })), { idleMinutes: Number(idle.value) })
+const edited = () => ({ desks: desks.value.map((d, k) => ({ id: d.id, name: d.name.trim(), start: starts.value[k]! })), settings: { idleMinutes: Number(idle.value) } })
+const saved = JSON.stringify(edited())
+const differs = computed(() => JSON.stringify(edited()) !== saved)
+const changed = computed(() => !props.desks.length || differs.value)
+const save = () => emit('save', edited().desks, edited().settings)
 </script>
 
 <template>
@@ -110,8 +123,9 @@ const save = () => emit('save', desks.value.map((d, k) => ({ id: d.id, name: d.n
         <p class="text-muted-foreground">Where each desk on the {{ line.name }} starts, and what it's called.</p>
       </div>
       <div class="flex gap-2">
-        <Button variant="outline" @click="emit('cancel')">Cancel</Button>
-        <Button :disabled="busy || !!problem" @click="save">Save changes</Button>
+        <Button variant="ghost" @click="emit('back')">Back to desks</Button>
+        <Button variant="outline" :disabled="busy || !differs" @click="reset">Cancel changes</Button>
+        <Button :disabled="busy || !!problem || !changed" @click="save">Save changes</Button>
       </div>
     </div>
 

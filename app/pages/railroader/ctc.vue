@@ -12,13 +12,14 @@ const forbidden = computed(() => error.value?.statusCode === 403)
 // The same live data the map shows (refreshed every 5 seconds while the page is open), so a board costs nothing extra.
 const { live, response, error: liveError } = useLiveMap(ref(null))
 
-// Desks, and the one asked for by Watch on the Desks page (?desk=), whose line opens with the board at it.
+// Desks, and the one being watched (?desk=, from Watch on the Desks page or the board), whose line the board opens on.
 const { data: desks } = useDesks()
 const route = useRoute()
-const focus = computed(() => (typeof route.query.desk === 'string' ? route.query.desk : undefined))
+const watching = computed(() => (typeof route.query.desk === 'string' ? route.query.desk : undefined))
+const setWatching = (desk?: string) => navigateTo({ query: { ...route.query, desk } }, { replace: true })
 const chosen = ref<string>()
 const line = computed(() =>
-  lines.value?.find((l) => l.id === (chosen.value ?? desks.value?.desks.find((d) => d.id === focus.value)?.lineId)) ?? lines.value?.[0])
+  lines.value?.find((l) => l.id === (chosen.value ?? desks.value?.desks.find((d) => d.id === watching.value)?.lineId)) ?? lines.value?.[0])
 const layout = computed(() => live.value.signals.layout)
 const linkOk = computed(() => !liveError.value && response.value?.signalsAge.ageSec != null && !response.value.signalsAge.stale)
 </script>
@@ -49,8 +50,8 @@ const linkOk = computed(() => !liveError.value && response.value?.signalsAge.age
     <template v-else-if="lines">
       <CtcConsole
         v-if="line && layout?.controlPoints.length" :line="line" :lines="lines" :layout="layout" :live="live" :link-ok="linkOk"
-        :dispatcher="user?.name ?? ''" :user-id="user?.id ?? ''" :controllable="canControl" :desks="desks?.desks ?? []" :focus="focus"
-        @line="(id) => (chosen = id)"
+        :dispatcher="user?.name ?? ''" :user-id="user?.id ?? ''" :controllable="canControl" :desks="desks?.desks ?? []" :watch="watching"
+        @line="(id) => (chosen = id)" @watch="setWatching"
       />
       <p v-else-if="response && !response.signalLayoutVersion" class="text-sm text-muted-foreground">Waiting for the game server's signal layout. It's sent when the game loads a save, and every 10 minutes.</p>
       <p v-else-if="layout && !layout.controlPoints.length" class="text-sm text-muted-foreground">

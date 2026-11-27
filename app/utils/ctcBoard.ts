@@ -38,8 +38,8 @@ export interface BoardHead {
   dir: 1 | -1 // 1: points right
   intermediate: boolean
   // A control point signal's control point, and the track it stands on: the town's main or siding (facing out of the
-  // town), or the line outside it (facing in). Clearing one on the main or siding lines the switch for it first; one
-  // facing in is cleared into the main or the siding.
+  // town), or the line outside it (facing in). One on the main or siding clears only with the switch lined for its
+  // track (clearNeeds); one facing in clears into whichever track the switch lines.
   cp?: string
   track?: 'main' | 'siding' | 'out'
   // The block a train waits in before this signal (for alerts).
@@ -234,4 +234,17 @@ export function routedBlocks(board: Board, aspects: Record<string, SignalAspect>
     }
   }
   return routed
+}
+
+// What a dispatcher has to do before clearing this signal: line its control point's switch for the track the signal
+// stands on (normal for the main, reverse for the siding). Clearing never throws a switch, so a signal on a track the
+// switch isn't lined for can't be cleared until it is. Null when it can be cleared now, or the switch isn't reported.
+export function clearNeeds(board: Board, signal: string, thrown: Record<string, boolean>): { cp: string; setting: CtcSetting } | null {
+  const head = board.heads.find((h) => h.signal === signal)
+  if (!head?.cp || (head.track !== 'main' && head.track !== 'siding')) return null
+  const sw = board.points.find((p) => p.id === head.cp)?.switch
+  const isThrown = sw ? thrown[sw] : undefined
+  if (isThrown === undefined) return null
+  const setting: CtcSetting = head.track === 'siding' ? 'reverse' : 'normal'
+  return (isThrown ? 'reverse' : 'normal') === setting ? null : { cp: head.cp, setting }
 }
