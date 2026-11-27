@@ -32,6 +32,10 @@ export default defineOAuthDiscordEventHandler({
         permissions: access.permissions
       }
     })
+    // A first sign-in gets the welcome on the page it lands on, which reads this and clears it.
+    if (await firstSignIn(user.id)) {
+      setCookie(event, WELCOME_COOKIE, JSON.stringify(access.labels), { maxAge: 300, sameSite: 'lax', path: '/' })
+    }
     return sendRedirect(event, '/')
   },
 

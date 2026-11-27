@@ -52,3 +52,7 @@ export const DEFAULT_SITE: SiteSettings = {
   notice: 'The Operations Center is still in early development. Things may break, and features will change as we build it.',
   labels: DEFAULT_LABELS
 }
+
+// Set on a first sign-in (server/routes/auth/discord.get.ts) to the person's role names; WelcomeOverlay.vue shows the
+// welcome while it's there, then clears it.
+export const WELCOME_COOKIE = 'fr-welcome'
