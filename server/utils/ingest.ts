@@ -55,8 +55,11 @@ export async function acceptReport(agent: RegisteredAgent, body: unknown) {
   // open, which counts as watching, so only then is there anything to look for.
   // Railroader reports are also the clock for taking away dispatchers off their desks (server/utils/ctcDesks.ts), so
   // Discord hears soon after even with nobody's page open. It never stops a report being accepted.
+  // Railroader agents also get the control points dispatchers hold, for the host mod to lock the in-game panel there
+  // (FOR-23; agents older than 0.20 ignore it). A failure leaves the field out, so the panel stays as it was.
   if (agent.game === 'railroader') await releaseAwayDispatchers().catch((err) => console.error('Desk check failed', err))
+  const ctcHeld = agent.game === 'railroader' ? await heldControlPoints().catch((err) => (console.error('Held control points failed', err), undefined)) : undefined
   const watching = await isWatched(agent.game)
   const commands = watching ? await takeCommands(agent) : []
-  return { server: agent.id, game: agent.game, accepted, skipped, watching, ...(commands.length ? { commands } : {}) }
+  return { server: agent.id, game: agent.game, accepted, skipped, watching, ...(commands.length ? { commands } : {}), ...(ctcHeld ? { ctcHeld } : {}) }
 }
