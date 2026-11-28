@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.8.0...v0.9.0) (2026-11-28)
+
+
+### ✨ New features
+
+* Desk transfers, staff takeovers and covering, a desk changes timeline, and command timing (FOR-17) ([#74](https://github.com/Forever-Rail-Community/ops-dashboard/issues/74)) ([b7188dd](https://github.com/Forever-Rail-Community/ops-dashboard/commit/b7188ddfb131d26ed816ca198df5970ddc3078a6))
+* Lock the in-game CTC panel on desks with a dispatcher on duty (FOR-23) ([#82](https://github.com/Forever-Rail-Community/ops-dashboard/issues/82)) ([7f3b8b2](https://github.com/Forever-Rail-Community/ops-dashboard/commit/7f3b8b2f48eba2f52d08f04806365ff244045cae))
+* Show switch blocks and released switches on the CTC board, and lock a released switch (FOR-13) ([#80](https://github.com/Forever-Rail-Community/ops-dashboard/issues/80)) ([c80608c](https://github.com/Forever-Rail-Community/ops-dashboard/commit/c80608c62eeca686188ca93dab10c9c5b1511caa))
+* Version on every page, an update bar for new releases, steadier train arrows, and Clock in/out ([#71](https://github.com/Forever-Rail-Community/ops-dashboard/issues/71)) ([06c82f0](https://github.com/Forever-Rail-Community/ops-dashboard/commit/06c82f0d5aa0a18ea9b565da19ed76a899fbc9a5))
+
 ## [0.8.0](https://github.com/Forever-Rail-Community/ops-dashboard/compare/v0.7.1...v0.8.0) (2026-11-27)
 
 
