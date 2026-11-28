@@ -351,6 +351,11 @@ const STEPS: { name: string; sql: string }[] = [
         WHEN text LIKE '% clocked in to %' OR text LIKE '% took %' THEN 'in'
         WHEN text LIKE '% clocked out of %' OR text LIKE '% left %' THEN 'out'
         ELSE 'edit' END`
+  },
+  // Each person's railroad theme (FOR-24, shared/utils/railroadThemes.ts).
+  {
+    name: 'user-preferences-railroad-theme',
+    sql: `ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS railroad_theme text NOT NULL DEFAULT 'default'`
   }
 ]
 

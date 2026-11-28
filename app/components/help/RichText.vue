@@ -38,7 +38,7 @@ watch(model, (doc) => {
 .help-prose ul { list-style: disc; padding-left: 1.4em; }
 .help-prose ol { list-style: decimal; padding-left: 1.4em; }
 .help-prose li > p { margin: 0.2em 0; }
-.help-prose a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.help-prose a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
 .help-prose blockquote { border-left: 3px solid var(--border); padding-left: 1em; color: var(--muted-foreground); }
 .help-prose hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
 .help-prose code { font-size: 0.875em; background: var(--muted); border-radius: 4px; padding: 0.1em 0.35em; }

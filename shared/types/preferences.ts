@@ -3,4 +3,5 @@ export interface Preferences {
   units: UnitSystem
   whatsNewAuto: boolean // open What's new by itself after an update
   whatsNewSeen: number // id of the newest update they've seen (0: none)
+  railroadTheme: RailroadThemeKey // the look of the site (shared/utils/railroadThemes.ts)
 }

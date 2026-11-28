@@ -15,6 +15,7 @@ const entries = computed(() => sidebarEntries(features.value))
 
 <template>
   <Sidebar variant="inset" collapsible="icon">
+    <RailroadMark />
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>

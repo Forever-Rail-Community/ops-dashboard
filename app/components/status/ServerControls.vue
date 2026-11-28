@@ -9,8 +9,8 @@ const props = defineProps<{ agent: RailroaderAgent }>()
 const COMMANDS = ['start', 'status', 'save', 'autosave', 'window show', 'window hide', 'shutdown', 'shutdown now', 'help']
 const STATE: Record<ServerCommandState, { label: string; class: string }> = {
   queued: { label: 'Waiting for the server', class: 'border-border bg-muted text-muted-foreground' },
-  sent: { label: 'Sent', class: 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300' },
-  pending: { label: 'Running', class: 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300' },
+  sent: { label: 'Sent', class: 'border-info/40 bg-info/10 text-info-foreground' },
+  pending: { label: 'Running', class: 'border-info/40 bg-info/10 text-info-foreground' },
   ok: { label: 'Done', class: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
   refused: { label: 'Refused', class: 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300' },
   error: { label: 'Failed', class: 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300' },

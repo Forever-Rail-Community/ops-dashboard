@@ -49,8 +49,8 @@ async function post() {
         <Label for="request-title">Your idea</Label>
         <Input id="request-title" v-model="form.title" :maxlength="ROADMAP_LIMITS.title" placeholder="Show which crew is on each train" />
       </div>
-      <div v-if="similar" role="status" class="grid gap-2 rounded-[10px] border border-sky-500/25 bg-sky-500/8 p-3 text-[13px]">
-        <span class="text-sky-700 dark:text-sky-200">This looks like one that’s already been suggested:</span>
+      <div v-if="similar" role="status" class="grid gap-2 rounded-[10px] border border-info/25 bg-info/8 p-3 text-[13px]">
+        <span class="text-info-foreground">This looks like one that’s already been suggested:</span>
         <span class="flex items-center gap-2.5">
           <span class="min-w-0 flex-1 truncate font-semibold">{{ similar.title }}</span>
           <RoadmapVoteButton :votes="similar.votes" :voted="similar.voted" :title="similar.title" @toggle="voteSimilar(similar)" />
