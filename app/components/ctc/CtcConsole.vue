@@ -6,6 +6,7 @@
 // Watching a desk (`watch`, from Watch on the Desks page or here) keeps the board to that desk and marks it in yellow.
 // A dispatcher who's on no desk and watching none is off duty: they choose a desk to watch, or go clock in to one, rather than
 // being put to watching. A line with no desks set up is worked as one, by anyone who can control the board.
+// Clock out is in the strip too (FOR-26), with the same turnover note as on the Desks page; the page does the saving.
 import { Eye } from '@lucide/vue'
 import '@fontsource/barlow-condensed/400.css'
 import '@fontsource/barlow-condensed/500.css'
@@ -27,8 +28,9 @@ const props = defineProps<{
   desks: CtcDesk[]
   watch?: string // the desk being watched, if any
   sound?: boolean // the line's "play a sound" rule (Edit desks)
+  busy?: boolean // a clock-out is being saved
 }>()
-const emit = defineEmits<{ line: [id: string]; watch: [id?: string] }>()
+const emit = defineEmits<{ line: [id: string]; watch: [id?: string]; leave: [id: string, note: { items: string[]; text: string }] }>()
 
 const board = computed(() => boardLayout(props.line, props.layout))
 const directions: TrainDirections = new Map() // kept between refreshes, so a train's arrow doesn't flick the wrong way
@@ -44,6 +46,7 @@ const working = computed(() => controls.value.length > 0)
 const released = computed(() =>
   board.value.points.filter((p) => p.switch && props.live.signals.released[p.switch]).map((p) => ({ cp: p.id, x: p.x, canLock: controls.value.includes(p.id) })))
 const watched = computed(() => desks.value.find((d) => d.id === props.watch && !d.mine))
+const leaving = ref<BoardDesk>()
 // The desks the board keeps to: the one being watched, or yours.
 const kept = computed(() => (watched.value ? [watched.value] : mine.value))
 const offDuty = computed(() => props.controllable && desks.value.length > 0 && !mine.value.length && !watched.value)
@@ -103,6 +106,11 @@ function closeHelp() {
       </select>
       <span v-else class="text-neutral-400">RAILROADER, {{ line.name.toUpperCase() }}</span>
       <span v-if="mine.length" class="text-sky-300">{{ mine.map((d) => d.name).join(' + ').toUpperCase() }}</span>
+      <button
+        v-for="d in mine" :key="d.id" type="button" :disabled="busy"
+        class="border border-neutral-600 px-2 font-semibold text-neutral-200 hover:border-neutral-400 hover:text-neutral-50 disabled:opacity-50"
+        @click="leaving = d"
+      >{{ mine.length > 1 ? `CLOCK OUT ${d.name.toUpperCase()}` : 'CLOCK OUT' }}</button>
       <span v-if="watched" class="inline-flex items-center gap-1.5 border border-yellow-500 bg-yellow-950 px-2 font-semibold text-yellow-300">
         <Eye class="size-4" aria-hidden="true" />WATCHING {{ watched.name.toUpperCase() }}
         <button type="button" class="ml-1 text-yellow-400 hover:text-yellow-200" aria-label="Stop watching" title="Stop watching" @click="emit('watch')">&#10005;</button>
@@ -191,5 +199,10 @@ function closeHelp() {
       <CtcEvents :board="board" :aspects="live.signals.aspects" :thrown="live.switches" />
       <CtcTrainSheet :train="train" :board="board" />
     </div>
+
+    <CtcDeskClockOut
+      v-model="leaving" :board="board" :aspects="live.signals.aspects" :thrown="live.switches" :trains="trains" :busy="busy"
+      @leave="(id, note) => emit('leave', id, note)"
+    />
   </div>
 </template>

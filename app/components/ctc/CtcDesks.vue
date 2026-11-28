@@ -55,7 +55,6 @@ const facts = (d: BoardDesk) => {
 const taking = ref<BoardDesk>()
 const leaving = ref<BoardDesk>()
 const takeOpen = computed({ get: () => !!taking.value, set: (v) => { if (!v) taking.value = undefined } })
-const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) leaving.value = undefined } })
 </script>
 
 <template>
@@ -165,11 +164,9 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
     <Dialog v-model:open="takeOpen">
       <CtcDeskTake v-if="taking" :desk="taking" :line="line" :busy="busy" @take="emit('take', taking.id); taking = undefined" @cancel="taking = undefined" />
     </Dialog>
-    <Dialog v-model:open="leaveOpen">
-      <CtcDeskLeave
-        v-if="leaving" :desk="leaving" :items="turnoverItems(board, leaving, aspects, thrown, trains)" :busy="busy"
-        @leave="(note) => { emit('leave', leaving!.id, note); leaving = undefined }" @cancel="leaving = undefined"
-      />
-    </Dialog>
+    <CtcDeskClockOut
+      v-model="leaving" :board="board" :aspects="aspects" :thrown="thrown" :trains="trains" :busy="busy"
+      @leave="(id, note) => emit('leave', id, note)"
+    />
   </div>
 </template>
