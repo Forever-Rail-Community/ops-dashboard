@@ -41,5 +41,10 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@vercel/cli-config": {
+      "zod": "^4.6.6"
+    }
   }
 }
