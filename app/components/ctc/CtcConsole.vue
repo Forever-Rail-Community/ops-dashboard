@@ -30,7 +30,7 @@ const props = defineProps<{
   sound?: boolean // the line's "play a sound" rule (Edit desks)
   busy?: boolean // a clock-out is being saved
 }>()
-const emit = defineEmits<{ line: [id: string]; watch: [id?: string]; leave: [id: string, note: { items: string[]; text: string }] }>()
+const emit = defineEmits<{ line: [id: string]; watch: [id?: string]; leave: [notes: DeskLeaveNote[]] }>()
 
 const board = computed(() => boardLayout(props.line, props.layout))
 const directions: TrainDirections = new Map() // kept between refreshes, so a train's arrow doesn't flick the wrong way
@@ -49,7 +49,7 @@ const watched = computed(() => desks.value.find((d) => d.id === props.watch && !
 // The desks you're on: by name for one or two, as a count for more (up to DESK_LINE_MAX), with the names on hover.
 const onDutyNames = computed(() => mine.value.map((d) => d.name).join(' + '))
 const onDuty = computed(() => (mine.value.length <= 2 ? onDutyNames.value : `${mine.value.length} desks`).toUpperCase())
-const leaving = ref<BoardDesk>()
+const leaving = ref<BoardDesk[]>([])
 const CLOCK_OUT_BUTTON = 'border border-neutral-600 px-2 font-semibold text-neutral-200 hover:border-neutral-400 hover:text-neutral-50 disabled:opacity-50'
 // The desks the board keeps to: the one being watched, or yours.
 const kept = computed(() => (watched.value ? [watched.value] : mine.value))
@@ -110,15 +110,17 @@ function closeHelp() {
       </select>
       <span v-else class="text-neutral-400">RAILROADER, {{ line.name.toUpperCase() }}</span>
       <span v-if="mine.length" class="text-sky-300" :title="onDutyNames">{{ onDuty }}</span>
-      <button v-if="mine.length === 1" type="button" :disabled="busy" :class="CLOCK_OUT_BUTTON" @click="leaving = mine[0]">CLOCK OUT</button>
-      <!-- Covering several desks (up to DESK_LINE_MAX): one button, and a list to choose which. -->
+      <button v-if="mine.length === 1" type="button" :disabled="busy" :class="CLOCK_OUT_BUTTON" @click="leaving = [mine[0]!]">CLOCK OUT</button>
+      <!-- Covering several desks (up to DESK_LINE_MAX): one button, and a list to choose which, or all at once. -->
       <DropdownMenu v-else-if="mine.length">
         <DropdownMenuTrigger as-child>
           <button type="button" :disabled="busy" :class="CLOCK_OUT_BUTTON">CLOCK OUT &#9662;</button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" class="max-h-80">
           <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Clock out of</DropdownMenuLabel>
-          <DropdownMenuItem v-for="d in mine" :key="d.id" @select="leaving = d">{{ d.name }}</DropdownMenuItem>
+          <DropdownMenuItem v-for="d in mine" :key="d.id" @select="leaving = [d]">{{ d.name }}</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem @select="leaving = [...mine]">All {{ mine.length }} desks</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <span v-if="watched" class="inline-flex items-center gap-1.5 border border-yellow-500 bg-yellow-950 px-2 font-semibold text-yellow-300">
@@ -212,7 +214,7 @@ function closeHelp() {
 
     <CtcDeskClockOut
       v-model="leaving" :board="board" :aspects="live.signals.aspects" :thrown="live.switches" :trains="trains" :busy="busy"
-      @leave="(id, note) => emit('leave', id, note)"
+      @leave="(notes) => emit('leave', notes)"
     />
   </div>
 </template>

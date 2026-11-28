@@ -23,7 +23,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   take: [id: string]
-  leave: [id: string, note: { items: string[]; text: string }]
+  leave: [notes: DeskLeaveNote[]]
   watch: [id: string]
   edit: []
   ask: [id: string, takeover: boolean]
@@ -53,7 +53,7 @@ const facts = (d: BoardDesk) => {
 }
 
 const taking = ref<BoardDesk>()
-const leaving = ref<BoardDesk>()
+const leaving = ref<BoardDesk[]>([])
 const takeOpen = computed({ get: () => !!taking.value, set: (v) => { if (!v) taking.value = undefined } })
 </script>
 
@@ -102,7 +102,7 @@ const takeOpen = computed({ get: () => !!taking.value, set: (v) => { if (!v) tak
           <div class="flex flex-wrap gap-2">
             <template v-if="d.mine">
               <Button @click="emit('watch', d.id)">Open the board</Button>
-              <Button variant="outline" :disabled="busy" @click="leaving = d">Clock out</Button>
+              <Button variant="outline" :disabled="busy" @click="leaving = [d]">Clock out</Button>
             </template>
             <template v-else-if="request(d)?.from.userId === userId">
               <Button variant="outline" :disabled="busy" @click="emit('cancelAsk', d.id)">{{ request(d)!.takeover ? 'Cancel takeover' : 'Withdraw request' }}</Button>
@@ -166,7 +166,7 @@ const takeOpen = computed({ get: () => !!taking.value, set: (v) => { if (!v) tak
     </Dialog>
     <CtcDeskClockOut
       v-model="leaving" :board="board" :aspects="aspects" :thrown="thrown" :trains="trains" :busy="busy"
-      @leave="(id, note) => emit('leave', id, note)"
+      @leave="(notes) => emit('leave', notes)"
     />
   </div>
 </template>
