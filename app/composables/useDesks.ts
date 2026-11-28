@@ -18,11 +18,12 @@ export function useDesks() {
   const visibility = useDocumentVisibility()
   watch(visibility, (state) => (state === 'visible' ? (refresh(), resume()) : pause()))
 
-  async function act(method: 'POST' | 'PUT', url: string, words: { done: string; failed: string }, body?: object) {
+  // Runs the request(s), shows the desks they answer with, and says how it went.
+  async function act(words: { done: string; failed: string }, request: () => Promise<CtcDesksData>) {
     busy.value = true
     try {
       // The fetch's own copy too: another page's useFetch starts from it, and an older one would undo the change.
-      data.value = fresh.value = await $fetch<CtcDesksData>(url, { method, body })
+      data.value = fresh.value = await request()
       toast.success(words.done)
       return true
     } catch (err: any) {
@@ -33,12 +34,19 @@ export function useDesks() {
       busy.value = false
     }
   }
+  const call = (method: 'POST' | 'PUT', url: string, body?: object) => $fetch<CtcDesksData>(url, { method, body })
+
   const take = (id: string) =>
-    act('POST', `/api/railroader/ctc/desks/${id}/take`, { done: 'Clocked in', failed: 'Clock-in failed' })
-  const leave = (id: string, note: { items: string[]; text: string }) =>
-    act('POST', `/api/railroader/ctc/desks/${id}/leave`, { done: 'Clocked out', failed: 'Clock-out failed' }, note)
+    act({ done: 'Clocked in', failed: 'Clock-in failed' }, () => call('POST', `/api/railroader/ctc/desks/${id}/take`))
+  // Clocks out of one desk or several (all of yours at once), one after another; stops at the first that fails.
+  const leave = (notes: DeskLeaveNote[]) =>
+    act({ done: notes.length === 1 ? 'Clocked out' : `Clocked out of ${notes.length} desks`, failed: 'Clock-out failed' }, async () => {
+      let desks: CtcDesksData | undefined
+      for (const { id, ...note } of notes) desks = await call('POST', `/api/railroader/ctc/desks/${id}/leave`, note)
+      return desks!
+    })
   const save = (lineId: string, desks: { id?: string; name: string; start: string }[], settings: CtcDeskSettings) =>
-    act('PUT', `/api/railroader/ctc/lines/${lineId}/desks`, { done: 'Desks saved', failed: 'Desks could not be saved' }, { desks, settings })
+    act({ done: 'Desks saved', failed: 'Desks could not be saved' }, () => call('PUT', `/api/railroader/ctc/lines/${lineId}/desks`, { desks, settings }))
 
   return { data, error, busy, take, leave, save }
 }

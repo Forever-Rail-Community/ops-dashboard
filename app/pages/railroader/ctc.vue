@@ -13,7 +13,7 @@ const forbidden = computed(() => error.value?.statusCode === 403)
 const { live, response, error: liveError } = useLiveMap(ref(null))
 
 // Desks, and the one being watched (?desk=, from Watch on the Desks page or the board), whose line the board opens on.
-const { data: desks } = useDesks()
+const { data: desks, busy, leave } = useDesks()
 const route = useRoute()
 const watching = computed(() => (typeof route.query.desk === 'string' ? route.query.desk : undefined))
 const setWatching = (desk?: string) => navigateTo({ query: { ...route.query, desk } }, { replace: true })
@@ -51,7 +51,7 @@ const linkOk = computed(() => !liveError.value && response.value?.signalsAge.age
       <CtcConsole
         v-if="line && layout?.controlPoints.length" :line="line" :lines="lines" :layout="layout" :live="live" :link-ok="linkOk"
         :dispatcher="user?.name ?? ''" :user-id="user?.id ?? ''" :controllable="canControl" :desks="desks?.desks ?? []" :watch="watching" :sound="deskSettings(desks, line.id).sound"
-        @line="(id) => (chosen = id)" @watch="setWatching"
+        :busy="busy" @line="(id) => (chosen = id)" @watch="setWatching" @leave="leave"
       />
       <p v-else-if="response && !response.signalLayoutVersion" class="text-sm text-muted-foreground">Waiting for the game server's signal layout. It's sent when the game loads a save, and every 10 minutes.</p>
       <p v-else-if="layout && !layout.controlPoints.length" class="text-sm text-muted-foreground">

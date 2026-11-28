@@ -9,6 +9,13 @@ export interface CtcDeskHolder {
 }
 
 // Written when leaving a desk, and read before taking it.
+// One desk's turnover note as a dispatcher clocks out (POST /api/railroader/ctc/desks/<id>/leave).
+export interface DeskLeaveNote {
+  id: string
+  items: string[]
+  text: string
+}
+
 export interface CtcTurnoverNote {
   by: string
   at: string

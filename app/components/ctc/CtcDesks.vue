@@ -23,7 +23,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   take: [id: string]
-  leave: [id: string, note: { items: string[]; text: string }]
+  leave: [notes: DeskLeaveNote[]]
   watch: [id: string]
   edit: []
   ask: [id: string, takeover: boolean]
@@ -53,9 +53,8 @@ const facts = (d: BoardDesk) => {
 }
 
 const taking = ref<BoardDesk>()
-const leaving = ref<BoardDesk>()
+const leaving = ref<BoardDesk[]>([])
 const takeOpen = computed({ get: () => !!taking.value, set: (v) => { if (!v) taking.value = undefined } })
-const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) leaving.value = undefined } })
 </script>
 
 <template>
@@ -103,7 +102,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
           <div class="flex flex-wrap gap-2">
             <template v-if="d.mine">
               <Button @click="emit('watch', d.id)">Open the board</Button>
-              <Button variant="outline" :disabled="busy" @click="leaving = d">Clock out</Button>
+              <Button variant="outline" :disabled="busy" @click="leaving = [d]">Clock out</Button>
             </template>
             <template v-else-if="request(d)?.from.userId === userId">
               <Button variant="outline" :disabled="busy" @click="emit('cancelAsk', d.id)">{{ request(d)!.takeover ? 'Cancel takeover' : 'Withdraw request' }}</Button>
@@ -165,11 +164,9 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
     <Dialog v-model:open="takeOpen">
       <CtcDeskTake v-if="taking" :desk="taking" :line="line" :busy="busy" @take="emit('take', taking.id); taking = undefined" @cancel="taking = undefined" />
     </Dialog>
-    <Dialog v-model:open="leaveOpen">
-      <CtcDeskLeave
-        v-if="leaving" :desk="leaving" :items="turnoverItems(board, leaving, aspects, thrown, trains)" :busy="busy"
-        @leave="(note) => { emit('leave', leaving!.id, note); leaving = undefined }" @cancel="leaving = undefined"
-      />
-    </Dialog>
+    <CtcDeskClockOut
+      v-model="leaving" :board="board" :aspects="aspects" :thrown="thrown" :trains="trains" :busy="busy"
+      @leave="(notes) => emit('leave', notes)"
+    />
   </div>
 </template>
