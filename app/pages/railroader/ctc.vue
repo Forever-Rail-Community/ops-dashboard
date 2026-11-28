@@ -50,7 +50,7 @@ const linkOk = computed(() => !liveError.value && response.value?.signalsAge.age
     <template v-else-if="lines">
       <CtcConsole
         v-if="line && layout?.controlPoints.length" :line="line" :lines="lines" :layout="layout" :live="live" :link-ok="linkOk"
-        :dispatcher="user?.name ?? ''" :user-id="user?.id ?? ''" :controllable="canControl" :desks="desks?.desks ?? []" :watch="watching"
+        :dispatcher="user?.name ?? ''" :user-id="user?.id ?? ''" :controllable="canControl" :desks="desks?.desks ?? []" :watch="watching" :sound="deskSettings(desks, line.id).sound"
         @line="(id) => (chosen = id)" @watch="setWatching"
       />
       <p v-else-if="response && !response.signalLayoutVersion" class="text-sm text-muted-foreground">Waiting for the game server's signal layout. It's sent when the game loads a save, and every 10 minutes.</p>

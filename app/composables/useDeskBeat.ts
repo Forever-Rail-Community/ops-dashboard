@@ -26,7 +26,7 @@ export function useDeskBeat() {
       const idleSec = Math.round((Date.now() - lastActive) / 1000)
       const answer = await $fetch<{ onDesk: boolean; takenOff?: string }>('/api/railroader/ctc/desks/beat', { method: 'POST', body: { idleSec } })
       onDesk.value = answer.onDesk
-      if (answer.takenOff) toast.info('Taken off your desk', { description: answer.takenOff, duration: Infinity })
+      if (answer.takenOff) toast.info('Clocked out automatically', { description: answer.takenOff, duration: Infinity })
     } catch {
       // The next one tries again.
     }

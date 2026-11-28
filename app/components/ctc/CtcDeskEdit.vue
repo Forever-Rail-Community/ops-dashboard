@@ -14,7 +14,6 @@ import { GripVertical } from '@lucide/vue'
 const props = defineProps<{ line: CtcLine; board: Board; desks: CtcDesk[]; settings: CtcDeskSettings; busy?: boolean }>()
 const emit = defineEmits<{ save: [desks: { id?: string; name: string; start: string }[], settings: CtcDeskSettings]; back: [] }>()
 
-const MAX_DESKS = 12
 interface Desk { id?: string; key: string; name: string }
 const lineStart = props.line.towns[0]!.controlPoints[0]!
 const order = props.line.towns.flatMap((t) => t.controlPoints)
@@ -23,7 +22,10 @@ const at = (cp: string) => order.indexOf(cp)
 let nextKey = 0
 const desks = ref<Desk[]>([])
 const starts = ref<string[]>([])
-const idle = ref('') // the line's rule; Select values are strings
+const idle = ref('') // the line's rules; Select values are strings
+const most = ref<string | number>('') // a number input may hand back either
+const sound = ref(false)
+const validMost = computed(() => String(most.value).trim() !== '' && Number.isInteger(Number(most.value)) && Number(most.value) >= 1 && Number(most.value) <= DESK_LINE_MAX)
 // The desks and rule as saved (or one desk covering the whole line, for a line with none yet).
 function reset() {
   const spans = deskSpans(props.line, props.desks)
@@ -34,6 +36,8 @@ function reset() {
     starts.value.push(lineStart)
   }
   idle.value = String(props.settings.idleMinutes)
+  most.value = String(props.settings.maxDesks)
+  sound.value = props.settings.sound
 }
 reset()
 
@@ -108,7 +112,7 @@ function passOver(k: number) {
 
 const idleLabel = (m: number) => (m ? `After ${m} minutes with no activity` : 'Never')
 
-const edited = () => ({ desks: desks.value.map((d, k) => ({ id: d.id, name: d.name.trim(), start: starts.value[k]! })), settings: { idleMinutes: Number(idle.value) } })
+const edited = () => ({ desks: desks.value.map((d, k) => ({ id: d.id, name: d.name.trim(), start: starts.value[k]! })), settings: { idleMinutes: Number(idle.value), maxDesks: Number(most.value), sound: sound.value } })
 const saved = JSON.stringify(edited())
 const differs = computed(() => JSON.stringify(edited()) !== saved)
 const changed = computed(() => !props.desks.length || differs.value)
@@ -125,7 +129,7 @@ const save = () => emit('save', edited().desks, edited().settings)
       <div class="flex gap-2">
         <Button variant="ghost" @click="emit('back')">Back to desks</Button>
         <Button variant="outline" :disabled="busy || !differs" @click="reset">Cancel changes</Button>
-        <Button :disabled="busy || !!problem || !changed" @click="save">Save changes</Button>
+        <Button :disabled="busy || !!problem || !validMost || !changed" @click="save">Save changes</Button>
       </div>
     </div>
 
@@ -135,7 +139,7 @@ const save = () => emit('save', edited().desks, edited().settings)
         <CardDescription>
           A desk can take a whole town, or start partway through one at its second control point. Either way trains are
           handed over at a signal. Each desk runs up to where the next one starts. Drag a desk by its handle to move it
-          to another stretch. Dispatchers on a desk stay on it when it changes.
+          to another stretch. Dispatchers on duty remain clocked in when a desk is changed.
         </CardDescription>
       </CardHeader>
       <CardContent class="grid gap-6">
@@ -180,10 +184,10 @@ const save = () => emit('save', edited().desks, edited().settings)
           </TransitionGroup>
         </Table>
         <div class="flex flex-wrap items-center gap-3">
-          <Button variant="secondary" :disabled="desks.length >= MAX_DESKS || desks.length >= order.length" @click="add">Add a desk</Button>
+          <Button variant="secondary" :disabled="desks.length >= DESK_LINE_MAX || desks.length >= order.length" @click="add">Add a desk</Button>
           <span v-if="problem" class="text-sm text-destructive">{{ problem }}</span>
           <span v-else-if="held.length" class="text-sm text-amber-700 dark:text-amber-300">
-            Saving takes {{ held.map((d) => d.holder!.name).join(' and ') }} off {{ held.map((d) => d.name).join(' and ') }}, which you've removed.
+            Saving will clock {{ held.map((d) => d.holder!.name).join(' and ') }} out of {{ held.map((d) => d.name).join(' and ') }}, which you have removed.
           </span>
         </div>
       </CardContent>
@@ -194,18 +198,34 @@ const save = () => emit('save', edited().desks, edited().settings)
         <CardTitle>Rules</CardTitle>
         <CardDescription>For every desk on the {{ line.name }}. Saved with the desks.</CardDescription>
       </CardHeader>
-      <CardContent class="grid max-w-xl gap-2">
-        <Label for="desk-idle">Take a dispatcher off their desk</Label>
-        <Select v-model="idle">
-          <SelectTrigger id="desk-idle" class="w-full"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem v-for="m in DESK_IDLE_CHOICES" :key="m" :value="String(m)">{{ idleLabel(m) }}</SelectItem>
-          </SelectContent>
-        </Select>
-        <p class="text-sm text-muted-foreground">
-          Activity is clicking, typing, scrolling or moving the mouse on any page of the Operations Center. Time spent in
-          the game doesn't count. Closing the Operations Center for 2 minutes always takes them off.
-        </p>
+      <CardContent class="grid max-w-xl gap-6">
+        <div class="grid gap-2">
+          <Label for="desk-idle">Clock out inactive dispatchers</Label>
+          <Select v-model="idle">
+            <SelectTrigger id="desk-idle" class="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="m in DESK_IDLE_CHOICES" :key="m" :value="String(m)">{{ idleLabel(m) }}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p class="text-sm text-muted-foreground">
+            Activity means clicking, typing, scrolling or moving the mouse on any Operations Center page. Time in the game
+            does not count. A dispatcher whose Operations Center is closed for 2 minutes is always clocked out.
+          </p>
+        </div>
+        <div class="grid gap-2">
+          <Label for="desk-most">Desks one dispatcher can be on</Label>
+          <Input id="desk-most" v-model="most" type="number" inputmode="numeric" min="1" :max="DESK_LINE_MAX" class="w-28" :aria-invalid="!validMost" aria-describedby="desk-most-help" />
+          <p v-if="!validMost" class="text-sm text-destructive">Enter a whole number from 1 to {{ DESK_LINE_MAX }}.</p>
+          <p id="desk-most-help" class="text-sm text-muted-foreground">
+            Set to 1 to limit each dispatcher to one desk. A higher number allows a dispatcher to cover adjacent desks from
+            one board, such as a quiet neighboring desk or an entire route. The maximum is {{ DESK_LINE_MAX }}, the most desks
+            a line can have.
+          </p>
+        </div>
+        <div class="grid gap-2">
+          <label class="flex items-center gap-2 text-sm font-medium"><Checkbox v-model="sound" /> Play a sound for transfer requests, takeovers and alerts</label>
+          <p class="text-sm text-muted-foreground">A short chime when a dispatcher receives a transfer request or staff takeover, and when the board raises a new alert.</p>
+        </div>
       </CardContent>
     </Card>
   </div>

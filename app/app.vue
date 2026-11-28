@@ -18,6 +18,8 @@ useHead(() => ({
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <!-- A request for, or takeover of, your CTC desk shows on any page. -->
+  <CtcDeskRequests />
   <!-- The theme sets the toasts' own text colors, which otherwise stay light-mode gray in dark mode. -->
   <Toaster position="bottom-right" :theme="isDark ? 'dark' : 'light'" />
 </template>

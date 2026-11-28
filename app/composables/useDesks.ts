@@ -4,10 +4,13 @@ import { toast } from 'vue-sonner'
 // The CTC desks (shared/types/ctcDesks.ts) for the board and the Desks pages: re-read every DESK_BEAT_SEC while the
 // page is visible. Taking, leaving and editing go through here, so each page shows the result straight away. (Saying
 // a dispatcher is still here is the app's job: useDeskBeat.)
+// useFetch's key, so a desk changing hands (useDeskRequests) can refresh every page's copy.
+export const DESKS_FETCH_KEY = 'ctc-desks-fetch'
+
 export function useDesks() {
   // Kept for the whole visit, like the lines, so pages show the desks at once while a fresh copy loads.
   const data = useState<CtcDesksData | null>('ctc-desks', () => null)
-  const { data: fresh, error, refresh } = useFetch<CtcDesksData>('/api/railroader/ctc/desks', { server: false, lazy: true })
+  const { data: fresh, error, refresh } = useFetch<CtcDesksData>('/api/railroader/ctc/desks', { key: DESKS_FETCH_KEY, server: false, lazy: true })
   watch(fresh, (value) => { if (value) data.value = value }, { immediate: true })
   const busy = ref(false)
 
@@ -23,7 +26,7 @@ export function useDesks() {
       toast.success(words.done)
       return true
     } catch (err: any) {
-      toast.error(words.failed, { description: err?.data?.statusMessage ?? 'Try again.' })
+      toast.error(words.failed, { description: err?.data?.statusMessage ?? 'Please try again.' })
       await refresh()
       return false
     } finally {
@@ -31,11 +34,11 @@ export function useDesks() {
     }
   }
   const take = (id: string) =>
-    act('POST', `/api/railroader/ctc/desks/${id}/take`, { done: 'You took the desk', failed: "Couldn't take the desk" })
+    act('POST', `/api/railroader/ctc/desks/${id}/take`, { done: 'Clocked in', failed: 'Clock-in failed' })
   const leave = (id: string, note: { items: string[]; text: string }) =>
-    act('POST', `/api/railroader/ctc/desks/${id}/leave`, { done: 'You left the desk', failed: "Couldn't leave the desk" }, note)
+    act('POST', `/api/railroader/ctc/desks/${id}/leave`, { done: 'Clocked out', failed: 'Clock-out failed' }, note)
   const save = (lineId: string, desks: { id?: string; name: string; start: string }[], settings: CtcDeskSettings) =>
-    act('PUT', `/api/railroader/ctc/lines/${lineId}/desks`, { done: 'Desks saved', failed: 'Desks not saved' }, { desks, settings })
+    act('PUT', `/api/railroader/ctc/lines/${lineId}/desks`, { done: 'Desks saved', failed: 'Desks could not be saved' }, { desks, settings })
 
   return { data, error, busy, take, leave, save }
 }

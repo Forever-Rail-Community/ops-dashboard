@@ -13,6 +13,8 @@ export interface ServerCommand {
   at: string // ISO time it was sent from the dashboard
   state: ServerCommandState
   message: string
+  sentAt: string | null // when the agent picked it up, if it has
+  answeredAt: string | null // when the game last answered, if it has
 }
 
 // A command the agent hasn't picked up in this long is dropped, so it never runs by surprise later (the host mod
