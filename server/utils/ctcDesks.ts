@@ -50,6 +50,20 @@ export const listDesks = () =>
     }
   }, { memory: false })
 
+// The control points on desks a dispatcher is clocked in to, across lines (FOR-23). The agent passes them to the host
+// mod, which locks the in-game CTC panel there: its code button does nothing, and its switch stands refuse Unlock
+// Switch. Open desks, and lines without desks, are left to the in-game panel.
+export async function heldControlPoints(): Promise<string[]> {
+  const [lines, data] = await Promise.all([listLines(), listDesks()])
+  const held = new Set<string>()
+  for (const line of lines) {
+    const desks = data.desks.filter((d) => d.lineId === line.id)
+    if (!desks.some((d) => d.holder)) continue
+    for (const span of deskSpans(line, desks)) if (span.desk.holder) span.controlPoints.forEach((cp) => held.add(cp))
+  }
+  return [...held].sort()
+}
+
 // Records a request's step in the Desk changes timeline, with no change to the desks.
 export const recordDeskChange = (lineId: string, kind: CtcDeskChangeKind, text: string) => change(lineId, kind, text, async () => {})
 

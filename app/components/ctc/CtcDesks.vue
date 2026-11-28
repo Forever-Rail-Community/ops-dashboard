@@ -152,6 +152,7 @@ const leaveOpen = computed({ get: () => !!leaving.value, set: (v) => { if (!v) l
             <li>To take a desk that is staffed, request a transfer. The dispatcher on duty has {{ DESK_REQUEST_SEC }} seconds to approve or decline. No response declines the request.</li>
             <li>Staff may take over any desk without a request. The dispatcher on duty is notified, then clocked out {{ DESK_REQUEST_SEC }} seconds later.</li>
             <li>The CTC board controls only the desks you are on duty for. Open desks are worked from the in-game CTC panel.</li>
+            <li>While a desk has a dispatcher on duty, the in-game CTC panel is locked there: its code buttons do nothing, and its switches can't be unlocked from the switch stand. The dispatcher can still release a switch for hand throwing from the board.</li>
             <li>When clocking out, you write a turnover note. The next dispatcher must read it before clocking in.</li>
             <li>If your Operations Center is closed for 2 minutes, you are clocked out and staff are notified on Discord.</li>
             <li v-if="settings.idleMinutes">After {{ settings.idleMinutes }} minutes with no activity on the Operations Center, you are clocked out.</li>
