@@ -1,7 +1,7 @@
 // The signed-in person's own choices, loaded once and shared by every component. Changing one saves it to their
 // account right away; until the first load finishes (`ready`), the defaults apply.
 export function usePreferences() {
-  const prefs = useState<Preferences>('preferences', () => ({ units: DEFAULT_UNITS, whatsNewAuto: true, whatsNewSeen: 0 }))
+  const prefs = useState<Preferences>('preferences', () => ({ units: DEFAULT_UNITS, whatsNewAuto: true, whatsNewSeen: 0, railroadTheme: DEFAULT_RAILROAD_THEME }))
   const requested = useState('preferences-requested', () => false)
   const ready = useState('preferences-ready', () => false)
   const { loggedIn } = useUserSession()

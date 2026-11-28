@@ -1,23 +1,29 @@
 // Each person's own choices, saved with their account (their Discord id). Missing rows mean the defaults.
 
-const DEFAULTS: Preferences = { units: DEFAULT_UNITS, whatsNewAuto: true, whatsNewSeen: 0 }
+const DEFAULTS: Preferences = { units: DEFAULT_UNITS, whatsNewAuto: true, whatsNewSeen: 0, railroadTheme: DEFAULT_RAILROAD_THEME }
 
 export async function readPreferences(userId: string): Promise<Preferences> {
   const sql = await db()
-  const [row] = await sql<{ units: string; whats_new_auto: boolean; whats_new_seen: number }[]>`
-    SELECT units, whats_new_auto, whats_new_seen FROM user_preferences WHERE user_id = ${userId}`
+  const [row] = await sql<{ units: string; whats_new_auto: boolean; whats_new_seen: number; railroad_theme: string }[]>`
+    SELECT units, whats_new_auto, whats_new_seen, railroad_theme FROM user_preferences WHERE user_id = ${userId}`
   if (!row) return DEFAULTS
-  return { units: isUnitSystem(row.units) ? row.units : DEFAULT_UNITS, whatsNewAuto: row.whats_new_auto, whatsNewSeen: row.whats_new_seen }
+  return {
+    units: isUnitSystem(row.units) ? row.units : DEFAULT_UNITS,
+    whatsNewAuto: row.whats_new_auto,
+    whatsNewSeen: row.whats_new_seen,
+    railroadTheme: isRailroadTheme(row.railroad_theme) ? row.railroad_theme : DEFAULT_RAILROAD_THEME
+  }
 }
 
 export async function savePreferences(userId: string, changes: Partial<Preferences>): Promise<Preferences> {
   const next = { ...(await readPreferences(userId)), ...changes }
   const sql = await db()
   await sql`
-    INSERT INTO user_preferences (user_id, units, whats_new_auto, whats_new_seen)
-    VALUES (${userId}, ${next.units}, ${next.whatsNewAuto}, ${next.whatsNewSeen})
+    INSERT INTO user_preferences (user_id, units, whats_new_auto, whats_new_seen, railroad_theme)
+    VALUES (${userId}, ${next.units}, ${next.whatsNewAuto}, ${next.whatsNewSeen}, ${next.railroadTheme})
     ON CONFLICT (user_id) DO UPDATE SET
-      units = EXCLUDED.units, whats_new_auto = EXCLUDED.whats_new_auto, whats_new_seen = EXCLUDED.whats_new_seen, updated_at = now()`
+      units = EXCLUDED.units, whats_new_auto = EXCLUDED.whats_new_auto, whats_new_seen = EXCLUDED.whats_new_seen,
+      railroad_theme = EXCLUDED.railroad_theme, updated_at = now()`
   return next
 }
 
@@ -36,6 +42,10 @@ export function parsePreferenceChanges(body: Record<string, unknown> | undefined
   if (body?.whatsNewSeen !== undefined) {
     if (!Number.isSafeInteger(body.whatsNewSeen) || (body.whatsNewSeen as number) < 0) throw bad('whatsNewSeen must be an update id')
     changes.whatsNewSeen = body.whatsNewSeen as number
+  }
+  if (body?.railroadTheme !== undefined) {
+    if (!isRailroadTheme(body.railroadTheme)) throw bad('railroadTheme must be one of the railroad themes')
+    changes.railroadTheme = body.railroadTheme
   }
   return changes
 }

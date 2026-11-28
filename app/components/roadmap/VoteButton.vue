@@ -16,7 +16,7 @@ const label = computed(() => `${props.voted ? 'Take back your vote for' : 'Vote 
     class="flex shrink-0 items-center justify-center border font-semibold tabular-nums transition-colors disabled:opacity-60"
     :class="[
       size === 'pill' ? 'h-7 gap-1 rounded-lg px-2.5 text-[13px]' : 'h-14 w-[52px] flex-col rounded-[10px] text-[15px]',
-      voted ? 'border-sky-500/45 bg-sky-500/15 text-sky-700 dark:text-sky-200' : 'bg-background hover:bg-accent'
+      voted ? 'border-info/45 bg-info/15 text-info-foreground' : 'bg-background hover:bg-accent'
     ]"
     :disabled="disabled"
     :aria-pressed="voted"

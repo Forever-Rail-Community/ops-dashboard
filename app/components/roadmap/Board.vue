@@ -11,7 +11,7 @@ const { scope, bugFixesOnly, matchesQuery } = useRoadmapFilters()
 
 const COLUMN_ICON: Record<RoadmapStatus, { icon: Component; cls: string }> = {
   planned: { icon: Circle, cls: 'text-muted-foreground' },
-  next: { icon: ChevronsRight, cls: 'text-sky-600 dark:text-sky-300' },
+  next: { icon: ChevronsRight, cls: 'text-info-foreground' },
   progress: { icon: Hammer, cls: 'text-amber-600 dark:text-amber-300' },
   complete: { icon: Check, cls: 'text-emerald-600 dark:text-emerald-300' }
 }

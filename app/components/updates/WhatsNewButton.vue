@@ -14,6 +14,6 @@ const { open, updates, autoShow, unseen } = useWhatsNew()
     @click="open = true"
   >
     <Megaphone class="size-[18px]" />
-    <span v-if="unseen" class="absolute top-2 right-2 size-2 rounded-full bg-sky-500 ring-2 ring-background" aria-hidden="true" />
+    <span v-if="unseen" class="absolute top-2 right-2 size-2 rounded-full bg-info ring-2 ring-background" aria-hidden="true" />
   </button>
 </template>

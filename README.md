@@ -390,3 +390,18 @@ Code: `app/components/NoticeBanner.vue`.
 ## Light and dark mode
 
 The sun/moon button in the top bar (and on the sign-in page) switches between Light, Dark, and System, which follows the device setting. The choice is remembered in that browser only. The dark colors are the `.dark` block in `app/assets/css/main.css`; the logic is `app/composables/useTheme.ts`. The brand color from Admin > Appearance is used in both themes. The map has its own dark colors: both palettes are in `app/utils/mapStyle.ts`.
+
+## Railroad themes
+
+Each person can pick a railroad-inspired theme in the account menu (Theme): CSX, Union Pacific, Norfolk Southern,
+Conrail or CPKC, or Default. It's saved with their account (`user_preferences.railroad_theme`) and also kept in the
+browser, so it shows before the page paints. A theme colors the sidebar, buttons, focus rings and information colors
+(blue pills, notices, votes and links) in light and dark mode, and runs the railroad's reporting mark faint up the
+sidebar in a free lookalike font. Default keeps the brand color from Admin > Appearance; a railroad theme replaces it.
+The CTC board and the status colors stay the same in every theme.
+
+- The themes and their colors, with sources: `shared/utils/railroadThemes.ts`
+- The CSS they become: `app/utils/railroadThemeCss.ts`; the choice: `app/composables/useRailroadTheme.ts`
+- The mark: `app/components/RailroadMark.vue`
+- Information colors are `bg-info`, `text-info-foreground` and friends (`--info`, `--info-foreground` in
+  `app/assets/css/main.css`); use them instead of a fixed blue so themes can change them.

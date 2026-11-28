@@ -7,7 +7,7 @@ const props = defineProps<{ item: RoadmapItem | null; staff: boolean }>()
 const emit = defineEmits<{ close: []; vote: []; edit: []; move: [status: RoadmapStatus]; remove: []; changed: [] }>()
 
 const STATUS_TONE: Record<RoadmapStatus, PillTone> = { planned: 'gray', next: 'blue', progress: 'amber', complete: 'green' }
-const DOT: Record<RoadmapStatus, string> = { planned: 'bg-muted-foreground', next: 'bg-sky-500', progress: 'bg-amber-400', complete: 'bg-emerald-500' }
+const DOT: Record<RoadmapStatus, string> = { planned: 'bg-muted-foreground', next: 'bg-info', progress: 'bg-amber-400', complete: 'bg-emerald-500' }
 
 // Newest first: each column it's been in, then who suggested it.
 const progress = computed(() => {
@@ -41,7 +41,7 @@ watch(() => props.item?.id, () => (confirmRemove.value = false))
           <div v-if="item.requestId" class="flex items-center gap-3 rounded-xl border bg-background px-4 py-3.5">
             <Button
               :variant="item.voted ? 'outline' : 'default'" :disabled="item.status === 'complete'" :aria-pressed="item.voted"
-              :class="item.voted ? 'border-sky-500/45 bg-sky-500/15 text-sky-700 dark:text-sky-200' : ''" @click="emit('vote')"
+              :class="item.voted ? 'border-info/45 bg-info/15 text-info-foreground' : ''" @click="emit('vote')"
             >
               <Check v-if="item.voted" /><ChevronUp v-else />{{ item.voted ? 'Voted' : 'Vote' }}
             </Button>

@@ -2,11 +2,15 @@
 import { LogOut } from '@lucide/vue'
 
 // What's in the account menu, wherever it opens from (the avatar in the top bar, or the sidebar's footer): who's
-// signed in, their unit preference, and signing out.
+// signed in, their unit and railroad theme preferences, and signing out.
 const { user, clear } = useUserSession()
 const { prefs, update } = usePreferences()
 const setUnits = (value: unknown) => {
   if (isUnitSystem(value)) update({ units: value })
+}
+const railroad = useRailroadTheme()
+const setRailroad = (value: unknown) => {
+  if (isRailroadTheme(value)) railroad.set(value)
 }
 async function signOut() {
   await clear()
@@ -23,6 +27,11 @@ async function signOut() {
   <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Units</DropdownMenuLabel>
   <DropdownMenuRadioGroup :model-value="prefs.units" @update:model-value="setUnits">
     <DropdownMenuRadioItem v-for="u in UNIT_SYSTEMS" :key="u.value" :value="u.value" @select.prevent>{{ u.label }}</DropdownMenuRadioItem>
+  </DropdownMenuRadioGroup>
+  <DropdownMenuSeparator />
+  <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Theme</DropdownMenuLabel>
+  <DropdownMenuRadioGroup :model-value="railroad.key.value" @update:model-value="setRailroad">
+    <DropdownMenuRadioItem v-for="t in RAILROAD_THEME_OPTIONS" :key="t.value" :value="t.value" @select.prevent>{{ t.label }}</DropdownMenuRadioItem>
   </DropdownMenuRadioGroup>
   <DropdownMenuSeparator />
   <DropdownMenuItem @select="signOut">
