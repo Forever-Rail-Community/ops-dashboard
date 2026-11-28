@@ -8,16 +8,29 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 const upstashUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
 const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
 
+// Sentry (added from the Vercel marketplace) sets these on the project. Without a DSN, Sentry stays off (as locally);
+// without the auth token, the build skips uploading source maps.
+const sentryDsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || ''
+
 export default defineNuxtConfig({
   // Old address of the map, from before each game had its own section.
   routeRules: { '/map': { redirect: '/railroader/map' } },
 
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
-  modules: ['shadcn-nuxt', 'nuxt-auth-utils'],
+  modules: ['shadcn-nuxt', 'nuxt-auth-utils', '@sentry/nuxt/module'],
   // vue-sonner 2 ships its toast styles separately; without them toasts render unstyled, off screen.
   css: ['~/assets/css/main.css', 'vue-sonner/style.css'],
   vite: { plugins: [tailwindcss()] },
+
+  // Errors and slow requests go to Sentry: sentry.client.config.ts and sentry.server.config.ts set it up. The module
+  // builds hidden source maps, uploads them so stack traces in Sentry show our code, then deletes them from the build.
+  sentry: {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    telemetry: false
+  },
 
   // shadcn-vue components live in app/components/ui and are auto-imported by name (Button, Card, ...).
   shadcn: { prefix: '', componentDir: '@/components/ui' },
@@ -52,7 +65,9 @@ export default defineNuxtConfig({
       helpUrl: '',
       // This release of the Operations Center, from package.json (Release Please bumps it), and the commit Vercel built.
       appVersion: version,
-      appCommit: (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 7)
+      appCommit: (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 7),
+      // Where the browser sends errors (empty: Sentry off), and which Vercel environment this is (production, preview).
+      sentry: { dsn: sentryDsn, environment: process.env.VERCEL_ENV ?? 'development' }
     },
     discord: {
       guildId: '',
