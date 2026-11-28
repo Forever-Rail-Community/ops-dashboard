@@ -46,7 +46,11 @@ const working = computed(() => controls.value.length > 0)
 const released = computed(() =>
   board.value.points.filter((p) => p.switch && props.live.signals.released[p.switch]).map((p) => ({ cp: p.id, x: p.x, canLock: controls.value.includes(p.id) })))
 const watched = computed(() => desks.value.find((d) => d.id === props.watch && !d.mine))
+// The desks you're on: by name for one or two, as a count for more (up to DESK_LINE_MAX), with the names on hover.
+const onDutyNames = computed(() => mine.value.map((d) => d.name).join(' + '))
+const onDuty = computed(() => (mine.value.length <= 2 ? onDutyNames.value : `${mine.value.length} desks`).toUpperCase())
 const leaving = ref<BoardDesk>()
+const CLOCK_OUT_BUTTON = 'border border-neutral-600 px-2 font-semibold text-neutral-200 hover:border-neutral-400 hover:text-neutral-50 disabled:opacity-50'
 // The desks the board keeps to: the one being watched, or yours.
 const kept = computed(() => (watched.value ? [watched.value] : mine.value))
 const offDuty = computed(() => props.controllable && desks.value.length > 0 && !mine.value.length && !watched.value)
@@ -105,12 +109,18 @@ function closeHelp() {
         <option v-for="l in lines" :key="l.id" :value="l.id">RAILROADER, {{ l.name.toUpperCase() }}</option>
       </select>
       <span v-else class="text-neutral-400">RAILROADER, {{ line.name.toUpperCase() }}</span>
-      <span v-if="mine.length" class="text-sky-300">{{ mine.map((d) => d.name).join(' + ').toUpperCase() }}</span>
-      <button
-        v-for="d in mine" :key="d.id" type="button" :disabled="busy"
-        class="border border-neutral-600 px-2 font-semibold text-neutral-200 hover:border-neutral-400 hover:text-neutral-50 disabled:opacity-50"
-        @click="leaving = d"
-      >{{ mine.length > 1 ? `CLOCK OUT ${d.name.toUpperCase()}` : 'CLOCK OUT' }}</button>
+      <span v-if="mine.length" class="text-sky-300" :title="onDutyNames">{{ onDuty }}</span>
+      <button v-if="mine.length === 1" type="button" :disabled="busy" :class="CLOCK_OUT_BUTTON" @click="leaving = mine[0]">CLOCK OUT</button>
+      <!-- Covering several desks (up to DESK_LINE_MAX): one button, and a list to choose which. -->
+      <DropdownMenu v-else-if="mine.length">
+        <DropdownMenuTrigger as-child>
+          <button type="button" :disabled="busy" :class="CLOCK_OUT_BUTTON">CLOCK OUT &#9662;</button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" class="max-h-80">
+          <DropdownMenuLabel class="text-xs font-normal text-muted-foreground">Clock out of</DropdownMenuLabel>
+          <DropdownMenuItem v-for="d in mine" :key="d.id" @select="leaving = d">{{ d.name }}</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <span v-if="watched" class="inline-flex items-center gap-1.5 border border-yellow-500 bg-yellow-950 px-2 font-semibold text-yellow-300">
         <Eye class="size-4" aria-hidden="true" />WATCHING {{ watched.name.toUpperCase() }}
         <button type="button" class="ml-1 text-yellow-400 hover:text-yellow-200" aria-label="Stop watching" title="Stop watching" @click="emit('watch')">&#10005;</button>
