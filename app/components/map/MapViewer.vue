@@ -4,7 +4,7 @@ import { Maximize, Minus, Plus } from '@lucide/vue'
 // `live` is what moves while the map is open (trains). The railroad itself comes from `map`.
 // `rememberAs` names where the map's position is saved in the browser, so it reopens where it was left.
 const props = withDefaults(defineProps<{ map: MapData; live?: LiveMapData; rememberAs?: string }>(), {
-  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false, switchLegs: {}, industries: { cars: {}, passengers: {} }, industriesStale: false, industriesReported: false, signals: { layout: null, aspects: {}, occupied: {}, stale: false } }),
+  live: () => ({ trains: [], stale: false, switches: {}, switchesStale: false, switchLegs: {}, industries: { cars: {}, passengers: {} }, industriesStale: false, industriesReported: false, signals: { layout: null, aspects: {}, occupied: {}, released: {}, stale: false } }),
   rememberAs: undefined
 })
 

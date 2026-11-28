@@ -50,16 +50,21 @@ export function parseSignalLayout(raw: unknown): RailroaderSignalLayout {
   return { signals, blocks, switchLegs, controlPoints }
 }
 
+// Yes/no states by id (occupied blocks, released switches); anything else is dropped.
+function flags(raw: unknown): Record<string, boolean> {
+  const out: Record<string, boolean> = {}
+  for (const [id, value] of entries(raw, MAX_BLOCKS)) {
+    if (ID.test(id) && typeof value === 'boolean') out[id] = value
+  }
+  return out
+}
+
 export function parseSignals(raw: unknown): RailroaderSignals {
-  const r = raw as { aspects?: unknown; occupied?: unknown }
+  const r = raw as { aspects?: unknown; occupied?: unknown; released?: unknown }
   if (!r || typeof r !== 'object') throw bad('The signals report must be an object')
   const aspects: Record<string, SignalAspect> = {}
   for (const [id, aspect] of entries(r.aspects, MAX_SIGNALS)) {
     if (ID.test(id) && SIGNAL_ASPECTS.includes(aspect as SignalAspect)) aspects[id] = aspect as SignalAspect
   }
-  const occupied: Record<string, boolean> = {}
-  for (const [id, value] of entries(r.occupied, MAX_BLOCKS)) {
-    if (ID.test(id) && typeof value === 'boolean') occupied[id] = value
-  }
-  return { aspects, occupied }
+  return { aspects, occupied: flags(r.occupied), released: flags(r.released) }
 }
