@@ -22,6 +22,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 (the Go rewrite) breaks the build: Vue's component compiler can't resolve prop types with it
+      # ("Failed to resolve extends base type"). Stay on 5.x; remove this once Vue supports TypeScript 7.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   # The versions of the GitHub Actions the workflows use.
   - package-ecosystem: github-actions
