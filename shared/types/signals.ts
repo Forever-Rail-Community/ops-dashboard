@@ -43,4 +43,7 @@ export interface RailroaderSignalLayout {
 export interface RailroaderSignals {
   aspects: Record<string, SignalAspect> // by signal id
   occupied: Record<string, boolean> // by block id
+  // By switch id: released for hand throwing (Unlock Switch on the stand, or the dispatcher's release). The game holds
+  // the control point's switch block occupied while one is. Host mod 0.12.0 and later; empty before.
+  released: Record<string, boolean>
 }

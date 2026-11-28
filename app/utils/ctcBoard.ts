@@ -29,6 +29,8 @@ export interface BoardPoint {
   x: number
   side: 'left' | 'right' | 'only'
   switch?: string
+  // The control point's own block, over its switch: lit on the board while it's occupied.
+  block?: string
 }
 
 export interface BoardHead {
@@ -127,7 +129,7 @@ export function boardLayout(line: CtcLineData, layout: RailroaderSignalLayout): 
 
     board.towns.push({ name: town.name, x: (xL + xR) / 2, milepost: town.milepost ?? meters / METERS_PER_MILE, measured: town.milepost === undefined, mainCertain: town.mainCertain })
     const points: [string, number, BoardPoint['side']][] = single ? [[left, xL, 'only']] : [[left, xL, 'left'], [right!, xR, 'right']]
-    for (const [id, at, side] of points) board.points.push({ id, name: cps.get(id)?.name ?? id, x: at, side, switch: cps.get(id)?.switches[0] })
+    for (const [id, at, side] of points) board.points.push({ id, name: cps.get(id)?.name ?? id, x: at, side, switch: cps.get(id)?.switches[0], block: cps.get(id)?.blocks[0] })
 
     if (!single) {
       run(town.main, xL, xR, M, 'main', lineDir, town.name)

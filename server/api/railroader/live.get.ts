@@ -30,7 +30,8 @@ export default defineEventHandler(async (event): Promise<LiveResponse> => {
     industriesAge: ageOf(industryReports),
     signals: {
       aspects: Object.assign({}, ...signalReports.map(({ stored }) => stored.data.aspects)),
-      occupied: Object.assign({}, ...signalReports.map(({ stored }) => stored.data.occupied))
+      occupied: Object.assign({}, ...signalReports.map(({ stored }) => stored.data.occupied)),
+      released: Object.assign({}, ...signalReports.map(({ stored }) => stored.data.released ?? {})) // older reports have none
     },
     signalsAge: ageOf(signalReports),
     signalLayoutVersion: layoutReports.length ? Math.max(...layoutReports.map(({ stored }) => stored.receivedAt)) : null

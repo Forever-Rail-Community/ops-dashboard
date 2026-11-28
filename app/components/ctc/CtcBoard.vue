@@ -19,6 +19,7 @@ const props = defineProps<{
   aspects: Record<string, SignalAspect>
   occupied: Record<string, boolean>
   thrown: Record<string, boolean>
+  released?: Record<string, boolean> // switches released for hand throwing, by switch id
   trains: BoardTrain[]
   selectedTrain?: string
   controls?: string[] // control points this dispatcher can work
@@ -62,6 +63,17 @@ const pieces = computed(() =>
     return { ...p, x1, y1, x2, y2, color: colorOf(p.block), title: `${p.block}${props.occupied[p.block] ? ', occupied' : routed.value.has(p.block) ? ', routed' : ''}` }
   })
 )
+// A control point's switch block, lit red over its turnout while it's occupied: the main through the points and the
+// leg to the siding. The game also holds it occupied with no train in it, while a switch is released for hand throwing
+// or blocked by the dispatcher.
+const switchBlocks = computed(() =>
+  props.board.points.filter((p) => p.block && props.occupied[p.block]).map((p) => {
+    const reach = BOARD.leg
+    const [x1, x2] = p.side === 'left' ? [p.x, p.x + reach] : p.side === 'right' ? [p.x - reach, p.x] : [p.x - reach, p.x + reach]
+    const legs = props.board.pieces.filter((q) => q.cp === p.id && (q.kind === 'leg' || q.kind === 'stub'))
+    return { id: p.id, block: p.block!, x1, x2, legs }
+  })
+)
 // A switch lined reverse leaves the main open at its points.
 const mainGaps = computed(() =>
   props.board.points.filter((p) => p.side !== 'only' && thrownAt(p.id) === true).map((p) => ({ x1: p.x, x2: p.x + (p.side === 'left' ? OPEN : -OPEN) }))
@@ -69,7 +81,8 @@ const mainGaps = computed(() =>
 const switches = computed(() =>
   props.board.points.filter((p) => p.switch).map((p) => {
     const thrown = props.thrown[p.switch!]
-    return { ...p, letter: thrown === true ? 'R' : thrown === false ? 'N' : '?', color: thrown === true ? '#f59e0b' : '#fafafa' }
+    const released = props.released?.[p.switch!] ?? false
+    return { ...p, released, letter: thrown === true ? 'R' : thrown === false ? 'N' : '?', color: thrown === true ? '#f59e0b' : '#fafafa' }
   })
 )
 const heads = computed(() =>
@@ -125,6 +138,7 @@ function openSwitch(p: BoardPoint, event: Event) {
   menu.value = {
     ...below(event), title: `SWITCH AT ${p.name}`,
     items: [
+      ...(props.released?.[p.switch] ? [{ label: 'Lock switch', action: { kind: 'lock', cp: p.id } } as MenuItem] : []),
       { label: 'Line normal', action: { kind: 'throw', cp: p.id, setting: 'normal' } },
       { label: 'Line reverse', action: { kind: 'throw', cp: p.id, setting: 'reverse' } }
     ]
@@ -222,6 +236,11 @@ onMounted(syncView)
       <line v-for="(p, k) in pieces" :key="`p${k}`" :x1="p.x1" :y1="p.y1" :x2="p.x2" :y2="p.y2" :stroke="p.color" stroke-width="6">
         <title>{{ p.title }}</title>
       </line>
+      <g v-for="b in switchBlocks" :key="`b${b.id}`" stroke="#ef4444" stroke-width="6">
+        <title>{{ b.block }} (switch block), occupied</title>
+        <line :x1="b.x1" :y1="mainY" :x2="b.x2" :y2="mainY" />
+        <line v-for="(l, k) in b.legs" :key="k" :x1="l.x1" :y1="l.y1" :x2="l.x2" :y2="l.y2" />
+      </g>
       <line v-for="(g, k) in mainGaps" :key="`g${k}`" :x1="g.x1" :y1="mainY" :x2="g.x2" :y2="mainY" stroke="#000" stroke-width="8" />
 
       <g v-for="p in board.points" :key="p.id">
@@ -238,7 +257,8 @@ onMounted(syncView)
       >
         <rect :x="sw.x - 11" :y="mainY + 34" width="22" height="18" fill="#000" :stroke="sw.color" />
         <text :x="sw.x" :y="mainY + 48" :fill="sw.color" font-size="13" font-weight="700" text-anchor="middle">{{ sw.letter }}</text>
-        <title>Switch {{ sw.switch }}: {{ sw.letter === 'R' ? 'reverse' : sw.letter === 'N' ? 'normal' : 'not reported' }}</title>
+        <text v-if="sw.released" :x="sw.x" :y="mainY + 66" fill="#f59e0b" font-size="11" font-weight="700" text-anchor="middle">HAND</text>
+        <title>Switch {{ sw.switch }}: {{ sw.letter === 'R' ? 'reverse' : sw.letter === 'N' ? 'normal' : 'not reported' }}{{ sw.released ? ', released for hand throwing' : '' }}</title>
       </g>
       <g
         v-for="h in heads" :key="h.key"

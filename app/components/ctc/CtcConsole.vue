@@ -39,6 +39,10 @@ const mine = computed(() => desks.value.filter((d) => d.mine))
 const controls = computed(() =>
   !props.controllable ? [] : spans.value.length ? mine.value.flatMap((d) => d.span.controlPoints) : props.layout.controlPoints.map((cp) => cp.id))
 const working = computed(() => controls.value.length > 0)
+// Control points with a switch released for hand throwing: the game holds their switch block occupied until it's
+// locked again, so each is an alert, with Lock where this dispatcher works it.
+const released = computed(() =>
+  board.value.points.filter((p) => p.switch && props.live.signals.released[p.switch]).map((p) => ({ cp: p.id, x: p.x, canLock: controls.value.includes(p.id) })))
 const watched = computed(() => desks.value.find((d) => d.id === props.watch && !d.mine))
 // The desks the board keeps to: the one being watched, or yours.
 const kept = computed(() => (watched.value ? [watched.value] : mine.value))
@@ -122,7 +126,7 @@ function closeHelp() {
         </div>
         <ul class="grid list-disc gap-[7px] py-2.5 pr-3.5 pl-[30px]">
           <li>The strip at the top is the whole line, and the white box is the part this board shows. Click the strip to move there.</li>
-          <li>Track colors: <b class="text-red-400">red</b> has a train on it, <b class="text-green-400">green</b> is a route cleared through a control point, and gray is empty.</li>
+          <li>Track colors: <b class="text-red-400">red</b> has a train on it, <b class="text-green-400">green</b> is a route cleared through a control point, and gray is empty. Red over a switch means its control point's switch block is occupied: by a train, a switch released for hand throwing, or a block set by the dispatcher.</li>
           <li v-if="desks.length">The row under the strip shows each desk and who's on it. You can control only the desks you are clocked in to (on the Desks page). The others are dimmed.</li>
           <li v-if="working">Click a switch's <b>N</b> or <b>R</b> to line it, and a signal to clear or stop it. A signal clears only once its switch is lined for it. Click a train for its details.</li>
           <li v-else-if="controllable">Click a train for its details. Clock in to a desk on the Desks page to work its signals and switches.</li>
@@ -150,7 +154,7 @@ function closeHelp() {
       </div>
       <CtcBoard
         v-else ref="boardRef" :board="board" :title="title" :aspects="live.signals.aspects" :occupied="live.signals.occupied" :thrown="live.switches"
-        :trains="trains" :selected-train="selected" :controls="controls" :alerts="alerts.map((a) => a.signal)" :desks="desks"
+        :released="live.signals.released" :trains="trains" :selected-train="selected" :controls="controls" :alerts="alerts.map((a) => a.signal)" :desks="desks"
         :keep-to="kept.map((d) => d.id)" :watching="watched?.id"
         @command="(a) => commandsRef?.send(a)" @train="(id) => (selected = id)"
       />
@@ -170,7 +174,8 @@ function closeHelp() {
       </div>
     </div>
 
-    <CtcAlerts v-if="!offDuty" class="border-t border-[#2a2a2a]" :alerts="alerts" :names="cpNames" :sound="sound" @show="(x) => boardRef?.show(x)" />
+    <CtcAlerts v-if="!offDuty" class="border-t border-[#2a2a2a]" :alerts="alerts" :released="released" :names="cpNames" :sound="sound"
+      @show="(x) => boardRef?.show(x)" @lock="(cp) => commandsRef?.send({ kind: 'lock', cp })" />
 
     <div class="flex flex-wrap gap-x-[18px] gap-y-1 border-y border-[#2a2a2a] px-3.5 py-1.5 text-[13px] text-neutral-400">
       <span class="inline-flex items-center gap-1.5"><span class="h-1.5 w-5 bg-red-500" />OCCUPIED</span>

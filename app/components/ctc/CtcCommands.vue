@@ -68,7 +68,7 @@ async function send(action: CtcAction) {
 async function sendTyped() {
   const action = parseTypedCtc(typed.value)
   if (!action) {
-    tell('NOT A BOARD COMMAND', 'Type SW <control point> N|R, CLR <signal>, or STOP <control point>.')
+    tell('NOT A BOARD COMMAND', 'Type SW <control point> N|R, CLR <signal>, STOP <control point>, or LOCK <control point>.')
     return
   }
   typed.value = ''

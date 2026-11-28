@@ -53,6 +53,7 @@ export function useLiveMap(map: Ref<MapData | null | undefined>) {
         layout: signalLayout.value,
         aspects: data.value?.signals?.aspects ?? {},
         occupied: data.value?.signals?.occupied ?? {},
+        released: data.value?.signals?.released ?? {},
         stale: data.value?.signalsAge?.stale ?? false
       }
     }

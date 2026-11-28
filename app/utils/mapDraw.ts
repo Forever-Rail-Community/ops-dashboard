@@ -42,6 +42,7 @@ export interface LiveSignals {
   layout: RailroaderSignalLayout | null // null until a server has sent one
   aspects: Record<string, SignalAspect>
   occupied: Record<string, boolean>
+  released: Record<string, boolean> // switches released for hand throwing (RailroaderSignals)
   stale: boolean
 }
 
