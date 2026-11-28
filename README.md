@@ -354,6 +354,25 @@ Run8, Railroader or Dashboard, and filterable by that. Complete shows the latest
   if that runs out Blob pauses for 30 days rather than charging.
 - **Code:** `server/utils/bugs.ts`, `server/utils/screenshots.ts`, `app/pages/bugs.vue`, `app/components/bugs/`.
 
+## Monitoring
+
+- **Sentry** collects errors from the pages and the server, plus a sample (10%) of page loads and requests for
+  performance. It's set up in `sentry.client.config.ts` and `sentry.server.config.ts`, and in the `sentry` options in
+  `nuxt.config.ts`.
+  - It's on when `SENTRY_DSN` is set; the Sentry integration from the Vercel marketplace sets it once the project is
+    connected. Locally it's off.
+  - With `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` and `SENTRY_PROJECT`, builds upload source maps to Sentry and then delete them,
+    so stack traces show our code without the maps being public.
+  - No session replays, and no personal data beyond what an error carries.
+- **Checkly** checks the live site from outside, with monitoring as code:
+  - `__checks__/health.check.ts` calls `/api/public/health` every 10 minutes. That endpoint answers whether the
+    database and Redis can be reached, with 503 when either can't.
+  - `__checks__/sign-in.check.ts` opens the sign-in page in a real browser every hour.
+  - The schedules stay inside the free Hobby plan: about 4,300 of 10,000 API runs and 720 of 1,000 browser runs a month.
+  - `.github/workflows/checkly.yml` tests and deploys the checks when they change on main. It needs the repository
+    secrets `CHECKLY_API_KEY` and `CHECKLY_ACCOUNT_ID`.
+  - Run them yourself with `npx checkly test`; set `ENVIRONMENT_URL` to check another deployment.
+
 ## Status in the header
 
 With `NUXT_PUBLIC_STATUS_URL` set to the status page's address (for example `https://status.example.com`), the top bar

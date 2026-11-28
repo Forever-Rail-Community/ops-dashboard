@@ -1,0 +1,29 @@
+# Deploys the checks in __checks__/ to Checkly when they change on main (see checkly.config.ts). Needs the repository
+# secrets CHECKLY_API_KEY and CHECKLY_ACCOUNT_ID (Checkly: User settings > API keys, and Account settings > General).
+name: Checkly
+
+on:
+  push:
+    branches: [main]
+    paths: ['__checks__/**', 'checkly.config.ts', '.github/workflows/checkly.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CHECKLY_API_KEY: ${{ secrets.CHECKLY_API_KEY }}
+      CHECKLY_ACCOUNT_ID: ${{ secrets.CHECKLY_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Runs every check once against the live site first, so a broken check isn't deployed.
+      - run: npx checkly test --record
+      - run: npx checkly deploy --force
